@@ -21,7 +21,7 @@ import ChessBoard from '../components/chess/ChessBoard';
 import MoveList from '../components/chess/MoveList';
 import { useSocket } from '../hooks/useSocket';
 import { useAppSelector, useAppDispatch } from '../hooks/useStore';
-import { setFen, moveMade, gameOver, flipBoard, setStatus, resetGame, setFlipped, setLastMove } from '../features/game/gameSlice';
+import { setFen, moveMade, gameOver, setStatus, resetGame, setFlipped, setLastMove } from '../features/game/gameSlice';
 import type { PieceColor, PieceType } from '../types/chess';
 
 const STARTING_PIECE_COUNTS = {
@@ -79,7 +79,6 @@ const OnlinePlayPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { isAuthenticated, user } = useAppSelector((s) => s.auth);
-  const gameState = useAppSelector((s) => s.game);
 
   const {
     isConnected,
@@ -95,7 +94,6 @@ const OnlinePlayPage: React.FC = () => {
     acceptDraw,
     declineDraw,
     resetOnlineGame,
-    syncGame,
     clearError,
   } = useSocket();
 

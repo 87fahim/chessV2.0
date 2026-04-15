@@ -1,4 +1,4 @@
-import { ClockState, MoveRecord, PlayerInfo } from './game.js';
+import type { ClockState, MoveRecord, PlayerInfo } from './game.js';
 
 // Client → Server payloads
 export interface QueueJoinPayload {
