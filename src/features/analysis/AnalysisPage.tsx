@@ -1,0 +1,571 @@
+import React, { useState } from 'react';
+import {
+  Box,
+  Typography,
+  Paper,
+  TextField,
+  Button,
+  IconButton,
+  Tooltip,
+  CircularProgress,
+  ToggleButton,
+  ToggleButtonGroup,
+  FormControlLabel,
+  Checkbox,
+  Alert,
+  Divider,
+  InputAdornment,
+} from '@mui/material';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import SwapVertIcon from '@mui/icons-material/SwapVert';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
+import UndoIcon from '@mui/icons-material/Undo';
+import RedoIcon from '@mui/icons-material/Redo';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import CheckIcon from '@mui/icons-material/Check';
+import EditableBoard from '../../components/chess/EditableBoard';
+import { useBoardEditor } from './useBoardEditor';
+import type { PieceColor } from '../../types/chess';
+import type { Difficulty } from '../../types/game';
+import type { CastlingRights } from './boardEditorTypes';
+
+const AnalysisPage: React.FC = () => {
+  const editor = useBoardEditor();
+  const [fenInput, setFenInput] = useState(editor.fen);
+  const [fenError, setFenError] = useState('');
+
+  const handleLoadFen = () => {
+    const err = editor.loadFen(fenInput);
+    if (err) {
+      setFenError(err);
+    } else {
+      setFenError('');
+    }
+  };
+
+  const handleCopyFen = () => {
+    navigator.clipboard.writeText(editor.fen);
+  };
+
+  const errors = editor.validationErrors.filter((e) => e.severity === 'error');
+  const warnings = editor.validationErrors.filter((e) => e.severity === 'warning');
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        gap: { xs: 1.5, lg: 3 },
+        p: { xs: 1, lg: 2 },
+        height: '100%',
+        flexDirection: { xs: 'column', lg: 'row' },
+        justifyContent: 'flex-start',
+        alignItems: { xs: 'stretch', lg: 'flex-start' },
+        overflow: 'auto',
+      }}
+    >
+      {/* Left: Board area */}
+      <Box
+        sx={{
+          flex: { xs: '1 1 auto', lg: '0 0 auto' },
+          minWidth: 0,
+          width: { xs: '100%', lg: 'auto' },
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: { xs: 'center', lg: 'flex-start' },
+          gap: 1,
+          '@media (max-width:1023.95px)': {
+            px: '40px',
+            boxSizing: 'border-box',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            width: { xs: '100%', sm: 420, lg: 520 },
+            maxWidth: '100%',
+          }}
+        >
+          <EditableBoard
+            position={editor.position}
+            isFlipped={editor.isFlipped}
+            highlightSquares={editor.highlightSquares}
+            onDrop={editor.handleDrop}
+          />
+
+          {/* Board action buttons */}
+          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+            <Tooltip title="Flip Board">
+              <IconButton onClick={editor.flipBoard} size="small">
+                <SwapVertIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Undo">
+              <span>
+                <IconButton onClick={editor.undo} size="small" disabled={!editor.canUndo}>
+                  <UndoIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Redo">
+              <span>
+                <IconButton onClick={editor.redo} size="small" disabled={!editor.canRedo}>
+                  <RedoIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Reset to Starting Position">
+              <IconButton onClick={editor.resetToStart} size="small">
+                <RestartAltIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Clear Board">
+              <IconButton onClick={editor.clearBoard} size="small">
+                <DeleteOutlinedIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Keep Kings Only">
+              <IconButton onClick={editor.keepKingsOnly} size="small" sx={{ fontSize: '1.1rem' }}>
+                ♚
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Right: Controls panel */}
+      <Box
+        sx={{
+          flex: { xs: '1 1 auto', lg: '0 0 360px' },
+          width: { xs: '100%', lg: 360 },
+          maxWidth: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
+          pb: 2,
+          alignSelf: { lg: 'flex-start' },
+          maxHeight: { lg: 'calc(100vh - 32px)' },
+          overflowY: { lg: 'auto' },
+          pr: { lg: 0.5 },
+        }}
+      >
+        {/* FEN Display & Load */}
+        <Paper elevation={2} sx={{ p: 1.25 }}>
+          <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
+            FEN Position
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 0.75, mb: 0.75 }}>
+            <TextField
+              size="small"
+              fullWidth
+              value={fenInput}
+              onChange={(e) => {
+                setFenInput(e.target.value);
+                setFenError('');
+              }}
+              error={!!fenError}
+              helperText={fenError}
+              placeholder="Paste FEN to load..."
+              slotProps={{
+                htmlInput: { sx: { fontSize: '0.76rem', fontFamily: 'monospace', py: 0.85 } },
+                formHelperText: { sx: { fontSize: '0.68rem', mx: 0 } },
+              }}
+            />
+            <Tooltip title="Copy Current FEN">
+              <IconButton onClick={handleCopyFen} size="small" sx={{ width: 30, height: 30 }}>
+                <ContentCopyIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 0.75 }}>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={handleLoadFen}
+              fullWidth
+              sx={{ minHeight: 30, fontSize: '0.74rem', px: 1.1 }}
+            >
+              Load FEN
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => {
+                setFenInput(editor.fen);
+                setFenError('');
+              }}
+              sx={{ minHeight: 30, fontSize: '0.74rem', px: 1.1 }}
+            >
+              Sync
+            </Button>
+          </Box>
+          {/* Live FEN display */}
+          <Box
+            sx={{
+              mt: 1,
+              p: 0.85,
+              bgcolor: 'grey.100',
+              borderRadius: 1,
+              fontFamily: 'monospace',
+              fontSize: '0.72rem',
+              wordBreak: 'break-all',
+              color: 'text.secondary',
+            }}
+          >
+            {editor.fen}
+          </Box>
+        </Paper>
+
+        {/* Engine Analysis */}
+        <Paper elevation={2} sx={{ p: 1.25 }}>
+          <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
+            Next Best Move
+          </Typography>
+          <Alert severity="info" sx={{ mb: 1, fontSize: '0.76rem' }}>
+            Analysis uses the backend Stockfish engine. Keep the backend server running for this feature.
+          </Alert>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={editor.findBestMove}
+            disabled={editor.isAnalyzing || !editor.canAnalyze}
+            fullWidth
+            startIcon={editor.isAnalyzing ? <CircularProgress size={18} /> : <PlayArrowIcon />}
+            sx={{ mb: 1, minHeight: 30, fontSize: '0.74rem', px: 1.1 }}
+          >
+            {editor.isAnalyzing ? 'Analyzing...' : 'Find Next Move'}
+          </Button>
+
+          {!editor.canAnalyze && errors.length > 0 && (
+            <Typography variant="caption" color="error" sx={{ display: 'block', mb: 1, fontSize: '0.72rem' }}>
+              Fix position errors before analyzing
+            </Typography>
+          )}
+
+          {editor.analysisError && (
+            <Alert
+              severity="error"
+              sx={{ mb: 1, fontSize: '0.76rem' }}
+              action={
+                <Button color="inherit" size="small" onClick={editor.findBestMove} disabled={editor.isAnalyzing || !editor.canAnalyze}>
+                  Retry
+                </Button>
+              }
+            >
+              {editor.analysisError}
+            </Alert>
+          )}
+
+          {editor.analysisResult && (
+            <Paper variant="outlined" sx={{ p: 1.1, bgcolor: 'grey.50' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                <Typography variant="body1" sx={{ fontWeight: 700, fontSize: '0.98rem' }}>
+                  {editor.analysisResult.san || editor.analysisResult.bestMove}
+                </Typography>
+                {editor.analysisResult.san && (
+                  <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.76rem' }}>
+                    ({editor.analysisResult.bestMove.slice(0, 2)} → {editor.analysisResult.bestMove.slice(2, 4)})
+                  </Typography>
+                )}
+              </Box>
+
+              {editor.analysisResult.evaluation && (
+                <Typography variant="body2" sx={{ mb: 0.5, fontSize: '0.76rem' }}>
+                  Eval: <strong>{editor.analysisResult.evaluation}</strong>
+                  {' · '}Depth: {editor.analysisResult.depth}
+                </Typography>
+              )}
+
+              {editor.analysisResult.pv && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: 'block', fontFamily: 'monospace', mb: 1, wordBreak: 'break-all', fontSize: '0.7rem' }}
+                >
+                  PV: {editor.analysisResult.pv}
+                </Typography>
+              )}
+
+              <Button
+                variant="contained"
+                size="small"
+                onClick={editor.applyBestMove}
+                startIcon={<CheckIcon />}
+                fullWidth
+                sx={{ minHeight: 30, fontSize: '0.74rem', px: 1.1 }}
+              >
+                Apply Move
+              </Button>
+            </Paper>
+          )}
+
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75, fontSize: '0.7rem' }}>
+            Difficulty controls engine skill. Analysis Settings control search budget and output behavior.
+          </Typography>
+        </Paper>
+
+        <Paper elevation={2} sx={{ p: 1.25 }}>
+          <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
+            Engine Setup
+          </Typography>
+          <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, mb: 0.4, color: 'text.secondary' }}>
+            Side to Move
+          </Typography>
+          <ToggleButtonGroup
+            value={editor.sideToMove}
+            exclusive
+            onChange={(_, val) => val && editor.updateSideToMove(val as PieceColor)}
+            size="small"
+            fullWidth
+            sx={{
+              mb: 0.75,
+              '& .MuiToggleButton-root': {
+                py: 0.55,
+                fontSize: '0.74rem',
+                minHeight: 30,
+              },
+            }}
+          >
+            <ToggleButton value="w">White</ToggleButton>
+            <ToggleButton value="b">Black</ToggleButton>
+          </ToggleButtonGroup>
+
+          <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, mb: 0.4, color: 'text.secondary' }}>
+            Difficulty
+          </Typography>
+          <ToggleButtonGroup
+            value={editor.difficulty}
+            exclusive
+            onChange={(_, val) => val && editor.setDifficulty(val as Difficulty)}
+            size="small"
+            fullWidth
+            sx={{
+              mb: 0.75,
+              '& .MuiToggleButton-root': {
+                py: 0.55,
+                fontSize: '0.74rem',
+                minHeight: 30,
+              },
+            }}
+          >
+            <ToggleButton value="easy">Easy</ToggleButton>
+            <ToggleButton value="medium">Medium</ToggleButton>
+            <ToggleButton value="hard">Hard</ToggleButton>
+          </ToggleButtonGroup>
+
+          <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, mb: 0.4, color: 'text.secondary' }}>
+            Search Budget
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'flex-start' }}>
+            <ToggleButtonGroup
+              value={editor.analysisSettings.searchMode}
+              exclusive
+              onChange={(_, val) => val && editor.updateSearchMode(val)}
+              size="small"
+              sx={{
+                flex: '0 0 auto',
+                '& .MuiToggleButton-root': {
+                  py: 0.55,
+                  px: 1,
+                  fontSize: '0.7rem',
+                  minHeight: 30,
+                },
+              }}
+            >
+              <ToggleButton value="depth">Depth</ToggleButton>
+              <ToggleButton value="time">Time</ToggleButton>
+            </ToggleButtonGroup>
+            {editor.analysisSettings.searchMode === 'depth' ? (
+              <TextField
+                size="small"
+                label="Depth"
+                type="number"
+                value={editor.analysisSettings.searchDepth}
+                onChange={(e) => editor.updateSearchDepth(parseInt(e.target.value, 10) || 1)}
+                sx={{ flex: 1 }}
+                slotProps={{
+                  inputLabel: { sx: { fontSize: '0.74rem' } },
+                  htmlInput: { min: 1, max: 40, sx: { fontSize: '0.74rem', py: 0.85 } },
+                  input: { endAdornment: <InputAdornment position="end">ply</InputAdornment> },
+                }}
+              />
+            ) : (
+              <TextField
+                size="small"
+                label="Move Time"
+                type="number"
+                value={editor.analysisSettings.moveTimeMs}
+                onChange={(e) => editor.updateMoveTimeMs(parseInt(e.target.value, 10) || 100)}
+                sx={{ flex: 1 }}
+                slotProps={{
+                  inputLabel: { sx: { fontSize: '0.74rem' } },
+                  htmlInput: { min: 100, step: 100, sx: { fontSize: '0.74rem', py: 0.85 } },
+                  input: { endAdornment: <InputAdornment position="end">ms</InputAdornment> },
+                }}
+              />
+            )}
+          </Box>
+        </Paper>
+
+        <Paper elevation={2} sx={{ p: 1.25 }}>
+          <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
+            Position Settings
+          </Typography>
+
+          <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, mb: 0.4, color: 'text.secondary' }}>
+            Castling Rights
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, mb: 0.75 }}>
+            {([
+              { key: 'K' as keyof CastlingRights, label: 'White O-O' },
+              { key: 'Q' as keyof CastlingRights, label: 'White O-O-O' },
+              { key: 'k' as keyof CastlingRights, label: 'Black O-O' },
+              { key: 'q' as keyof CastlingRights, label: 'Black O-O-O' },
+            ] as const).map(({ key, label }) => (
+              <FormControlLabel
+                key={key}
+                sx={{ my: 0, mr: 0.5, '& .MuiFormControlLabel-label': { fontSize: '0.74rem' } }}
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={editor.castling[key]}
+                    onChange={(e) => editor.updateCastling(key, e.target.checked)}
+                    sx={{ p: 0.45 }}
+                  />
+                }
+                label={<Typography variant="body2" sx={{ fontSize: '0.74rem' }}>{label}</Typography>}
+              />
+            ))}
+          </Box>
+
+          <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, mb: 0.4, color: 'text.secondary' }}>
+            Position Metadata
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 0.75, mb: 0.75 }}>
+            <TextField
+              size="small"
+              label="EP"
+              value={editor.enPassant}
+              onChange={(e) => editor.updateEnPassant(e.target.value)}
+              placeholder="-"
+              sx={{ flex: 1 }}
+              slotProps={{
+                inputLabel: { sx: { fontSize: '0.74rem' } },
+                htmlInput: { sx: { fontFamily: 'monospace', fontSize: '0.74rem', py: 0.85 } },
+              }}
+            />
+            <TextField
+              size="small"
+              label="Half"
+              type="number"
+              value={editor.halfMoveClock}
+              onChange={(e) => editor.updateHalfMoveClock(parseInt(e.target.value, 10) || 0)}
+              sx={{ flex: 1 }}
+              slotProps={{
+                inputLabel: { sx: { fontSize: '0.74rem' } },
+                htmlInput: { min: 0, sx: { fontSize: '0.74rem', py: 0.85 } },
+              }}
+            />
+            <TextField
+              size="small"
+              label="Full"
+              type="number"
+              value={editor.fullMoveNumber}
+              onChange={(e) => editor.updateFullMoveNumber(parseInt(e.target.value, 10) || 1)}
+              sx={{ flex: 1 }}
+              slotProps={{
+                inputLabel: { sx: { fontSize: '0.74rem' } },
+                htmlInput: { min: 1, sx: { fontSize: '0.74rem', py: 0.85 } },
+              }}
+            />
+          </Box>
+
+          <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, mb: 0.35, color: 'text.secondary' }}>
+            Behavior
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 0.1 }}>
+            <FormControlLabel
+              sx={{ my: 0, '& .MuiFormControlLabel-label': { fontSize: '0.74rem' } }}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={editor.analysisSettings.autoFixCastling}
+                  onChange={(e) => editor.setAutoFixCastling(e.target.checked)}
+                  sx={{ p: 0.45 }}
+                />
+              }
+              label="Auto-fix castling rights"
+            />
+            <FormControlLabel
+              sx={{ my: 0, '& .MuiFormControlLabel-label': { fontSize: '0.74rem' } }}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={editor.analysisSettings.resetEnPassantOnEdit}
+                  onChange={(e) => editor.setResetEnPassantOnEdit(e.target.checked)}
+                  sx={{ p: 0.45 }}
+                />
+              }
+              label="Clear en passant after edits"
+            />
+            <FormControlLabel
+              sx={{ my: 0, '& .MuiFormControlLabel-label': { fontSize: '0.74rem' } }}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={editor.analysisSettings.highlightSuggestedMove}
+                  onChange={(e) => editor.setHighlightSuggestedMove(e.target.checked)}
+                  sx={{ p: 0.45 }}
+                />
+              }
+              label="Highlight suggested move"
+            />
+            <FormControlLabel
+              sx={{ my: 0, '& .MuiFormControlLabel-label': { fontSize: '0.74rem' } }}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={editor.analysisSettings.showPrincipalVariation}
+                  onChange={(e) => editor.setShowPrincipalVariation(e.target.checked)}
+                  sx={{ p: 0.45 }}
+                />
+              }
+              label="Show principal variation"
+            />
+          </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={editor.fixCastlingRightsNow}
+            sx={{ mt: 0.75, minHeight: 30, fontSize: '0.74rem', px: 1.1 }}
+            fullWidth
+          >
+            Fix Castling Rights Now
+          </Button>
+        </Paper>
+
+        {/* Validation */}
+        {(errors.length > 0 || warnings.length > 0) && (
+          <Paper elevation={2} sx={{ p: 1.25 }}>
+            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
+              Validation
+            </Typography>
+            {errors.map((e, i) => (
+              <Alert key={`e${i}`} severity="error" sx={{ mb: 0.5, py: 0, fontSize: '0.76rem' }}>
+                {e.message}
+              </Alert>
+            ))}
+            {warnings.map((w, i) => (
+              <Alert key={`w${i}`} severity="warning" sx={{ mb: 0.5, py: 0, fontSize: '0.76rem' }}>
+                {w.message}
+              </Alert>
+            ))}
+          </Paper>
+        )}
+
+      </Box>
+    </Box>
+  );
+};
+
+export default AnalysisPage;

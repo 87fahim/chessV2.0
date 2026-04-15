@@ -1,0 +1,200 @@
+Recommended product scope
+
+Your chess app can be split into these major modes:
+
+1. Play vs Computer
+User chooses white/black
+Difficulty levels
+Move validation
+Undo / redo
+Resign / draw / restart
+Save game history
+Timers optional
+2. Practice / Free Mode
+Drag and drop any piece anywhere
+Add/remove pieces from board
+Clear board
+Load standard starting position
+Import/export FEN
+This mode should ignore legal-move restrictions if desired
+3. Find Next Move
+User sets board position
+App sends FEN to backend
+Backend uses engine to suggest best move
+Show:
+best move
+evaluation
+principal variation
+optional top 3 moves
+4. Online Play
+Real-time matchmaking
+Invite friend
+Game rooms
+Reconnect if disconnected
+Spectator mode later
+Chat later
+5. Guest vs Logged-in User
+Guest:
+quick play
+local session only
+maybe temporary saved game in browser
+Logged in:
+saved games
+preferences
+history
+ratings
+puzzles progress
+multiplayer stats
+Requirements you are likely missing
+Functional requirements
+Chess rules
+
+You need to define whether your app supports all of these from day one:
+
+legal move validation
+check / checkmate
+stalemate
+castling
+en passant
+promotion
+draw by repetition
+draw by 50-move rule
+insufficient material
+move history
+PGN export/import
+FEN import/export
+
+Without clearly defining this, the app becomes messy later.
+
+Engine integration
+
+For “play vs computer” and “find next move,” decide:
+
+Will the engine run on backend only?
+Will you use Stockfish?
+How will difficulty be controlled?
+skill level
+depth
+move time
+ELO-limited mode
+
+Backend engine is usually better for consistency and security.
+
+Multiplayer model
+
+You need to define:
+
+random matchmaking or invite-only first?
+rated or casual?
+live clocks?
+reconnect support?
+anti-cheat?
+move confirmation or instant move?
+handling disconnects / abandoned games
+Persistence
+
+You mentioned persisting game state, but define exactly what gets saved:
+
+active game
+board position
+move list
+clocks
+player color
+engine settings
+analysis board setup
+user preferences
+completed games
+rating history
+Authentication
+
+Need to decide:
+
+guest session support
+email/password login
+Google login later?
+JWT + refresh token?
+session expiration?
+remember me?
+password reset?
+email verification?
+Analysis / free board tools
+
+This area usually grows fast. Consider:
+
+board editor
+side to move switch
+castling rights selector
+en passant square
+move suggestion
+threat detection
+evaluation bar
+arrows / highlighted squares
+position sharing link
+Non-functional requirements people often forget
+Performance
+smooth drag/drop
+low-latency moves online
+fast engine responses
+backend queueing for engine analysis
+WebSocket scalability
+Security
+secure auth
+password hashing with bcrypt
+rate limiting
+input validation
+socket auth
+anti-spam
+sanitize user input
+protect analysis endpoints from abuse
+Reliability
+restore unfinished game
+reconnect after refresh
+prevent illegal state corruption
+handle engine process crashes
+handle socket disconnects gracefully
+Scalability
+
+If you deploy online, think early about:
+
+stateless API design
+Redis for sockets/session/game presence
+horizontal scaling
+Mongo indexes
+background jobs if needed
+Observability
+
+Very important for real deployment:
+
+request logging
+error logging
+socket event logging
+game event audit trail
+health check endpoints
+Testing
+
+You should plan:
+
+chess logic unit tests
+API tests
+socket tests
+React component tests
+end-to-end tests
+Recommended architecture
+Frontend
+React
+Material UI
+React Router
+Redux Toolkit or Zustand
+React Query / TanStack Query
+chess.js for move validation on client where helpful
+react-chessboard or custom board UI
+socket.io-client for multiplayer
+Backend
+Node.js
+Express
+MongoDB + Mongoose
+Socket.IO
+Stockfish engine process
+JWT auth
+bcrypt
+Redis later for scaling multiplayer and matchmaking

@@ -1,0 +1,32 @@
+export const SocketEvents = {
+  // Client → Server
+  QUEUE_JOIN: 'queue:join',
+  QUEUE_LEAVE: 'queue:leave',
+  GAME_JOIN: 'game:join',
+  GAME_MOVE: 'game:move',
+  GAME_RESIGN: 'game:resign',
+  GAME_OFFER_DRAW: 'game:offerDraw',
+  GAME_ACCEPT_DRAW: 'game:acceptDraw',
+  GAME_DECLINE_DRAW: 'game:declineDraw',
+  GAME_SYNC_REQUEST: 'game:syncRequest',
+  PRESENCE_PING: 'presence:ping',
+
+  // Server → Client
+  QUEUE_JOINED: 'queue:joined',
+  QUEUE_LEFT: 'queue:left',
+  MATCH_FOUND: 'match:found',
+  GAME_JOINED: 'game:joined',
+  GAME_STATE: 'game:state',
+  GAME_MOVE_ACCEPTED: 'game:moveAccepted',
+  GAME_MOVE_REJECTED: 'game:moveRejected',
+  GAME_CLOCK: 'game:clock',
+  GAME_OPPONENT_DISCONNECTED: 'game:opponentDisconnected',
+  GAME_OPPONENT_RECONNECTED: 'game:opponentReconnected',
+  GAME_DRAW_OFFERED: 'game:drawOffered',
+  GAME_DRAW_DECLINED: 'game:drawDeclined',
+  GAME_ENDED: 'game:ended',
+  GAME_ABORT_WARNING: 'game:abortWarning',
+  GAME_RESUMABLE: 'game:resumable',
+  OPPONENT_PRESENCE: 'game:opponentPresence',
+  ERROR: 'error',
+} as const;
