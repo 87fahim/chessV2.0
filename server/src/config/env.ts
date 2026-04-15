@@ -4,8 +4,11 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Load .env from server root (server/.env)
-const envFile = dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Determine which .env file to load: .env.production, .env.staging, or .env
+const nodeEnv = process.env.NODE_ENV || 'development';
+const envSuffix = nodeEnv === 'development' ? '' : `.${nodeEnv}`;
+const envPath = path.resolve(__dirname, `../../.env${envSuffix}`);
+const envFile = dotenv.config({ path: envPath });
 
 export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',

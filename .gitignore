@@ -14,7 +14,11 @@ dist-ssr
 
 # Environment variables
 .env
+.env.staging
+.env.production
 server/.env
+server/.env.staging
+server/.env.production
 
 # Server build output
 server/dist
