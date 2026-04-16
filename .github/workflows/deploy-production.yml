@@ -36,12 +36,15 @@ jobs:
             git fetch origin
             git checkout main
             git pull --ff-only origin main
+            test -f .env.production
+            test -f server/.env.production
+            grep -q '^APP_ENV=production$' server/.env.production
             npm ci
             npm run build:prod
             cd server
             npm ci
             npm run build
-            pm2 restart '${PM2_APP}' --update-env
+            APP_ENV=production NODE_ENV=production pm2 restart '${PM2_APP}' --update-env
             sudo nginx -t
             sudo systemctl reload nginx
           "

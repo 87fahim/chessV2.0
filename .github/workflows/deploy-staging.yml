@@ -36,12 +36,15 @@ jobs:
             git fetch origin
             git checkout staging
             git pull --ff-only origin staging
+            test -f .env.staging
+            test -f server/.env.staging
+            grep -q '^APP_ENV=staging$' server/.env.staging
             npm ci
             npm run build:staging
             cd server
             npm ci
             npm run build
-            pm2 restart '${PM2_APP}' --update-env
+            APP_ENV=staging NODE_ENV=production pm2 restart '${PM2_APP}' --update-env
             sudo nginx -t
             sudo systemctl reload nginx
           "

@@ -39,6 +39,12 @@ Production server should have:
 - .env.production at repo root for frontend build values
 - server/.env.production for backend runtime values
 
+Mandatory safety checks:
+
+- `server/.env.staging` must contain `APP_ENV=staging`
+- `server/.env.production` must contain `APP_ENV=production`
+- production values must not point to staging API endpoints
+
 ## Daily Flow
 
 1. Create feature branch from staging.

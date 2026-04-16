@@ -10,7 +10,7 @@ File: .env.staging
 
 File: .env.production
 
-- VITE_API_URL=https://api.your-domain.com
+- VITE_API_URL=http://129.212.199.25
 
 ## Backend Values
 
@@ -37,7 +37,7 @@ File: server/.env.production
 - JWT_REFRESH_SECRET=<long-random-secret>
 - JWT_EXPIRES_IN=15m
 - JWT_REFRESH_EXPIRES_IN=7d
-- CLIENT_URL=https://your-domain.com
+- CLIENT_URL=http://129.212.199.25
 - STOCKFISH_PATH=C:/Program Files/stockfish/stockfish-windows-x86-64-avx2.exe
 
 ## Recommended Secret Rules
@@ -47,6 +47,17 @@ File: server/.env.production
 3. Keep APP_ENV and file names consistent.
 4. Keep NODE_ENV=production in staging and production runtime.
 5. Rotate production secrets on a schedule.
+
+## No Domain Production Note
+
+If production uses an IP address, use the same IP consistently in:
+
+- .env.production `VITE_API_URL`
+- server/.env.production `CLIENT_URL`
+
+Current production IP:
+
+- 129.212.199.25
 
 ## Quick Sanity Checks
 
