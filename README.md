@@ -1,73 +1,73 @@
-# React + TypeScript + Vite
+# ChessV2.0
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Branch Environments
 
-Currently, two official plugins are available:
+This repo now supports separate frontend and backend environment files for:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- development
+- staging
+- production
 
-## React Compiler
+For the backend, `APP_ENV` selects the config file and `NODE_ENV` controls runtime behavior.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `APP_ENV=staging` loads `server/.env.staging`
+- `APP_ENV=production` loads `server/.env.production`
+- no `APP_ENV` loads `server/.env`
 
-## Expanding the ESLint configuration
+For the frontend, Vite mode selects the file automatically.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- `vite --mode staging` loads `.env.staging`
+- `vite build --mode production` loads `.env.production`
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Environment Files
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Create these files from the examples in the repo:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- `.env.example` -> `.env`
+- `.env.staging.example` -> `.env.staging`
+- `.env.production.example` -> `.env.production`
+- `server/.env.example` -> `server/.env`
+- `server/.env.staging.example` -> `server/.env.staging`
+- `server/.env.production.example` -> `server/.env.production`
+
+Do not commit the real `.env` files.
+
+## Useful Commands
+
+Frontend:
+
+```bash
+npm run dev
+npm run dev:staging
+npm run build
+npm run build:staging
+npm run build:prod
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Backend:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cd server
+npm run dev
+npm run dev:staging
+npm run build
+npm run start:staging
+npm run start:prod
 ```
+
+## Deployment Mapping
+
+- `staging` branch should use staging env files and staging secrets
+- `main` branch should use production env files and production secrets
+- never reuse production secrets in staging
+
+## Deployment Docs
+
+- [Deployment Checklist](docs/deployment-checklist.md)
+- [Environment Values Guide](docs/env-values-guide.md)
+
+## GitHub Actions Deployment
+
+- pushes to `staging` trigger `.github/workflows/deploy-staging.yml`
+- pushes to `main` trigger `.github/workflows/deploy-production.yml`
+- each workflow can also be started manually using workflow dispatch

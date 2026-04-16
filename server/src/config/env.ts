@@ -4,13 +4,35 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Determine which .env file to load: .env.production, .env.staging, or .env
-const nodeEnv = process.env.NODE_ENV || 'development';
-const envSuffix = nodeEnv === 'development' ? '' : `.${nodeEnv}`;
-const envPath = path.resolve(__dirname, `../../.env${envSuffix}`);
-const envFile = dotenv.config({ path: envPath });
+type AppEnv = 'development' | 'staging' | 'production';
+
+function resolveAppEnv(): AppEnv {
+  const rawAppEnv = process.env.APP_ENV?.trim().toLowerCase();
+  if (rawAppEnv === 'staging' || rawAppEnv === 'production' || rawAppEnv === 'development') {
+    return rawAppEnv;
+  }
+
+  const rawNodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
+  if (rawNodeEnv === 'production') {
+    return 'production';
+  }
+
+  return 'development';
+}
+
+const appEnv = resolveAppEnv();
+const baseEnvPath = path.resolve(__dirname, '../../.env');
+const modeEnvPath = path.resolve(__dirname, `../../.env.${appEnv}`);
+
+dotenv.config({ path: baseEnvPath });
+
+let envFile: dotenv.DotenvConfigOutput | undefined;
+if (appEnv !== 'development') {
+  envFile = dotenv.config({ path: modeEnvPath, override: true });
+}
 
 export const env = {
+  APP_ENV: appEnv,
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: parseInt(process.env.PORT || '3001', 10),
   MONGODB_URI: process.env.MONGODB_URI || '',
@@ -20,7 +42,7 @@ export const env = {
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
   STOCKFISH_PATH:
-    envFile.parsed?.STOCKFISH_PATH ||
+    envFile?.parsed?.STOCKFISH_PATH ||
     process.env.STOCKFISH_PATH ||
     'C:/Program Files/stockfish/stockfish-windows-x86-64-avx2.exe',
 } as const;

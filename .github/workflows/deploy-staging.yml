@@ -1,0 +1,47 @@
+name: Deploy Staging
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [staging]
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy To Staging Server
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+
+      - name: Deploy via SSH
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          APP_DIR: ${{ secrets.STAGING_APP_DIR }}
+          PM2_APP: ${{ secrets.STAGING_PM2_APP }}
+        run: |
+          ssh -o StrictHostKeyChecking=no "${SERVER_USER}@${SERVER_HOST}" "
+            set -e
+            cd '${APP_DIR}'
+            git fetch origin
+            git checkout staging
+            git pull --ff-only origin staging
+            npm ci
+            npm run build:staging
+            cd server
+            npm ci
+            npm run build
+            pm2 restart '${PM2_APP}' --update-env
+            sudo nginx -t
+            sudo systemctl reload nginx
+          "
