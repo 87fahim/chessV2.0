@@ -6,7 +6,7 @@ Use different values for staging and production. Never reuse production secrets 
 
 File: .env.staging
 
-- VITE_API_URL=https://staging-api.your-domain.com
+- VITE_API_URL=http://localhost:3001
 
 File: .env.production
 
@@ -24,7 +24,7 @@ File: server/.env.staging
 - JWT_REFRESH_SECRET=<long-random-secret>
 - JWT_EXPIRES_IN=15m
 - JWT_REFRESH_EXPIRES_IN=7d
-- CLIENT_URL=https://staging.your-domain.com
+- CLIENT_URL=http://localhost:5173
 - STOCKFISH_PATH=C:/Program Files/stockfish/stockfish-windows-x86-64-avx2.exe
 
 File: server/.env.production
