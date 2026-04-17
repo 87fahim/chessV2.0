@@ -5,6 +5,9 @@ on:
   push:
     branches: [staging]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: deploy-staging
   cancel-in-progress: true
@@ -12,6 +15,7 @@ concurrency:
 jobs:
   deploy:
     name: Deploy To Staging Server
+    if: ${{ secrets.SERVER_SSH_KEY != '' && secrets.SERVER_HOST != '' && secrets.SERVER_USER != '' && secrets.STAGING_APP_DIR != '' && secrets.STAGING_PM2_APP != '' }}
     runs-on: ubuntu-latest
     environment: staging
     steps:

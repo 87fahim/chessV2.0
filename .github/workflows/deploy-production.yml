@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: deploy-production
   cancel-in-progress: true
@@ -12,6 +15,7 @@ concurrency:
 jobs:
   deploy:
     name: Deploy To Production Server
+    if: ${{ secrets.SERVER_SSH_KEY != '' && secrets.SERVER_HOST != '' && secrets.SERVER_USER != '' && secrets.PROD_APP_DIR != '' && secrets.PROD_PM2_APP != '' }}
     runs-on: ubuntu-latest
     environment: production
     steps:
