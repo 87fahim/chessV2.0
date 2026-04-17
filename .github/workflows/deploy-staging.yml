@@ -20,7 +20,7 @@ jobs:
     environment: staging
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.9.0
