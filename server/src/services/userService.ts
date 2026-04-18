@@ -175,7 +175,7 @@ export async function getUserSocial(userId: string): Promise<IUserSocial> {
     .populate('outgoingFriendRequests', 'username email');
 
   if (!social) {
-    social = await UserSocial.create({ userId });
+    await UserSocial.create({ userId });
     social = await UserSocial.findOne({ userId })
       .populate('friends', 'username email')
       .populate('blockedUsers', 'username email')

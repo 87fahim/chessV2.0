@@ -4,64 +4,63 @@ import { useAppDispatch, useAppSelector } from '../hooks/useStore';
 import { fetchUserSummary, saveUserProfile } from '../features/auth/userSlice';
 import { useNavigate } from 'react-router-dom';
 
-const ProfilePage: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const navigate = useNavigate();
-  const { isAuthenticated, isGuest } = useAppSelector((state) => state.auth);
-  const { profile, account, stats, isLoading, isSaving } = useAppSelector((state) => state.userDomain);
+type ProfileDraft = {
+  displayName: string;
+  avatarUrl: string;
+  bio: string;
+  country: string;
+  timezone: string;
+  language: string;
+};
 
-  const [displayName, setDisplayName] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
-  const [bio, setBio] = useState('');
-  const [country, setCountry] = useState('');
-  const [timezone, setTimezone] = useState('');
-  const [language, setLanguage] = useState('');
+type ProfileLike = {
+  displayName?: string;
+  avatarUrl?: string;
+  bio?: string;
+  country?: string;
+  timezone?: string;
+  language?: string;
+  friendCode?: string;
+  profileVisibility?: string;
+  onlineVisibility?: string;
+  identityDisplayMode?: string;
+};
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      return;
-    }
-    dispatch(fetchUserSummary());
-  }, [dispatch, isAuthenticated]);
+function buildProfileDraft(profile: ProfileLike | null | undefined): ProfileDraft {
+  return {
+    displayName: profile?.displayName || '',
+    avatarUrl: profile?.avatarUrl || '',
+    bio: profile?.bio || '',
+    country: profile?.country || '',
+    timezone: profile?.timezone || '',
+    language: profile?.language || 'en',
+  };
+}
 
-  useEffect(() => {
-    if (!profile) {
-      return;
-    }
-    setDisplayName(profile.displayName || '');
-    setAvatarUrl(profile.avatarUrl || '');
-    setBio(profile.bio || '');
-    setCountry(profile.country || '');
-    setTimezone(profile.timezone || '');
-    setLanguage(profile.language || 'en');
-  }, [profile]);
+type ProfileFormProps = {
+  profile: ProfileLike | null;
+  account: {
+    status?: string;
+    role?: string;
+    emailVerified?: boolean;
+    lastLoginAt?: string;
+  } | null;
+  stats: {
+    gamesPlayed?: number;
+  } | null;
+  isLoading: boolean;
+  isSaving: boolean;
+  onSave: (draft: ProfileDraft) => void;
+};
 
-  if (!isAuthenticated) {
-    return (
-      <Box sx={{ p: 3, maxWidth: 760 }}>
-        <Alert severity={isGuest ? 'info' : 'warning'}>
-          {isGuest ? 'Guest accounts do not have a persistent profile.' : 'Sign in to manage your profile.'}
-        </Alert>
-        {!isGuest && (
-          <Button sx={{ mt: 2 }} variant="contained" onClick={() => navigate('/login')}>
-            Sign In
-          </Button>
-        )}
-      </Box>
-    );
-  }
+const ProfileForm: React.FC<ProfileFormProps> = ({ profile, account, stats, isLoading, isSaving, onSave }) => {
+  const [draft, setDraft] = useState<ProfileDraft>(() => buildProfileDraft(profile));
 
-  const handleSave = () => {
-    dispatch(
-      saveUserProfile({
-        displayName,
-        avatarUrl: avatarUrl || undefined,
-        bio: bio || undefined,
-        country: country || undefined,
-        timezone: timezone || undefined,
-        language: language || 'en',
-      }),
-    );
+  const handleDraftChange = <K extends keyof ProfileDraft>(field: K, value: ProfileDraft[K]) => {
+    setDraft((currentDraft) => ({
+      ...currentDraft,
+      [field]: value,
+    }));
   };
 
   return (
@@ -79,11 +78,41 @@ const ProfilePage: React.FC = () => {
         </Typography>
         <Divider sx={{ mb: 2 }} />
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-          <TextField label="Display Name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} size="small" fullWidth />
-          <TextField label="Avatar URL" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} size="small" fullWidth />
-          <TextField label="Country / Region" value={country} onChange={(e) => setCountry(e.target.value)} size="small" fullWidth />
-          <TextField label="Timezone" value={timezone} onChange={(e) => setTimezone(e.target.value)} size="small" fullWidth />
-          <TextField label="Language" value={language} onChange={(e) => setLanguage(e.target.value)} size="small" fullWidth />
+          <TextField
+            label="Display Name"
+            value={draft.displayName}
+            onChange={(e) => handleDraftChange('displayName', e.target.value)}
+            size="small"
+            fullWidth
+          />
+          <TextField
+            label="Avatar URL"
+            value={draft.avatarUrl}
+            onChange={(e) => handleDraftChange('avatarUrl', e.target.value)}
+            size="small"
+            fullWidth
+          />
+          <TextField
+            label="Country / Region"
+            value={draft.country}
+            onChange={(e) => handleDraftChange('country', e.target.value)}
+            size="small"
+            fullWidth
+          />
+          <TextField
+            label="Timezone"
+            value={draft.timezone}
+            onChange={(e) => handleDraftChange('timezone', e.target.value)}
+            size="small"
+            fullWidth
+          />
+          <TextField
+            label="Language"
+            value={draft.language}
+            onChange={(e) => handleDraftChange('language', e.target.value)}
+            size="small"
+            fullWidth
+          />
           <TextField
             label="Friend Code"
             value={profile?.friendCode || ''}
@@ -93,8 +122,8 @@ const ProfilePage: React.FC = () => {
           />
           <TextField
             label="Bio"
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
+            value={draft.bio}
+            onChange={(e) => handleDraftChange('bio', e.target.value)}
             size="small"
             fullWidth
             multiline
@@ -102,7 +131,7 @@ const ProfilePage: React.FC = () => {
             sx={{ gridColumn: { md: 'span 2' } }}
           />
         </Box>
-        <Button variant="contained" sx={{ mt: 2 }} onClick={handleSave}>
+        <Button variant="contained" sx={{ mt: 2 }} onClick={() => onSave(draft)}>
           Save Profile
         </Button>
       </Paper>
@@ -145,6 +174,58 @@ const ProfilePage: React.FC = () => {
         </Typography>
       </Paper>
     </Box>
+  );
+};
+
+const ProfilePage: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const { isAuthenticated, isGuest } = useAppSelector((state) => state.auth);
+  const { profile, account, stats, isLoading, isSaving } = useAppSelector((state) => state.userDomain);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    dispatch(fetchUserSummary());
+  }, [dispatch, isAuthenticated]);
+
+  if (!isAuthenticated) {
+    return (
+      <Box sx={{ p: 3, maxWidth: 760 }}>
+        <Alert severity={isGuest ? 'info' : 'warning'}>
+          {isGuest ? 'Guest accounts do not have a persistent profile.' : 'Sign in to manage your profile.'}
+        </Alert>
+        {!isGuest && (
+          <Button sx={{ mt: 2 }} variant="contained" onClick={() => navigate('/login')}>
+            Sign In
+          </Button>
+        )}
+      </Box>
+    );
+  }
+
+  return (
+    <ProfileForm
+      key={profile?.friendCode || 'profile-form'}
+      profile={profile}
+      account={account}
+      stats={stats}
+      isLoading={isLoading}
+      isSaving={isSaving}
+      onSave={(draft) => {
+        dispatch(
+          saveUserProfile({
+            displayName: draft.displayName,
+            avatarUrl: draft.avatarUrl || undefined,
+            bio: draft.bio || undefined,
+            country: draft.country || undefined,
+            timezone: draft.timezone || undefined,
+            language: draft.language || 'en',
+          }),
+        );
+      }}
+    />
   );
 };
 
