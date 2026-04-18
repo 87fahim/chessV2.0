@@ -5,6 +5,12 @@ export interface IUser extends Document {
   email: string;
   passwordHash: string;
   role: string;
+  status: string;
+  emailVerified: boolean;
+  lastLoginAt?: Date;
+  passwordChangedAt?: Date;
+  failedLoginCount: number;
+  authProvider: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,13 +37,41 @@ const userSchema = new Schema<IUser>(
     role: {
       type: String,
       default: 'user',
-      enum: ['user', 'admin'],
+      enum: ['user', 'admin', 'moderator'],
+    },
+    status: {
+      type: String,
+      default: 'active',
+      enum: ['active', 'pending_verification', 'suspended', 'deactivated'],
+    },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    lastLoginAt: {
+      type: Date,
+    },
+    passwordChangedAt: {
+      type: Date,
+    },
+    failedLoginCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    authProvider: {
+      type: String,
+      default: 'local',
+      enum: ['local', 'google', 'apple', 'other'],
     },
   },
   {
     timestamps: true,
   }
 );
+
+userSchema.index({ username: 1 });
+userSchema.index({ email: 1 });
 
 // Never return passwordHash in JSON
 userSchema.set('toJSON', {

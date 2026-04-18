@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Box, Typography, Paper, TextField, Button, IconButton, Tooltip } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
@@ -10,12 +10,27 @@ import { loadPosition, flipBoard, moveMade } from '../../features/game/gameSlice
 import { DEFAULT_FEN, isValidFen } from '../../lib/chess/fen';
 import { makeMove } from '../../lib/chess/moveUtils';
 import type { PieceColor } from '../../types/chess';
+import { userApi } from '../../services/userService';
 
 const PracticePage: React.FC = () => {
   const dispatch = useAppDispatch();
   const { fen } = useAppSelector((s) => s.game);
+  const { isAuthenticated } = useAppSelector((s) => s.auth);
   const [fenInput, setFenInput] = useState(fen);
   const [fenError, setFenError] = useState('');
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    userApi.recordActivity({
+      activityType: 'practice_session',
+      feature: 'practice',
+      fen,
+      metadata: { source: 'practice_page' },
+    }).catch(() => undefined);
+  }, [isAuthenticated]);
 
   const handleLoadFen = () => {
     if (isValidFen(fenInput)) {

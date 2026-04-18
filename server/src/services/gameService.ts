@@ -3,6 +3,7 @@ import { createError } from '../middleware/errorMiddleware.js';
 import { validateMove, getCurrentTurn } from '../utils/chessEngine.js';
 import { GameStatus } from '../constants/gameStatus.js';
 import { GameMode } from '../constants/gameMode.js';
+import { recordActivity } from './userService.js';
 
 export interface CreatePlayerInput {
   type: 'user' | 'guest' | 'computer';
@@ -39,6 +40,28 @@ export interface MoveResult {
   gameOver: boolean;
   result?: string;
   reason?: string;
+}
+
+async function recordGameCompletion(game: IGame): Promise<void> {
+  const playerIds = [game.whitePlayer.userId?.toString(), game.blackPlayer.userId?.toString()].filter(
+    (value): value is string => Boolean(value)
+  );
+
+  await Promise.all(
+    playerIds.map((userId) =>
+      recordActivity(userId, {
+        activityType: 'game_completed',
+        feature: game.mode === GameMode.ONLINE ? 'matchmaking' : 'game',
+        gameId: game._id.toString(),
+        fen: game.fen,
+        metadata: {
+          mode: game.mode,
+          result: game.result,
+          terminationReason: game.terminationReason,
+        },
+      })
+    )
+  );
 }
 
 export async function createGame(input: CreateGameInput): Promise<IGame> {
@@ -193,6 +216,7 @@ export async function makeMove(input: MakeMoveInput): Promise<MoveResult> {
       game.terminationReason = 'timeout';
       game.completedAt = now;
       await game.save();
+      await recordGameCompletion(game);
       return { san: result.san, fen: result.newFen, ply, gameOver: true, result: '0-1', reason: 'timeout' };
     }
     if (game.clocks.blackRemainingMs <= 0) {
@@ -202,6 +226,7 @@ export async function makeMove(input: MakeMoveInput): Promise<MoveResult> {
       game.terminationReason = 'timeout';
       game.completedAt = now;
       await game.save();
+      await recordGameCompletion(game);
       return { san: result.san, fen: result.newFen, ply, gameOver: true, result: '1-0', reason: 'timeout' };
     }
 
@@ -232,6 +257,10 @@ export async function makeMove(input: MakeMoveInput): Promise<MoveResult> {
   }
 
   await game.save();
+
+  if (result.gameOver) {
+    await recordGameCompletion(game);
+  }
 
   return {
     san: result.san,
@@ -266,6 +295,7 @@ export async function resignGame(gameId: string, userId: string): Promise<IGame>
   game.completedAt = new Date();
 
   await game.save();
+  await recordGameCompletion(game);
   return game;
 }
 
@@ -289,6 +319,7 @@ export async function endGameByTimeout(gameId: string, loserColor: 'white' | 'bl
   }
 
   await game.save();
+  await recordGameCompletion(game);
   return game;
 }
 
@@ -304,6 +335,7 @@ export async function endGameByDraw(gameId: string): Promise<IGame> {
   game.completedAt = new Date();
 
   await game.save();
+  await recordGameCompletion(game);
   return game;
 }
 
@@ -321,6 +353,7 @@ export async function abandonGame(gameId: string, disconnectedUserId: string): P
   game.completedAt = new Date();
 
   await game.save();
+  await recordGameCompletion(game);
   return game;
 }
 

@@ -11,6 +11,9 @@ import RegisterPage from '../pages/RegisterPage';
 import SavedGamesPage from '../pages/SavedGamesPage';
 import HistoryPage from '../pages/HistoryPage';
 import OnlinePlayPage from '../pages/OnlinePlayPage';
+import ProfilePage from '../pages/ProfilePage';
+import SocialPage from '../pages/SocialPage';
+import ProtectedRoute from '../components/common/ProtectedRoute';
 
 const AppRoutes: React.FC = () => {
   return (
@@ -27,6 +30,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/history/:id" element={<HistoryPage />} />
         <Route path="/online" element={<OnlinePlayPage />} />
+        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/social" element={<ProtectedRoute><SocialPage /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppLayout>
