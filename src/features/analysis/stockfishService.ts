@@ -28,40 +28,57 @@ class StockfishService {
     return Promise.resolve();
   }
 
-  private async analyzeViaBackend(fen: string, options: AnalyzeOptions): Promise<AnalysisResult> {
-    const response = await fetch(ENGINE_CONFIG.backendAnalyzeUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        fen,
-        options,
-        enginePath: ENGINE_CONFIG.localBinaryPath,
-      }),
-    });
+  private async analyzeViaBackend(fen: string, options: AnalyzeOptions, signal?: AbortSignal): Promise<AnalysisResult> {
+    // Allow generous timeout: depth searches can take minutes at high depths
+    const timeoutMs = options.searchMode === 'depth'
+      ? Math.max(30000, options.searchDepth * 10000) + 15000
+      : options.moveTimeMs + 15000;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    if (!response.ok) {
-      throw new Error(`Backend engine endpoint failed: ${response.status}`);
+    // If caller provides a signal (e.g. user cancel), forward it
+    const onExternalAbort = () => controller.abort();
+    signal?.addEventListener('abort', onExternalAbort);
+
+    try {
+      const response = await fetch(ENGINE_CONFIG.backendAnalyzeUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fen,
+          options,
+          enginePath: ENGINE_CONFIG.localBinaryPath,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Backend engine endpoint failed: ${response.status}`);
+      }
+
+      const json = await response.json() as { data?: Partial<AnalysisResult> } | Partial<AnalysisResult>;
+      const data = ('data' in json ? json.data : json) as Partial<AnalysisResult> | undefined;
+
+      if (!data?.bestMove) {
+        throw new Error('Backend engine returned no best move');
+      }
+
+      return {
+        bestMove: data.bestMove,
+        ponder: data.ponder,
+        evaluation: data.evaluation,
+        pv: data.pv,
+        depth: data.depth ?? 0,
+      };
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', onExternalAbort);
     }
-
-    const json = await response.json() as { data?: Partial<AnalysisResult> } | Partial<AnalysisResult>;
-    const data = ('data' in json ? json.data : json) as Partial<AnalysisResult> | undefined;
-
-    if (!data?.bestMove) {
-      throw new Error('Backend engine returned no best move');
-    }
-
-    return {
-      bestMove: data.bestMove,
-      ponder: data.ponder,
-      evaluation: data.evaluation,
-      pv: data.pv,
-      depth: data.depth ?? 0,
-    };
   }
 
-  async analyze(fen: string, options: AnalyzeOptions): Promise<AnalysisResult> {
+  async analyze(fen: string, options: AnalyzeOptions, signal?: AbortSignal): Promise<AnalysisResult> {
     try {
-      return await this.analyzeViaBackend(fen, options);
+      return await this.analyzeViaBackend(fen, options, signal);
     } catch (backendError) {
       const reason = backendError instanceof Error ? backendError.message : 'Unknown backend failure';
       throw new Error(

@@ -14,7 +14,13 @@ import {
   Checkbox,
   Alert,
   InputAdornment,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
+import SaveIcon from '@mui/icons-material/Save';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SwapVertIcon from '@mui/icons-material/SwapVert';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
@@ -23,10 +29,10 @@ import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import CheckIcon from '@mui/icons-material/Check';
+import CancelIcon from '@mui/icons-material/Cancel';
 import EditableBoard from '../../components/chess/EditableBoard';
 import { useBoardEditor } from './useBoardEditor';
 import type { PieceColor } from '../../types/chess';
-import type { Difficulty } from '../../types/game';
 import type { CastlingRights } from './boardEditorTypes';
 import { useAppSelector } from '../../hooks/useStore';
 import { userApi, type SavedPositionData } from '../../services/userService';
@@ -39,6 +45,8 @@ const AnalysisPage: React.FC = () => {
   const [savedPositionName, setSavedPositionName] = useState('');
   const [savedPositions, setSavedPositions] = useState<SavedPositionData[]>([]);
   const [isSavingPosition, setIsSavingPosition] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [loadDialogOpen, setLoadDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -102,6 +110,7 @@ const AnalysisPage: React.FC = () => {
   const warnings = editor.validationErrors.filter((e) => e.severity === 'warning');
 
   return (
+  <>
     <Box
       sx={{
         display: 'flex',
@@ -271,20 +280,30 @@ const AnalysisPage: React.FC = () => {
           <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
             Next Best Move
           </Typography>
-          <Alert severity="info" sx={{ mb: 1, fontSize: '0.76rem' }}>
-            Analysis uses the backend Stockfish engine. Keep the backend server running for this feature.
-          </Alert>
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={editor.findBestMove}
-            disabled={editor.isAnalyzing || !editor.canAnalyze}
-            fullWidth
-            startIcon={editor.isAnalyzing ? <CircularProgress size={18} /> : <PlayArrowIcon />}
-            sx={{ mb: 1, minHeight: 30, fontSize: '0.74rem', px: 1.1 }}
-          >
-            {editor.isAnalyzing ? 'Analyzing...' : 'Find Next Move'}
-          </Button>
+          <Box sx={{ display: 'flex', gap: 0.75, mb: 1 }}>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={editor.findBestMove}
+              disabled={editor.isAnalyzing || !editor.canAnalyze}
+              fullWidth
+              startIcon={editor.isAnalyzing ? <CircularProgress size={18} /> : <PlayArrowIcon />}
+              sx={{ minHeight: 30, fontSize: '0.74rem', px: 1.1 }}
+            >
+              {editor.isAnalyzing ? 'Analyzing...' : 'Find Next Move'}
+            </Button>
+            {editor.isAnalyzing && (
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={editor.cancelAnalysis}
+                startIcon={<CancelIcon />}
+                sx={{ minHeight: 30, fontSize: '0.74rem', px: 1.1, whiteSpace: 'nowrap' }}
+              >
+                Cancel
+              </Button>
+            )}
+          </Box>
 
           {!editor.canAnalyze && errors.length > 0 && (
             <Typography variant="caption" color="error" sx={{ display: 'block', mb: 1, fontSize: '0.72rem' }}>
@@ -348,66 +367,36 @@ const AnalysisPage: React.FC = () => {
               </Button>
             </Paper>
           )}
-
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75, fontSize: '0.7rem' }}>
-            Difficulty controls engine skill. Analysis Settings control search budget and output behavior.
-          </Typography>
         </Paper>
 
         {isAuthenticated && (
           <Paper elevation={2} sx={{ p: 1.25 }}>
             <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
-              Saved Positions
+              Positions
             </Typography>
-            <Box sx={{ display: 'flex', gap: 0.75, mb: 1 }}>
-              <TextField
-                size="small"
-                fullWidth
-                value={savedPositionName}
-                onChange={(e) => setSavedPositionName(e.target.value)}
-                placeholder="Position name"
-              />
+            <Box sx={{ display: 'flex', gap: 0.75 }}>
               <Button
                 variant="contained"
                 size="small"
-                onClick={handleSavePosition}
-                disabled={isSavingPosition || !editor.canAnalyze}
+                fullWidth
+                startIcon={<SaveIcon />}
+                onClick={() => setSaveDialogOpen(true)}
+                disabled={!editor.canAnalyze}
+                sx={{ minHeight: 30, fontSize: '0.74rem' }}
               >
                 Save
               </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                fullWidth
+                startIcon={<FolderOpenIcon />}
+                onClick={() => { refreshSavedPositions(); setLoadDialogOpen(true); }}
+                sx={{ minHeight: 30, fontSize: '0.74rem' }}
+              >
+                Load
+              </Button>
             </Box>
-            {savedPositions.length === 0 ? (
-              <Typography variant="caption" color="text.secondary">
-                No saved positions yet.
-              </Typography>
-            ) : (
-              savedPositions.slice(0, 8).map((position) => (
-                <Paper key={position._id} variant="outlined" sx={{ p: 1, mb: 0.75 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {position.name}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', wordBreak: 'break-all', mb: 0.75 }}>
-                    {position.fen}
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.75 }}>
-                    <Button size="small" variant="outlined" onClick={() => {
-                      setFenInput(position.fen);
-                      const err = editor.loadFen(position.fen);
-                      if (err) {
-                        setFenError(err);
-                      } else {
-                        setFenError('');
-                      }
-                    }}>
-                      Load
-                    </Button>
-                    <Button size="small" color="error" variant="text" onClick={() => handleDeletePosition(position._id)}>
-                      Delete
-                    </Button>
-                  </Box>
-                </Paper>
-              ))
-            )}
           </Paper>
         )}
 
@@ -438,29 +427,6 @@ const AnalysisPage: React.FC = () => {
           </ToggleButtonGroup>
 
           <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, mb: 0.4, color: 'text.secondary' }}>
-            Difficulty
-          </Typography>
-          <ToggleButtonGroup
-            value={editor.difficulty}
-            exclusive
-            onChange={(_, val) => val && editor.setDifficulty(val as Difficulty)}
-            size="small"
-            fullWidth
-            sx={{
-              mb: 0.75,
-              '& .MuiToggleButton-root': {
-                py: 0.55,
-                fontSize: '0.74rem',
-                minHeight: 30,
-              },
-            }}
-          >
-            <ToggleButton value="easy">Easy</ToggleButton>
-            <ToggleButton value="medium">Medium</ToggleButton>
-            <ToggleButton value="hard">Hard</ToggleButton>
-          </ToggleButtonGroup>
-
-          <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, mb: 0.4, color: 'text.secondary' }}>
             Search Budget
           </Typography>
           <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'flex-start' }}>
@@ -487,27 +453,41 @@ const AnalysisPage: React.FC = () => {
                 size="small"
                 label="Depth"
                 type="number"
-                value={editor.analysisSettings.searchDepth}
-                onChange={(e) => editor.updateSearchDepth(parseInt(e.target.value, 10) || 1)}
+                value={editor.analysisSettings.searchDepth || ''}
+                onChange={(e) => editor.updateSearchDepth(e.target.value)}
+                error={editor.analysisSettings.searchDepth !== 0 && (editor.analysisSettings.searchDepth < 1 || editor.analysisSettings.searchDepth > 60)}
+                helperText={
+                  editor.analysisSettings.searchDepth !== 0 && (editor.analysisSettings.searchDepth < 1 || editor.analysisSettings.searchDepth > 60)
+                    ? '1–60'
+                    : undefined
+                }
                 sx={{ flex: 1 }}
                 slotProps={{
                   inputLabel: { sx: { fontSize: '0.74rem' } },
-                  htmlInput: { min: 1, max: 40, sx: { fontSize: '0.74rem', py: 0.85 } },
+                  htmlInput: { min: 1, max: 60, sx: { fontSize: '0.74rem', py: 0.85 } },
                   input: { endAdornment: <InputAdornment position="end">ply</InputAdornment> },
+                  formHelperText: { sx: { fontSize: '0.68rem', mx: 0 } },
                 }}
               />
             ) : (
               <TextField
                 size="small"
-                label="Move Time"
+                label="Time"
                 type="number"
-                value={editor.analysisSettings.moveTimeMs}
-                onChange={(e) => editor.updateMoveTimeMs(parseInt(e.target.value, 10) || 100)}
+                value={editor.analysisSettings.moveTimeMs ? (editor.analysisSettings.moveTimeMs / 1000) : ''}
+                onChange={(e) => editor.updateMoveTimeMs(e.target.value)}
+                error={editor.analysisSettings.moveTimeMs !== 0 && (editor.analysisSettings.moveTimeMs < 100 || editor.analysisSettings.moveTimeMs > 120000)}
+                helperText={
+                  editor.analysisSettings.moveTimeMs !== 0 && (editor.analysisSettings.moveTimeMs < 100 || editor.analysisSettings.moveTimeMs > 120000)
+                    ? '0.1–120'
+                    : undefined
+                }
                 sx={{ flex: 1 }}
                 slotProps={{
                   inputLabel: { sx: { fontSize: '0.74rem' } },
-                  htmlInput: { min: 100, step: 100, sx: { fontSize: '0.74rem', py: 0.85 } },
-                  input: { endAdornment: <InputAdornment position="end">ms</InputAdornment> },
+                  htmlInput: { min: 0.1, max: 120, step: 0.5, sx: { fontSize: '0.74rem', py: 0.85 } },
+                  input: { endAdornment: <InputAdornment position="end">sec</InputAdornment> },
+                  formHelperText: { sx: { fontSize: '0.68rem', mx: 0 } },
                 }}
               />
             )}
@@ -586,60 +566,6 @@ const AnalysisPage: React.FC = () => {
               }}
             />
           </Box>
-
-          <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, mb: 0.35, color: 'text.secondary' }}>
-            Behavior
-          </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', gap: 0.1 }}>
-            <FormControlLabel
-              sx={{ my: 0, '& .MuiFormControlLabel-label': { fontSize: '0.74rem' } }}
-              control={
-                <Checkbox
-                  size="small"
-                  checked={editor.analysisSettings.autoFixCastling}
-                  onChange={(e) => editor.setAutoFixCastling(e.target.checked)}
-                  sx={{ p: 0.45 }}
-                />
-              }
-              label="Auto-fix castling rights"
-            />
-            <FormControlLabel
-              sx={{ my: 0, '& .MuiFormControlLabel-label': { fontSize: '0.74rem' } }}
-              control={
-                <Checkbox
-                  size="small"
-                  checked={editor.analysisSettings.resetEnPassantOnEdit}
-                  onChange={(e) => editor.setResetEnPassantOnEdit(e.target.checked)}
-                  sx={{ p: 0.45 }}
-                />
-              }
-              label="Clear en passant after edits"
-            />
-            <FormControlLabel
-              sx={{ my: 0, '& .MuiFormControlLabel-label': { fontSize: '0.74rem' } }}
-              control={
-                <Checkbox
-                  size="small"
-                  checked={editor.analysisSettings.highlightSuggestedMove}
-                  onChange={(e) => editor.setHighlightSuggestedMove(e.target.checked)}
-                  sx={{ p: 0.45 }}
-                />
-              }
-              label="Highlight suggested move"
-            />
-            <FormControlLabel
-              sx={{ my: 0, '& .MuiFormControlLabel-label': { fontSize: '0.74rem' } }}
-              control={
-                <Checkbox
-                  size="small"
-                  checked={editor.analysisSettings.showPrincipalVariation}
-                  onChange={(e) => editor.setShowPrincipalVariation(e.target.checked)}
-                  sx={{ p: 0.45 }}
-                />
-              }
-              label="Show principal variation"
-            />
-          </Box>
           <Button
             variant="outlined"
             size="small"
@@ -672,6 +598,86 @@ const AnalysisPage: React.FC = () => {
 
       </Box>
     </Box>
+
+    {/* Save Position Dialog */}
+    <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ fontSize: '1rem', pb: 1 }}>Save Position</DialogTitle>
+      <DialogContent>
+        <TextField
+          autoFocus
+          size="small"
+          fullWidth
+          label="Position name"
+          value={savedPositionName}
+          onChange={(e) => setSavedPositionName(e.target.value)}
+          placeholder="e.g. Sicilian Defense"
+          sx={{ mt: 1 }}
+        />
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1, wordBreak: 'break-all' }}>
+          FEN: {editor.fen}
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setSaveDialogOpen(false)} size="small">Cancel</Button>
+        <Button
+          variant="contained"
+          size="small"
+          onClick={async () => {
+            await handleSavePosition();
+            setSaveDialogOpen(false);
+          }}
+          disabled={isSavingPosition || !editor.canAnalyze}
+        >
+          {isSavingPosition ? 'Saving...' : 'Save'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+
+    {/* Load Position Dialog */}
+    <Dialog open={loadDialogOpen} onClose={() => setLoadDialogOpen(false)} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ fontSize: '1rem', pb: 1 }}>Load Saved Position</DialogTitle>
+      <DialogContent>
+        {savedPositions.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+            No saved positions yet.
+          </Typography>
+        ) : (
+          savedPositions.map((position) => (
+            <Paper key={position._id} variant="outlined" sx={{ p: 1.25, mb: 0.75 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                {position.name}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', wordBreak: 'break-all', mb: 0.75 }}>
+                {position.fen}
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 0.75 }}>
+                <Button size="small" variant="outlined" onClick={() => {
+                  setFenInput(position.fen);
+                  const err = editor.loadFen(position.fen);
+                  if (err) {
+                    setFenError(err);
+                  } else {
+                    setFenError('');
+                  }
+                  setLoadDialogOpen(false);
+                }}>
+                  Load
+                </Button>
+                <Button size="small" color="error" variant="text" onClick={async () => {
+                  await handleDeletePosition(position._id);
+                }}>
+                  Delete
+                </Button>
+              </Box>
+            </Paper>
+          ))
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setLoadDialogOpen(false)} size="small">Close</Button>
+      </DialogActions>
+    </Dialog>
+  </>
   );
 };
 

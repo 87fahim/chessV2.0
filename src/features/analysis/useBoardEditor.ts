@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Chess } from 'chess.js';
 import type { PieceColor, PieceType } from '../../types/chess';
 import type { Difficulty } from '../../types/game';
@@ -62,14 +62,59 @@ export function useBoardEditor() {
   const [redoStack, setRedoStack] = useState<PositionSnapshot[]>([]);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<(AnalysisResult & { san?: string }) | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<(AnalysisResult & { san?: string }) | null>(() => {
+    try {
+      const saved = sessionStorage.getItem('analysis_result');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [highlightSquares, setHighlightSquares] = useState<{ from: string; to: string } | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fen = useMemo(
     () => buildFen(position, sideToMove, castling, enPassant, halfMoveClock, fullMoveNumber),
     [position, sideToMove, castling, enPassant, halfMoveClock, fullMoveNumber],
   );
+
+  // Persist analysis result & FEN to sessionStorage
+  useEffect(() => {
+    if (analysisResult) {
+      sessionStorage.setItem('analysis_result', JSON.stringify(analysisResult));
+      sessionStorage.setItem('analysis_fen', fen);
+    } else {
+      sessionStorage.removeItem('analysis_result');
+      sessionStorage.removeItem('analysis_fen');
+    }
+  }, [analysisResult, fen]);
+
+  // Restore FEN and highlight on mount
+  useEffect(() => {
+    const savedFen = sessionStorage.getItem('analysis_fen');
+    if (savedFen && savedFen !== DEFAULT_FEN) {
+      const parsed = parseFenToPosition(savedFen);
+      if (parsed) {
+        setPosition({ ...parsed.position });
+        setSideToMove(parsed.sideToMove);
+        setCastling({ ...parsed.castling });
+        setEnPassant(parsed.enPassant);
+        setHalfMoveClock(parsed.halfMoveClock);
+        setFullMoveNumber(parsed.fullMoveNumber);
+      }
+    }
+    // Restore highlight from persisted result
+    const saved = sessionStorage.getItem('analysis_result');
+    if (saved) {
+      try {
+        const result = JSON.parse(saved);
+        if (result?.bestMove) {
+          const { from, to } = parseUciMove(result.bestMove);
+          setHighlightSquares({ from, to });
+        }
+      } catch { /* ignore */ }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fenValidationError = useMemo(() => {
     try {
@@ -116,6 +161,14 @@ export function useBoardEditor() {
       message.includes('Backend engine endpoint failed')
     ) {
       return 'Analysis engine is unavailable. Start the backend server and ensure Stockfish is configured correctly.';
+    }
+
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return 'Analysis timed out. Try a lower depth or shorter time.';
+    }
+
+    if (message.includes('Timed out')) {
+      return 'Analysis timed out. Try a lower depth or shorter time.';
     }
 
     return message;
@@ -342,12 +395,19 @@ export function useBoardEditor() {
     setAnalysisSettings((prev) => ({ ...prev, searchMode: mode }));
   }, []);
 
-  const updateSearchDepth = useCallback((value: number) => {
-    setAnalysisSettings((prev) => ({ ...prev, searchDepth: Math.max(1, value || 1) }));
+  const updateSearchDepth = useCallback((value: string) => {
+    // Allow empty string so user can clear and retype
+    const num = value === '' ? NaN : Number(value);
+    if (value === '' || !isNaN(num)) {
+      setAnalysisSettings((prev) => ({ ...prev, searchDepth: isNaN(num) ? 0 : num }));
+    }
   }, []);
 
-  const updateMoveTimeMs = useCallback((value: number) => {
-    setAnalysisSettings((prev) => ({ ...prev, moveTimeMs: Math.max(100, value || 100) }));
+  const updateMoveTimeMs = useCallback((value: string) => {
+    const num = value === '' ? NaN : Number(value);
+    if (value === '' || !isNaN(num)) {
+      setAnalysisSettings((prev) => ({ ...prev, moveTimeMs: isNaN(num) ? 0 : Math.round(num * 1000) }));
+    }
   }, []);
 
   const setAutoFixCastling = useCallback((value: boolean) => {
@@ -381,8 +441,33 @@ export function useBoardEditor() {
 
   // --- Engine analysis ---
 
+  const cancelAnalysis = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+  }, []);
+
   const findBestMove = useCallback(async () => {
     if (!canAnalyze || isAnalyzing) return;
+
+    // Validate search parameters
+    const { searchMode, searchDepth, moveTimeMs } = analysisSettings;
+    if (searchMode === 'depth') {
+      if (!searchDepth || searchDepth < 1 || searchDepth > 60 || !Number.isInteger(searchDepth)) {
+        setAnalysisError('Depth must be a whole number between 1 and 60.');
+        return;
+      }
+    } else {
+      if (!moveTimeMs || moveTimeMs < 100 || moveTimeMs > 120000) {
+        setAnalysisError('Time must be between 0.1 and 120 seconds.');
+        return;
+      }
+    }
+
+    // Create a new abort controller for this analysis
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     setIsAnalyzing(true);
     setAnalysisError(null);
@@ -393,10 +478,10 @@ export function useBoardEditor() {
       const service = getStockfishService();
       const result = await service.analyze(fen, {
         difficulty,
-        searchMode: analysisSettings.searchMode,
-        searchDepth: analysisSettings.searchDepth,
-        moveTimeMs: analysisSettings.moveTimeMs,
-      });
+        searchMode,
+        searchDepth,
+        moveTimeMs,
+      }, controller.signal);
 
       if (!result.bestMove || result.bestMove === '(none)') {
         setAnalysisResult(null);
@@ -415,9 +500,15 @@ export function useBoardEditor() {
         setHighlightSquares(analysisSettings.highlightSuggestedMove ? { from, to } : null);
       }
     } catch (err) {
-      setAnalysisError(normalizeAnalysisError(err));
+      // Don't show error if user cancelled
+      if (controller.signal.aborted) {
+        setAnalysisError(null);
+      } else {
+        setAnalysisError(normalizeAnalysisError(err));
+      }
     } finally {
       setIsAnalyzing(false);
+      abortControllerRef.current = null;
     }
   }, [canAnalyze, isAnalyzing, fen, difficulty, analysisSettings, normalizeAnalysisError]);
 
@@ -505,6 +596,7 @@ export function useBoardEditor() {
     analysisError,
     highlightSquares,
     findBestMove,
+    cancelAnalysis,
     applyBestMove,
   };
 }
