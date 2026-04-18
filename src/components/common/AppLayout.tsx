@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Drawer,
@@ -36,6 +36,8 @@ import { logout } from '../../features/auth/authSlice';
 const DRAWER_WIDTH = 260;
 const PERMANENT_DRAWER_MIN_WIDTH = 1536;
 
+const APP_TITLE = __APP_LABEL__ ? `♟ Chess V2.0 : ${__APP_LABEL__}` : '♟ Chess V2.0';
+
 const NAV_ITEMS = [
   { label: 'Home', icon: <HomeIcon />, path: '/' },
   { label: 'VS Computer', icon: <SportsEsportsIcon />, path: '/play' },
@@ -64,6 +66,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
   const visibleNav = NAV_ITEMS.filter((item) => !item.authOnly || isAuthenticated);
 
+  useEffect(() => {
+    document.title = __APP_LABEL__ ? `Chess V2.0 : ${__APP_LABEL__}` : 'Chess V2.0';
+  }, []);
+
   const handleNav = (path: string) => {
     navigate(path);
     if (useTemporaryDrawer) setMobileOpen(false);
@@ -81,7 +87,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           sx={{ fontWeight: 700, fontSize: { xs: '1.1rem', lg: '1.55rem' } }}
           noWrap
         >
-          ♟ Chess V2.0
+          {APP_TITLE}
         </Typography>
       </Toolbar>
       <List sx={{ flex: 1, pt: 0 }}>
@@ -164,6 +170,28 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
   return (
     <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      {/* Non-production environment banner */}
+      {__APP_LABEL__ && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: (t) => t.zIndex.tooltip + 1,
+            bgcolor: __APP_LABEL__ === 'Staging' ? 'warning.main' : 'info.main',
+            color: '#fff',
+            textAlign: 'center',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            lineHeight: '20px',
+            pointerEvents: 'none',
+          }}
+        >
+          {__APP_LABEL__.toUpperCase()}
+        </Box>
+      )}
+
       {/* App Bar - mobile only */}
       {useTemporaryDrawer && (
         <AppBar
@@ -181,7 +209,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               <MenuIcon />
             </IconButton>
             <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.15rem' }} noWrap>
-              ♟ Chess V2.0
+              {APP_TITLE}
             </Typography>
           </Toolbar>
         </AppBar>

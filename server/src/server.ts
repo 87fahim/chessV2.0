@@ -41,7 +41,9 @@ async function main(): Promise<void> {
   // Initialize Socket.IO
   const io = new SocketIOServer(server, {
     cors: {
-      origin: env.CLIENT_URL,
+      origin: env.APP_ENV === 'development'
+        ? /^http:\/\/localhost:\d+$/
+        : env.CLIENT_URL,
       credentials: true,
     },
     pingTimeout: 60000,
