@@ -1,67 +1,57 @@
-# Environment Values Guide
+# Environment Setup Guide
 
-Use different values for staging and production. Never reuse production secrets in staging.
+## File Layout
 
-## Frontend Values
+Each side (client + server) has **one template** and up to **three gitignored runtime files**:
 
-File: .env.staging
+| File | Tracked? | Purpose |
+|------|----------|---------|
+| `.env.example` | yes | Template – copy & fill for each env |
+| `.env` | **no** | Local development (default for `npm run dev`) |
+| `.env.staging` | **no** | Staging build / deploy |
+| `.env.production` | **no** | Production build / deploy |
 
-- VITE_API_URL=http://localhost:3001
+Same pattern under `server/`.
 
-File: .env.production
+## Quick Start (local dev)
 
-- VITE_API_URL=http://129.212.199.25
+```bash
+# 1. Root – client
+cp .env.example .env          # leave VITE_API_URL empty
 
-## Backend Values
+# 2. Server
+cp server/.env.example server/.env
+# Fill in MONGODB_URI, JWT_SECRET, JWT_REFRESH_SECRET
+```
 
-File: server/.env.staging
+Then `npm run dev` — Vite proxies API + WebSocket calls to port 3001.
 
-- APP_ENV=staging
-- NODE_ENV=production
-- PORT=3001
-- MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>/<staging-db>?retryWrites=true&w=majority
-- JWT_SECRET=<long-random-secret>
-- JWT_REFRESH_SECRET=<long-random-secret>
-- JWT_EXPIRES_IN=15m
-- JWT_REFRESH_EXPIRES_IN=7d
-- CLIENT_URL=http://localhost:5173
-- STOCKFISH_PATH=C:/Program Files/stockfish/stockfish-windows-x86-64-avx2.exe
+## Per-Environment Values
 
-File: server/.env.production
+| Variable | Local dev | Staging (deployed) | Production (deployed) |
+|----------|-----------|--------------------|-----------------------|
+| `VITE_API_URL` | *(empty)* | *(empty or staging URL)* | `http://129.212.199.25` |
+| `APP_ENV` | development | staging | production |
+| `NODE_ENV` | development | production | production |
+| `MONGODB_URI` | dev cluster/db | staging cluster/db | prod cluster/db |
+| `CLIENT_URL` | `http://localhost:5173` | `http://localhost:5173` | `http://129.212.199.25` |
+| `STOCKFISH_PATH` | Windows exe | Windows exe | `/usr/games/stockfish` |
 
-- APP_ENV=production
-- NODE_ENV=production
-- PORT=3001
-- MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>/<production-db>?retryWrites=true&w=majority
-- JWT_SECRET=<long-random-secret>
-- JWT_REFRESH_SECRET=<long-random-secret>
-- JWT_EXPIRES_IN=15m
-- JWT_REFRESH_EXPIRES_IN=7d
-- CLIENT_URL=http://129.212.199.25
-- STOCKFISH_PATH=C:/Program Files/stockfish/stockfish-windows-x86-64-avx2.exe
+## App Title
 
-## Recommended Secret Rules
+Auto-detected from the git branch at build/dev time (no env var needed):
 
-1. Use different MongoDB databases for staging and production.
-2. Use different JWT secrets for staging and production.
-3. Keep APP_ENV and file names consistent.
-4. Keep NODE_ENV=production in staging and production runtime.
-5. Rotate production secrets on a schedule.
+| Branch | Title shown |
+|--------|-------------|
+| `main` | ♟ Chess V2.0 |
+| `staging` | ♟ Chess V2.0 : Staging |
+| `features/endGame` | ♟ Chess V2.0 : endGame |
 
-## No Domain Production Note
+Override with `VITE_APP_LABEL=MyLabel` in the relevant `.env.*` file if needed.
 
-If production uses an IP address, use the same IP consistently in:
+## Rules
 
-- .env.production `VITE_API_URL`
-- server/.env.production `CLIENT_URL`
-
-Current production IP:
-
-- 129.212.199.25
-
-## Quick Sanity Checks
-
-1. Build staging frontend with npm run build:staging.
-2. Build production frontend with npm run build:prod.
-3. Build backend with cd server then npm run build.
-4. Check logs to confirm APP_ENV and CLIENT_URL values at startup.
+1. **Never commit** `.env`, `.env.staging`, or `.env.production` (they're gitignored).
+2. Use **different MongoDB databases** and **different JWT secrets** per environment.
+3. Production secrets are managed only on the production server.
+4. `server/.env.example` and `.env.example` are the single source of truth for variable names.
