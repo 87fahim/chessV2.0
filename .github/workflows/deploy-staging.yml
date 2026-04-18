@@ -15,24 +15,46 @@ concurrency:
 jobs:
   deploy:
     name: Deploy To Staging Server
-    if: ${{ secrets.SERVER_SSH_KEY != '' && secrets.SERVER_HOST != '' && secrets.SERVER_USER != '' && secrets.STAGING_APP_DIR != '' && secrets.STAGING_PM2_APP != '' }}
     runs-on: ubuntu-latest
     environment: staging
+    env:
+      SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      SERVER_USER: ${{ secrets.SERVER_USER }}
+      APP_DIR: ${{ secrets.STAGING_APP_DIR }}
+      PM2_APP: ${{ secrets.STAGING_PM2_APP }}
     steps:
+      - name: Validate deployment secrets
+        id: validate
+        shell: bash
+        run: |
+          missing=()
+          [[ -n "$SERVER_SSH_KEY" ]] || missing+=("SERVER_SSH_KEY")
+          [[ -n "$SERVER_HOST" ]] || missing+=("SERVER_HOST")
+          [[ -n "$SERVER_USER" ]] || missing+=("SERVER_USER")
+          [[ -n "$APP_DIR" ]] || missing+=("STAGING_APP_DIR")
+          [[ -n "$PM2_APP" ]] || missing+=("STAGING_PM2_APP")
+
+          if (( ${#missing[@]} > 0 )); then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping staging deploy because required secrets are missing: ${missing[*]}"
+            exit 0
+          fi
+
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
       - name: Checkout repository
+        if: steps.validate.outputs.ready == 'true'
         uses: actions/checkout@v5
 
       - name: Setup SSH agent
+        if: steps.validate.outputs.ready == 'true'
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+          ssh-private-key: ${{ env.SERVER_SSH_KEY }}
 
       - name: Deploy via SSH
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_USER: ${{ secrets.SERVER_USER }}
-          APP_DIR: ${{ secrets.STAGING_APP_DIR }}
-          PM2_APP: ${{ secrets.STAGING_PM2_APP }}
+        if: steps.validate.outputs.ready == 'true'
         run: |
           ssh -o StrictHostKeyChecking=no "${SERVER_USER}@${SERVER_HOST}" "
             set -e
