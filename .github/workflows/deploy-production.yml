@@ -54,21 +54,41 @@ jobs:
       - name: Deploy via SSH
         if: steps.validate.outputs.ready == 'true'
         run: |
-          ssh -i ~/.ssh/deploy_key "${SERVER_USER}@${SERVER_HOST}" "
-            set -e
-            cd '${APP_DIR}'
+          ssh -i ~/.ssh/deploy_key "${SERVER_USER}@${SERVER_HOST}" <<EOF
+            set -euxo pipefail
+
+            echo "USER: \$(whoami)"
+            echo "PWD before cd: \$(pwd)"
+            echo "APP_DIR: ${APP_DIR}"
+            echo "PM2_APP: ${PM2_APP}"
+
+            cd "${APP_DIR}"
+            pwd
+            ls -la
+
             git fetch origin
             git checkout main
             git pull --ff-only origin main
+
+            echo "Checking env files..."
             test -f .env.production
             test -f server/.env.production
-            grep -q '^APP_ENV=production$' server/.env.production
+            grep -n '^APP_ENV=production$' server/.env.production
+
+            echo "Client install/build..."
             npm ci
             npm run build:prod
+
+            echo "Server install/build..."
             cd server
+            pwd
             npm ci
             npm run build
-            APP_ENV=production NODE_ENV=production pm2 restart '${PM2_APP}' --update-env
+
+            echo "Restarting PM2..."
+            APP_ENV=production NODE_ENV=production pm2 restart "${PM2_APP}" --update-env
+
+            echo "Testing nginx..."
             sudo nginx -t
             sudo systemctl reload nginx
-          "
+          EOF
