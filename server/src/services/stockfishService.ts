@@ -45,8 +45,8 @@ class StockfishService {
 
       const difficulty = options.difficulty || 'medium';
       const searchMode = options.searchMode || 'time';
-      const searchDepth = Math.max(1, Math.min(options.searchDepth || 15, 30));
-      const moveTimeMs = Math.max(50, Math.min(options.moveTimeMs || 1200, 30000));
+      const searchDepth = Math.max(1, Math.min(options.searchDepth || 15, 60));
+      const moveTimeMs = Math.max(50, Math.min(options.moveTimeMs || 1200, 120000));
       const skillLevel = this.getSkillLevel(difficulty);
 
       let latestDepth = 0;
@@ -88,7 +88,11 @@ class StockfishService {
         this.sendCommand(`position fen ${fen}`);
         this.sendCommand(searchMode === 'depth' ? `go depth ${searchDepth}` : `go movetime ${moveTimeMs}`);
 
-        const bestMoveLine = await this.waitForLine((line) => line.startsWith('bestmove '), moveTimeMs + 5000);
+        // Depth-based searches can take very long at high depths; allow generous timeout
+        const waitTimeout = searchMode === 'depth'
+          ? Math.max(30000, searchDepth * 10000)   // ~10s per depth level, min 30s
+          : moveTimeMs + 10000;                      // moveTime + 10s buffer
+        const bestMoveLine = await this.waitForLine((line) => line.startsWith('bestmove '), waitTimeout);
         const bestMoveMatch = bestMoveLine.match(/^bestmove\s+(\S+)(?:\s+ponder\s+(\S+))?/);
 
         if (!bestMoveMatch) {
@@ -106,6 +110,15 @@ class StockfishService {
         this.lineListeners.delete(infoListener);
       }
     });
+  }
+
+  /** Send UCI 'stop' to halt the current search immediately. Stockfish will output bestmove right away. */
+  cancelCurrentAnalysis(): void {
+    try {
+      this.sendCommand('stop');
+    } catch {
+      // Engine not running — nothing to cancel
+    }
   }
 
   async shutdown(): Promise<void> {
@@ -267,4 +280,8 @@ export async function analyzePosition(fen: string, options: EngineAnalyzeOptions
 
 export async function shutdownStockfish(): Promise<void> {
   await stockfishService.shutdown();
+}
+
+export function cancelAnalysis(): void {
+  stockfishService.cancelCurrentAnalysis();
 }
