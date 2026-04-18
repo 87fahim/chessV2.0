@@ -34,10 +34,16 @@ Do not commit the real `.env` files.
 
 ## Useful Commands
 
-Frontend:
+Full stack:
 
 ```bash
 npm run dev
+```
+
+Client only:
+
+```bash
+npm run dev:client
 npm run dev:staging
 npm run build
 npm run build:staging
@@ -47,6 +53,8 @@ npm run build:prod
 Backend:
 
 ```bash
+npm run dev:server
+
 cd server
 npm run dev
 npm run dev:staging
@@ -54,6 +62,11 @@ npm run build
 npm run start:staging
 npm run start:prod
 ```
+
+Notes:
+
+- The root `npm run dev` now starts both Vite and the backend API together.
+- In development, the backend stays up even if Stockfish is unavailable. Only engine analysis endpoints are affected in that case.
 
 ## Deployment Mapping
 

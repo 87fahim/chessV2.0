@@ -3,6 +3,7 @@ import gameReducer from '../features/game/gameSlice';
 import authReducer from '../features/auth/authSlice';
 import settingsReducer from '../features/settings/settingsSlice';
 import savedGamesReducer from '../features/savedGames/savedGamesSlice';
+import userDomainReducer from '../features/auth/userSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     auth: authReducer,
     settings: settingsReducer,
     savedGames: savedGamesReducer,
+    userDomain: userDomainReducer,
   },
 });
 

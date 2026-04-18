@@ -3,6 +3,7 @@ import { UserSettings } from '../models/UserSettings.js';
 import { hashPassword, comparePassword } from '../utils/password.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken, TokenPayload } from '../utils/jwt.js';
 import { createError } from '../middleware/errorMiddleware.js';
+import { ensureUserDomainRecords, recordActivity } from './userService.js';
 
 export interface RegisterInput {
   username: string;
@@ -46,10 +47,13 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult> {
     username,
     email: email.toLowerCase(),
     passwordHash,
+    status: 'active',
+    authProvider: 'local',
   });
 
   // Create default settings for the new user
   await UserSettings.create({ userId: user._id });
+  await ensureUserDomainRecords(user._id.toString(), user.username);
 
   const payload: TokenPayload = {
     userId: user._id.toString(),
@@ -77,10 +81,25 @@ export async function loginUser(input: LoginInput): Promise<AuthResult> {
     throw createError(401, 'Invalid credentials');
   }
 
+  if (user.status !== 'active') {
+    throw createError(403, `Account is ${user.status}`);
+  }
+
   const isMatch = await comparePassword(password, user.passwordHash);
   if (!isMatch) {
+    user.failedLoginCount = (user.failedLoginCount ?? 0) + 1;
+    await user.save();
     throw createError(401, 'Invalid credentials');
   }
+
+  user.failedLoginCount = 0;
+  user.lastLoginAt = new Date();
+  await user.save();
+
+  await recordActivity(user._id.toString(), {
+    activityType: 'login',
+    feature: 'auth',
+  });
 
   const payload: TokenPayload = {
     userId: user._id.toString(),

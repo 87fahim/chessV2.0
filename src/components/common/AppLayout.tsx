@@ -42,6 +42,8 @@ const NAV_ITEMS = [
   { label: 'Online Play', icon: <WifiIcon />, path: '/online', authOnly: true },
   { label: 'Practice', icon: <SchoolIcon />, path: '/practice' },
   { label: 'Next Best Move', icon: <TipsAndUpdatesIcon />, path: '/analysis' },
+  { label: 'Profile', icon: <PersonIcon />, path: '/profile', authOnly: true },
+  { label: 'Social', icon: <PersonIcon />, path: '/social', authOnly: true },
   { label: 'Saved Games', icon: <SaveIcon />, path: '/saved-games', authOnly: true },
   { label: 'History', icon: <HistoryIcon />, path: '/history', authOnly: true },
   { label: 'Settings', icon: <SettingsIcon />, path: '/settings' },

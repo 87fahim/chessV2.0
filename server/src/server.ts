@@ -4,8 +4,23 @@ import { env, validateEnv } from './config/env.js';
 import { connectDB } from './config/db.js';
 import { initializeSocketIO, shutdownSocketIO } from './sockets/index.js';
 import { initializeStockfish, shutdownStockfish } from './services/stockfishService.js';
+import { backfillUserDomainRecords } from './services/userBackfillService.js';
 import { logger } from './utils/logger.js';
 import app from './app.js';
+
+async function initializeEngineServices(): Promise<void> {
+  try {
+    await initializeStockfish();
+  } catch (error) {
+    if (env.APP_ENV === 'development') {
+      logger.warn('Stockfish is unavailable in development. Analysis endpoints will fail until STOCKFISH_PATH is fixed.');
+      logger.warn(error instanceof Error ? error.message : 'Unknown Stockfish startup error');
+      return;
+    }
+
+    throw error;
+  }
+}
 
 async function main(): Promise<void> {
   // Validate environment
@@ -14,8 +29,11 @@ async function main(): Promise<void> {
   // Connect to MongoDB Atlas
   await connectDB();
 
+  // Proactively create profile/settings/stats/social records for existing users
+  await backfillUserDomainRecords();
+
   // Start Stockfish engine
-  await initializeStockfish();
+  await initializeEngineServices();
 
   // Create HTTP server
   const server = http.createServer(app);

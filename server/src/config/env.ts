@@ -24,7 +24,7 @@ const appEnv = resolveAppEnv();
 const baseEnvPath = path.resolve(__dirname, '../../.env');
 const modeEnvPath = path.resolve(__dirname, `../../.env.${appEnv}`);
 
-dotenv.config({ path: baseEnvPath });
+dotenv.config({ path: baseEnvPath, override: appEnv === 'development' });
 
 let envFile: dotenv.DotenvConfigOutput | undefined;
 if (appEnv !== 'development') {

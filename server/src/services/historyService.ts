@@ -17,7 +17,7 @@ export async function getUserHistory(
   limit = 20
 ): Promise<{ games: IGame[]; total: number }> {
   const query: Record<string, unknown> = {
-    status: GameStatus.COMPLETED,
+    status: { $in: [GameStatus.COMPLETED, GameStatus.ABANDONED] },
     $or: [
       { 'whitePlayer.userId': userId },
       { 'blackPlayer.userId': userId },
