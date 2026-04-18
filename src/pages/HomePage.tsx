@@ -61,6 +61,22 @@ const HomePage: React.FC = () => {
       authOnly: true,
     },
     {
+      title: 'Profile',
+      description: 'Manage your profile, public identity, and account snapshot.',
+      icon: <SettingsIcon sx={{ fontSize: 48 }} />,
+      to: '/profile',
+      color: '#c0392b',
+      authOnly: true,
+    },
+    {
+      title: 'Social',
+      description: 'Manage friends, invites, blocks, and visibility rules.',
+      icon: <WifiIcon sx={{ fontSize: 48 }} />,
+      to: '/social',
+      color: '#2c3e50',
+      authOnly: true,
+    },
+    {
       title: 'Settings',
       description: 'Customize your game preferences.',
       icon: <SettingsIcon sx={{ fontSize: 48 }} />,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -28,11 +28,62 @@ import { useBoardEditor } from './useBoardEditor';
 import type { PieceColor } from '../../types/chess';
 import type { Difficulty } from '../../types/game';
 import type { CastlingRights } from './boardEditorTypes';
+import { useAppSelector } from '../../hooks/useStore';
+import { userApi, type SavedPositionData } from '../../services/userService';
 
 const AnalysisPage: React.FC = () => {
   const editor = useBoardEditor();
+  const { isAuthenticated } = useAppSelector((s) => s.auth);
   const [fenInput, setFenInput] = useState(editor.fen);
   const [fenError, setFenError] = useState('');
+  const [savedPositionName, setSavedPositionName] = useState('');
+  const [savedPositions, setSavedPositions] = useState<SavedPositionData[]>([]);
+  const [isSavingPosition, setIsSavingPosition] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setSavedPositions([]);
+      return;
+    }
+
+    userApi.getSavedPositions().then(({ data }) => {
+      setSavedPositions(data.data.positions as SavedPositionData[]);
+    }).catch(() => undefined);
+  }, [isAuthenticated]);
+
+  const refreshSavedPositions = () => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    userApi.getSavedPositions().then(({ data }) => {
+      setSavedPositions(data.data.positions as SavedPositionData[]);
+    }).catch(() => undefined);
+  };
+
+  const handleSavePosition = async () => {
+    if (!isAuthenticated || !editor.canAnalyze) {
+      return;
+    }
+
+    setIsSavingPosition(true);
+    try {
+      await userApi.savePosition({
+        name: savedPositionName.trim() || 'Saved Analysis Position',
+        fen: editor.fen,
+        source: 'analysis',
+      });
+      setSavedPositionName('');
+      refreshSavedPositions();
+    } finally {
+      setIsSavingPosition(false);
+    }
+  };
+
+  const handleDeletePosition = async (positionId: string) => {
+    await userApi.deleteSavedPosition(positionId);
+    refreshSavedPositions();
+  };
 
   const handleLoadFen = () => {
     const err = editor.loadFen(fenInput);
@@ -302,6 +353,63 @@ const AnalysisPage: React.FC = () => {
             Difficulty controls engine skill. Analysis Settings control search budget and output behavior.
           </Typography>
         </Paper>
+
+        {isAuthenticated && (
+          <Paper elevation={2} sx={{ p: 1.25 }}>
+            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
+              Saved Positions
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.75, mb: 1 }}>
+              <TextField
+                size="small"
+                fullWidth
+                value={savedPositionName}
+                onChange={(e) => setSavedPositionName(e.target.value)}
+                placeholder="Position name"
+              />
+              <Button
+                variant="contained"
+                size="small"
+                onClick={handleSavePosition}
+                disabled={isSavingPosition || !editor.canAnalyze}
+              >
+                Save
+              </Button>
+            </Box>
+            {savedPositions.length === 0 ? (
+              <Typography variant="caption" color="text.secondary">
+                No saved positions yet.
+              </Typography>
+            ) : (
+              savedPositions.slice(0, 8).map((position) => (
+                <Paper key={position._id} variant="outlined" sx={{ p: 1, mb: 0.75 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {position.name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', wordBreak: 'break-all', mb: 0.75 }}>
+                    {position.fen}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 0.75 }}>
+                    <Button size="small" variant="outlined" onClick={() => {
+                      setFenInput(position.fen);
+                      const err = editor.loadFen(position.fen);
+                      if (err) {
+                        setFenError(err);
+                      } else {
+                        setFenError('');
+                      }
+                    }}>
+                      Load
+                    </Button>
+                    <Button size="small" color="error" variant="text" onClick={() => handleDeletePosition(position._id)}>
+                      Delete
+                    </Button>
+                  </Box>
+                </Paper>
+              ))
+            )}
+          </Paper>
+        )}
 
         <Paper elevation={2} sx={{ p: 1.25 }}>
           <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>

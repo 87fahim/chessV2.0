@@ -9,6 +9,8 @@ import historyRoutes from './routes/historyRoutes.js';
 import matchmakingRoutes from './routes/matchmakingRoutes.js';
 import guestRoutes from './routes/guestRoutes.js';
 import engineRoutes from './routes/engineRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import maintenanceRoutes from './routes/maintenanceRoutes.js';
 
 const app = express();
 
@@ -29,6 +31,8 @@ app.use('/api/history', historyRoutes);
 app.use('/api/matchmaking', matchmakingRoutes);
 app.use('/api/guest', guestRoutes);
 app.use('/api/engine', engineRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
 
 // 404 handler
 app.use((_req, res) => {
