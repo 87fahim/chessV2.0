@@ -93,14 +93,10 @@ const AnalysisPage: React.FC = () => {
     refreshSavedPositions();
   };
 
-  const handleLoadFen = () => {
-    const err = editor.loadFen(fenInput);
-    if (err) {
-      setFenError(err);
-    } else {
-      setFenError('');
-    }
-  };
+  useEffect(() => {
+    setFenInput(editor.fen);
+    setFenError('');
+  }, [editor.fen]);
 
   const handleCopyFen = () => {
     navigator.clipboard.writeText(editor.fen);
@@ -131,18 +127,23 @@ const AnalysisPage: React.FC = () => {
           width: { xs: '100%', lg: 'auto' },
           display: 'flex',
           flexDirection: 'column',
-          alignItems: { xs: 'center', lg: 'flex-start' },
+          alignItems: { xs: 'flex-start', lg: 'flex-start' },
           gap: 1,
           '@media (max-width:1023.95px)': {
-            px: '40px',
+            px: '80px',
             boxSizing: 'border-box',
           },
+          
         }}
       >
         <Box
           sx={{
-            width: { xs: '100%', sm: 420, lg: 520 },
+            width: '100%',
             maxWidth: '100%',
+            mx: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: { xs: 'stretch', lg: 'left' },
           }}
         >
           <EditableBoard
@@ -219,12 +220,20 @@ const AnalysisPage: React.FC = () => {
               fullWidth
               value={fenInput}
               onChange={(e) => {
-                setFenInput(e.target.value);
-                setFenError('');
+                const nextFen = e.target.value;
+                setFenInput(nextFen);
+
+                if (!nextFen.trim()) {
+                  setFenError('Invalid FEN string');
+                  return;
+                }
+
+                const err = editor.loadFen(nextFen);
+                setFenError(err ?? '');
               }}
               error={!!fenError}
               helperText={fenError}
-              placeholder="Paste FEN to load..."
+              placeholder="Paste or edit FEN..."
               slotProps={{
                 htmlInput: { sx: { fontSize: '0.76rem', fontFamily: 'monospace', py: 0.85 } },
                 formHelperText: { sx: { fontSize: '0.68rem', mx: 0 } },
@@ -235,43 +244,6 @@ const AnalysisPage: React.FC = () => {
                 <ContentCopyIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 0.75 }}>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={handleLoadFen}
-              fullWidth
-              sx={{ minHeight: 30, fontSize: '0.74rem', px: 1.1 }}
-            >
-              Load FEN
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => {
-                setFenInput(editor.fen);
-                setFenError('');
-              }}
-              sx={{ minHeight: 30, fontSize: '0.74rem', px: 1.1 }}
-            >
-              Sync
-            </Button>
-          </Box>
-          {/* Live FEN display */}
-          <Box
-            sx={{
-              mt: 1,
-              p: 0.85,
-              bgcolor: 'grey.100',
-              borderRadius: 1,
-              fontFamily: 'monospace',
-              fontSize: '0.72rem',
-              wordBreak: 'break-all',
-              color: 'text.secondary',
-            }}
-          >
-            {editor.fen}
           </Box>
         </Paper>
 
@@ -566,15 +538,6 @@ const AnalysisPage: React.FC = () => {
               }}
             />
           </Box>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={editor.fixCastlingRightsNow}
-            sx={{ mt: 0.75, minHeight: 30, fontSize: '0.74rem', px: 1.1 }}
-            fullWidth
-          >
-            Fix Castling Rights Now
-          </Button>
         </Paper>
 
         {/* Validation */}
