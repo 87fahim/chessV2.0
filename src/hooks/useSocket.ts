@@ -21,6 +21,7 @@ export interface OnlineGameState {
   yourColor: 'white' | 'black' | null;
   status: string;
   result: string;
+  terminationReason: string | null;
   clocks: { whiteRemainingMs: number; blackRemainingMs: number; activeColor: string } | null;
   whitePlayer: { type: string; name: string; userId?: string } | null;
   blackPlayer: { type: string; name: string; userId?: string } | null;
@@ -35,6 +36,7 @@ const INITIAL_ONLINE: OnlineGameState = {
   yourColor: null,
   status: 'idle',
   result: '*',
+  terminationReason: null,
   clocks: null,
   whitePlayer: null,
   blackPlayer: null,
@@ -52,6 +54,9 @@ export function useSocket() {
   const [onlineGame, setOnlineGame] = useState<OnlineGameState>(INITIAL_ONLINE);
   const [drawOffered, setDrawOffered] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rematchOffered, setRematchOffered] = useState(false);
+  const [rematchPending, setRematchPending] = useState(false);
+  const [rematchDeclined, setRematchDeclined] = useState(false);
 
   // Ref to hold latest clocks from server for interpolation
   const serverClocksRef = useRef<{
@@ -202,6 +207,7 @@ export function useSocket() {
         ...prev,
         status: 'completed',
         result: data.result,
+        terminationReason: data.reason,
         abortWarning: null,
       }));
       serverClocksRef.current = null;
@@ -253,6 +259,50 @@ export function useSocket() {
         ...prev,
         abortWarning: { secondsLeft: data.secondsLeft, reason: data.reason },
       }));
+    });
+
+    // Rematch events
+    socket.on('game:rematchOffered', () => {
+      setRematchOffered(true);
+    });
+
+    socket.on('game:rematchAccepted', (data: {
+      oldGameId: string;
+      newGameId: string;
+      whitePlayer: { type: string; name: string; userId?: string };
+      blackPlayer: { type: string; name: string; userId?: string };
+      timeControl?: { initialMs: number; incrementMs: number };
+    }) => {
+      setRematchPending(false);
+      setRematchOffered(false);
+      setRematchDeclined(false);
+      setDrawOffered(false);
+
+      // Determine our color in the new game
+      const token = localStorage.getItem('accessToken');
+      // We can't decode the token here, but we know our userId from the player info
+      setOnlineGame((prev) => {
+        const wasWhite = prev.yourColor === 'white';
+        // Colors are swapped in rematch
+        const newColor = wasWhite ? 'black' : 'white';
+        return {
+          ...INITIAL_ONLINE,
+          gameId: data.newGameId,
+          yourColor: newColor as 'white' | 'black',
+          status: 'active',
+          opponentOnline: true,
+          whitePlayer: data.whitePlayer,
+          blackPlayer: data.blackPlayer,
+        };
+      });
+
+      // Join the new game room
+      socket.emit('game:join', { gameId: data.newGameId });
+    });
+
+    socket.on('game:rematchDeclined', () => {
+      setRematchPending(false);
+      setRematchDeclined(true);
     });
 
     return () => {
@@ -329,9 +379,28 @@ export function useSocket() {
     setDrawOffered(false);
   }, []);
 
+  const requestRematch = useCallback((gameId: string) => {
+    socketRef.current?.emit('game:rematchRequest', { gameId });
+    setRematchPending(true);
+    setRematchDeclined(false);
+  }, []);
+
+  const acceptRematch = useCallback((gameId: string) => {
+    socketRef.current?.emit('game:rematchAccept', { gameId });
+    setRematchOffered(false);
+  }, []);
+
+  const declineRematch = useCallback((gameId: string) => {
+    socketRef.current?.emit('game:rematchDecline', { gameId });
+    setRematchOffered(false);
+  }, []);
+
   const resetOnlineGame = useCallback(() => {
     setOnlineGame(INITIAL_ONLINE);
     setDrawOffered(false);
+    setRematchOffered(false);
+    setRematchPending(false);
+    setRematchDeclined(false);
     setError(null);
     serverClocksRef.current = null;
   }, []);
@@ -345,6 +414,9 @@ export function useSocket() {
     isInQueue,
     onlineGame,
     drawOffered,
+    rematchOffered,
+    rematchPending,
+    rematchDeclined,
     error,
     joinQueue,
     leaveQueue,
@@ -353,6 +425,9 @@ export function useSocket() {
     offerDraw,
     acceptDraw,
     declineDraw,
+    requestRematch,
+    acceptRematch,
+    declineRematch,
     resetOnlineGame,
     syncGame,
     clearError: () => setError(null),

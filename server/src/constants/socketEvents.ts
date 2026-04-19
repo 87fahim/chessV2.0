@@ -9,6 +9,9 @@ export const SocketEvents = {
   GAME_ACCEPT_DRAW: 'game:acceptDraw',
   GAME_DECLINE_DRAW: 'game:declineDraw',
   GAME_SYNC_REQUEST: 'game:syncRequest',
+  GAME_REMATCH_REQUEST: 'game:rematchRequest',
+  GAME_REMATCH_ACCEPT: 'game:rematchAccept',
+  GAME_REMATCH_DECLINE: 'game:rematchDecline',
   PRESENCE_PING: 'presence:ping',
 
   // Server → Client
@@ -27,6 +30,9 @@ export const SocketEvents = {
   GAME_ENDED: 'game:ended',
   GAME_ABORT_WARNING: 'game:abortWarning',
   GAME_RESUMABLE: 'game:resumable',
+  GAME_REMATCH_OFFERED: 'game:rematchOffered',
+  GAME_REMATCH_ACCEPTED: 'game:rematchAccepted',
+  GAME_REMATCH_DECLINED: 'game:rematchDeclined',
   OPPONENT_PRESENCE: 'game:opponentPresence',
   ERROR: 'error',
 } as const;

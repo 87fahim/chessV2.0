@@ -384,3 +384,39 @@ export function getOpponentUserId(game: IGame, userId: string): string | null {
   if (isBlack) return game.whitePlayer.userId?.toString() ?? null;
   return null;
 }
+
+/** Create a rematch game from a completed game (swap colors) */
+export async function createRematchGame(originalGameId: string): Promise<IGame> {
+  const original = await Game.findById(originalGameId);
+  if (!original) {
+    throw createError(404, 'Original game not found');
+  }
+
+  // Swap colors for rematch
+  const game = await Game.create({
+    mode: GameMode.ONLINE,
+    status: GameStatus.ACTIVE,
+    whitePlayer: {
+      type: original.blackPlayer.type,
+      userId: original.blackPlayer.userId,
+      name: original.blackPlayer.name,
+    },
+    blackPlayer: {
+      type: original.whitePlayer.type,
+      userId: original.whitePlayer.userId,
+      name: original.whitePlayer.name,
+    },
+    fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+    timeControl: original.timeControl,
+    clocks: original.timeControl
+      ? {
+          whiteRemainingMs: original.timeControl.initialMs,
+          blackRemainingMs: original.timeControl.initialMs,
+          activeColor: 'white',
+          activeSince: new Date(),
+        }
+      : undefined,
+  });
+
+  return game;
+}

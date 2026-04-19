@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Button,
@@ -19,6 +19,8 @@ import ChessBoard from '../../components/chess/ChessBoard';
 import MoveList from '../../components/chess/MoveList';
 import CapturedPieces from '../../components/chess/CapturedPieces';
 import GameControls from '../../components/chess/GameControls';
+import GameStartCurtain from '../../components/chess/GameStartCurtain';
+import GameEndDialog from '../../components/chess/GameEndDialog';
 import { useChessGame } from '../../hooks/useChessGame';
 import { useAppSelector, useAppDispatch } from '../../hooks/useStore';
 import { saveCurrentGame } from '../savedGames/savedGamesSlice';
@@ -45,15 +47,43 @@ const PlayVsComputerPage: React.FC = () => {
   const [selectedColor, setSelectedColor] = useState<PieceColor>('w');
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>('medium');
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [showCurtain, setShowCurtain] = useState(false);
+  const [showEndDialog, setShowEndDialog] = useState(false);
+  const prevStatusRef = useRef(gameState.status);
+
+  // Show curtain when transitioning to 'playing'
+  useEffect(() => {
+    if (prevStatusRef.current !== 'playing' && gameState.status === 'playing') {
+      setShowCurtain(true);
+      const timer = setTimeout(() => setShowCurtain(false), 1500);
+      return () => clearTimeout(timer);
+    }
+    prevStatusRef.current = gameState.status;
+  }, [gameState.status]);
+
+  // Show end dialog when game finishes
+  useEffect(() => {
+    if (gameState.status === 'finished') {
+      setShowEndDialog(true);
+    }
+  }, [gameState.status]);
 
   const handleStartGame = () => {
     startNewGame('vs-computer', selectedColor, selectedDifficulty);
     setShowNewGameDialog(false);
+    setShowEndDialog(false);
   };
 
   const handleNewGame = () => {
     handleReset();
+    setShowEndDialog(false);
     setShowNewGameDialog(true);
+  };
+
+  const handleRematch = () => {
+    // Rematch = restart with same color and difficulty
+    setShowEndDialog(false);
+    startNewGame('vs-computer', gameState.playerColor, gameState.difficulty);
   };
 
   const handleSaveGame = () => {
@@ -120,7 +150,14 @@ const PlayVsComputerPage: React.FC = () => {
         }}
       >
         <CapturedPieces pieces={gameState.capturedPieces} />
-        <ChessBoard onMove={handleMove} />
+        <Box sx={{ position: 'relative' }}>
+          <ChessBoard onMove={handleMove} />
+          <GameStartCurtain
+            visible={showCurtain}
+            playerLabel={gameState.playerColor === 'w' ? 'White' : 'Black'}
+            subtitle={`vs Computer (${gameState.difficulty.charAt(0).toUpperCase() + gameState.difficulty.slice(1)})`}
+          />
+        </Box>
         <GameControls
           canUndo={gameState.moves.length > 0 && gameState.status === 'playing'}
           isPlaying={gameState.status === 'playing'}
@@ -242,6 +279,18 @@ const PlayVsComputerPage: React.FC = () => {
           {saveMsg}
         </Alert>
       </Snackbar>
+
+      {/* Game End Dialog */}
+      <GameEndDialog
+        open={showEndDialog}
+        result={gameState.result}
+        reason={gameState.terminationReason ?? undefined}
+        playerColor={gameState.playerColor}
+        mode="vs-computer"
+        onRematch={handleRematch}
+        onNewGame={handleNewGame}
+        onClose={() => setShowEndDialog(false)}
+      />
     </Box>
   );
 };

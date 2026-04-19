@@ -13,6 +13,7 @@ interface GameSliceState {
   difficulty: Difficulty;
   status: GameStatus;
   result: string | null;
+  terminationReason: string | null;
   selectedSquare: string | null;
   legalMoves: string[];
   lastMove: { from: string; to: string } | null;
@@ -30,6 +31,7 @@ const initialState: GameSliceState = {
   difficulty: 'medium',
   status: 'idle',
   result: null,
+  terminationReason: null,
   selectedSquare: null,
   legalMoves: [],
   lastMove: null,
@@ -52,6 +54,7 @@ const gameSlice = createSlice({
       state.difficulty = difficulty;
       state.status = 'playing';
       state.result = null;
+      state.terminationReason = null;
       state.selectedSquare = null;
       state.legalMoves = [];
       state.lastMove = null;
@@ -108,9 +111,14 @@ const gameSlice = createSlice({
       state.promotionPending = null;
     },
 
-    gameOver(state, action: PayloadAction<string>) {
+    gameOver(state, action: PayloadAction<{ result: string; reason?: string } | string>) {
       state.status = 'finished';
-      state.result = action.payload;
+      if (typeof action.payload === 'string') {
+        state.result = action.payload;
+      } else {
+        state.result = action.payload.result;
+        state.terminationReason = action.payload.reason ?? null;
+      }
       state.selectedSquare = null;
       state.legalMoves = [];
     },

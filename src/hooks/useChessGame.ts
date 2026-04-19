@@ -26,11 +26,23 @@ export function useChessGame() {
     (game: Chess) => {
       if (game.isCheckmate()) {
         const winner = game.turn() === 'w' ? '0-1' : '1-0';
-        dispatch(gameOver(winner));
+        dispatch(gameOver({ result: winner, reason: 'checkmate' }));
         return true;
       }
-      if (game.isStalemate() || game.isDraw() || game.isThreefoldRepetition() || game.isInsufficientMaterial()) {
-        dispatch(gameOver('1/2-1/2'));
+      if (game.isStalemate()) {
+        dispatch(gameOver({ result: '1/2-1/2', reason: 'stalemate' }));
+        return true;
+      }
+      if (game.isThreefoldRepetition()) {
+        dispatch(gameOver({ result: '1/2-1/2', reason: 'repetition' }));
+        return true;
+      }
+      if (game.isInsufficientMaterial()) {
+        dispatch(gameOver({ result: '1/2-1/2', reason: 'insufficient_material' }));
+        return true;
+      }
+      if (game.isDraw()) {
+        dispatch(gameOver({ result: '1/2-1/2', reason: 'draw' }));
         return true;
       }
       return false;
@@ -157,7 +169,7 @@ export function useChessGame() {
 
   const handleResign = useCallback(() => {
     const result = gameState.playerColor === 'w' ? '0-1' : '1-0';
-    dispatch(gameOver(result));
+    dispatch(gameOver({ result, reason: 'resignation' }));
   }, [dispatch, gameState.playerColor]);
 
   const handleReset = useCallback(() => {

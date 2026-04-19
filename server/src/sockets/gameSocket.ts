@@ -10,6 +10,9 @@ import { logger } from '../utils/logger.js';
 // Track draw offers in memory: gameId -> offeringUserId
 const drawOffers = new Map<string, string>();
 
+// Track rematch offers: gameId -> offeringUserId
+const rematchOffers = new Map<string, string>();
+
 // Track which games each socket is in: socketId -> Set<gameId>
 const socketGames = new Map<string, Set<string>>();
 
@@ -264,6 +267,93 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
       socket.emit(SocketEvents.ERROR, { message: 'Failed to sync game state' });
       logger.error('Sync error', error);
     }
+  });
+
+  // Rematch request
+  socket.on(SocketEvents.GAME_REMATCH_REQUEST, async (data: { gameId: string }) => {
+    try {
+      const game = await gameService.getGameById(data.gameId);
+      if (game.status !== 'completed' && game.status !== 'abandoned') {
+        socket.emit(SocketEvents.ERROR, { message: 'Game is not finished' });
+        return;
+      }
+
+      const { isPlayer } = gameService.isParticipant(game, userId);
+      if (!isPlayer) {
+        socket.emit(SocketEvents.ERROR, { message: 'Not a participant in this game' });
+        return;
+      }
+
+      // If opponent already requested rematch, create the game
+      const existingOffer = rematchOffers.get(data.gameId);
+      if (existingOffer && existingOffer !== userId) {
+        rematchOffers.delete(data.gameId);
+        const newGame = await gameService.createRematchGame(data.gameId);
+        const roomId = `game:${data.gameId}`;
+        const newGameId = newGame._id.toString();
+
+        io.to(roomId).emit(SocketEvents.GAME_REMATCH_ACCEPTED, {
+          oldGameId: data.gameId,
+          newGameId,
+          whitePlayer: newGame.whitePlayer,
+          blackPlayer: newGame.blackPlayer,
+          timeControl: newGame.timeControl,
+        });
+
+        logger.info(`Rematch accepted for game ${data.gameId} → new game ${newGameId}`);
+        return;
+      }
+
+      // Store the offer and notify opponent
+      rematchOffers.set(data.gameId, userId);
+      const roomId = `game:${data.gameId}`;
+      socket.to(roomId).emit(SocketEvents.GAME_REMATCH_OFFERED, {
+        gameId: data.gameId,
+        offeredBy: userId,
+      });
+
+      logger.info(`User ${userId} offered rematch for game ${data.gameId}`);
+    } catch (error) {
+      socket.emit(SocketEvents.ERROR, { message: 'Failed to request rematch' });
+      logger.error('Rematch request error', error);
+    }
+  });
+
+  // Accept rematch
+  socket.on(SocketEvents.GAME_REMATCH_ACCEPT, async (data: { gameId: string }) => {
+    try {
+      const offeredBy = rematchOffers.get(data.gameId);
+      if (!offeredBy || offeredBy === userId) {
+        socket.emit(SocketEvents.ERROR, { message: 'No rematch offer to accept' });
+        return;
+      }
+
+      rematchOffers.delete(data.gameId);
+      const newGame = await gameService.createRematchGame(data.gameId);
+      const roomId = `game:${data.gameId}`;
+      const newGameId = newGame._id.toString();
+
+      io.to(roomId).emit(SocketEvents.GAME_REMATCH_ACCEPTED, {
+        oldGameId: data.gameId,
+        newGameId,
+        whitePlayer: newGame.whitePlayer,
+        blackPlayer: newGame.blackPlayer,
+        timeControl: newGame.timeControl,
+      });
+
+      logger.info(`Rematch accepted for game ${data.gameId} → new game ${newGameId}`);
+    } catch (error) {
+      socket.emit(SocketEvents.ERROR, { message: 'Failed to accept rematch' });
+      logger.error('Rematch accept error', error);
+    }
+  });
+
+  // Decline rematch
+  socket.on(SocketEvents.GAME_REMATCH_DECLINE, (data: { gameId: string }) => {
+    rematchOffers.delete(data.gameId);
+    const roomId = `game:${data.gameId}`;
+    socket.to(roomId).emit(SocketEvents.GAME_REMATCH_DECLINED, { gameId: data.gameId });
+    logger.info(`User ${userId} declined rematch for game ${data.gameId}`);
   });
 
   // Handle disconnect — notify opponent and start abandonment timer (FR-26, FR-27, FR-33)
