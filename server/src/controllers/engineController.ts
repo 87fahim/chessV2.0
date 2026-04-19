@@ -22,20 +22,24 @@ export const analyze = asyncHandler(async (req: Request, res: Response) => {
   const input = analyzeSchema.parse(req.body);
   logger.info(`[engine] parsed fen=${input.fen.substring(0, 30)}... options=${JSON.stringify(input.options)}`);
 
-  // Cancel the Stockfish search if the client disconnects mid-analysis
+  // Cancel the Stockfish search if the client disconnects mid-analysis.
+  // NOTE: Use res.on('close') — req.on('close') fires as soon as the request
+  // body is consumed in Express 5 / Node 22, NOT when the client disconnects.
   let cancelled = false;
   const onClose = () => {
-    cancelled = true;
-    logger.warn('[engine] client disconnected — cancelling analysis');
-    cancelAnalysis();
+    if (!res.writableEnded) {
+      cancelled = true;
+      logger.warn('[engine] client disconnected — cancelling analysis');
+      cancelAnalysis();
+    }
   };
-  req.on('close', onClose);
+  res.on('close', onClose);
 
   logger.info('[engine] calling analyzePosition...');
   const result = await analyzePosition(input.fen, input.options || {});
   logger.info(`[engine] analyzePosition returned: bestMove=${result.bestMove}, cancelled=${cancelled}`);
 
-  req.off('close', onClose);
+  res.off('close', onClose);
 
   // Don't send a response if the client already disconnected
   if (cancelled) {
