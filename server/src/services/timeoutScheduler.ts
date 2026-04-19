@@ -182,14 +182,12 @@ async function tick(): Promise<void> {
           break;
         }
 
-        // Send warning at specific intervals
-        if (WARN_AT_SECONDS.includes(secondsLeft)) {
-          ioRef.to(roomId).emit(SocketEvents.GAME_ABORT_WARNING, {
-            gameId,
-            secondsLeft,
-            reason: 'disconnect',
-          });
-        }
+        // Send disconnect countdown updates every second so the UI stays in sync.
+        ioRef.to(roomId).emit(SocketEvents.GAME_ABORT_WARNING, {
+          gameId,
+          secondsLeft,
+          reason: 'disconnect',
+        });
       }
     }
   } catch (err) {

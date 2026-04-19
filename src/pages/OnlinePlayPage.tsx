@@ -201,10 +201,10 @@ const OnlinePlayPage: React.FC = () => {
 
   // Game ended
   useEffect(() => {
-    if (onlineGame.status === 'completed' && onlineGame.result !== '*') {
-      dispatch(gameOver(onlineGame.result));
+    if ((onlineGame.status === 'completed' || onlineGame.status === 'abandoned') && onlineGame.result !== '*') {
+      dispatch(gameOver({ result: onlineGame.result, reason: onlineGame.terminationReason || undefined }));
     }
-  }, [dispatch, onlineGame.status, onlineGame.result]);
+  }, [dispatch, onlineGame.result, onlineGame.status, onlineGame.terminationReason]);
 
   const handleMove = useCallback(
     (from: string, to: string, promotion?: string) => {
@@ -334,7 +334,7 @@ const OnlinePlayPage: React.FC = () => {
     ((onlineGame.yourColor === 'white' && new Chess(onlineGame.fen).turn() === 'w') ||
      (onlineGame.yourColor === 'black' && new Chess(onlineGame.fen).turn() === 'b'));
 
-  const gameEnded = onlineGame.status === 'completed';
+  const gameEnded = onlineGame.status === 'completed' || onlineGame.status === 'abandoned';
   const { capturedByWhite, capturedByBlack } = getCapturedCounts(onlineGame.fen);
 
   const isYouWhite = onlineGame.yourColor === 'white';

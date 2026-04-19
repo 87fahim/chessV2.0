@@ -206,10 +206,11 @@ export function useSocket() {
     socket.on('game:ended', (data: GameEndedPayload) => {
       setOnlineGame((prev) => ({
         ...prev,
-        status: 'completed',
+        status: data.reason === 'abandonment' ? 'abandoned' : 'completed',
         result: data.result,
         terminationReason: data.reason,
         abortWarning: null,
+        opponentOnline: true,
       }));
       serverClocksRef.current = null;
     });
