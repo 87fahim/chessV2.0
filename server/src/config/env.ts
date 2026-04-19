@@ -31,6 +31,18 @@ if (appEnv !== 'development') {
   envFile = dotenv.config({ path: modeEnvPath, override: true });
 }
 
+// Debug: log env file resolution for troubleshooting
+console.log(`[env] APP_ENV=${appEnv}, baseEnv=${baseEnvPath}, modeEnv=${modeEnvPath}`);
+if (envFile?.error) {
+  console.warn(`[env] Failed to load ${modeEnvPath}: ${envFile.error.message}`);
+} else if (envFile?.parsed) {
+  console.log(`[env] Loaded ${modeEnvPath} (keys: ${Object.keys(envFile.parsed).join(', ')})`);
+}
+
+const defaultStockfishPath = process.platform === 'win32'
+  ? 'C:/Program Files/stockfish/stockfish-windows-x86-64-avx2.exe'
+  : '/usr/games/stockfish';
+
 export const env = {
   APP_ENV: appEnv,
   NODE_ENV: process.env.NODE_ENV || 'development',
@@ -44,7 +56,7 @@ export const env = {
   STOCKFISH_PATH:
     envFile?.parsed?.STOCKFISH_PATH ||
     process.env.STOCKFISH_PATH ||
-    'C:/Program Files/stockfish/stockfish-windows-x86-64-avx2.exe',
+    defaultStockfishPath,
 } as const;
 
 export function validateEnv(): void {

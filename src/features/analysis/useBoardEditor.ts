@@ -157,7 +157,7 @@ export function useBoardEditor() {
 
     if (
       message.includes('Failed to fetch') ||
-      message.includes('Backend local engine is unavailable') ||
+      message.includes('Backend engine is unavailable') ||
       message.includes('Backend engine endpoint failed')
     ) {
       return 'Analysis engine is unavailable. Start the backend server and ensure Stockfish is configured correctly.';

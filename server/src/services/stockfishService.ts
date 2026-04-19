@@ -164,34 +164,36 @@ class StockfishService {
   }
 
   private async startProcess(): Promise<void> {
+    logger.info(`Stockfish: APP_ENV=${env.APP_ENV}, platform=${globalThis.process.platform}, path=${env.STOCKFISH_PATH}`);
+
     if (!existsSync(env.STOCKFISH_PATH)) {
       throw new Error(`Stockfish binary not found at ${env.STOCKFISH_PATH}`);
     }
 
-    const process = spawn(env.STOCKFISH_PATH, [], {
+    const proc = spawn(env.STOCKFISH_PATH, [], {
       stdio: 'pipe',
       windowsHide: true,
     });
 
-    this.process = process;
-    this.outputReader = readline.createInterface({ input: process.stdout });
+    this.process = proc;
+    this.outputReader = readline.createInterface({ input: proc.stdout });
     this.outputReader.on('line', (line) => this.handleLine(line.trim()));
 
-    process.stderr.on('data', (chunk) => {
+    proc.stderr.on('data', (chunk) => {
       const message = chunk.toString().trim();
       if (message) {
         logger.warn(`Stockfish stderr: ${message}`);
       }
     });
 
-    process.on('error', (error) => {
+    proc.on('error', (error) => {
       logger.error('Stockfish process error', error);
       this.rejectAllWaiters(error instanceof Error ? error : new Error('Stockfish process error'));
       this.process = null;
       this.readyPromise = null;
     });
 
-    process.on('exit', (code, signal) => {
+    proc.on('exit', (code, signal) => {
       logger.warn(`Stockfish process exited with code=${code ?? 'null'} signal=${signal ?? 'null'}`);
       this.rejectAllWaiters(new Error('Stockfish process exited unexpectedly'));
       this.process = null;

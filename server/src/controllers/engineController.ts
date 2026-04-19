@@ -14,7 +14,6 @@ const analyzeSchema = z.object({
       moveTimeMs: z.number().int().min(50).max(120000).optional(),
     })
     .optional(),
-  enginePath: z.string().optional(),
 });
 
 export const analyze = asyncHandler(async (req: Request, res: Response) => {

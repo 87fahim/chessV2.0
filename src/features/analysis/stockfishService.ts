@@ -47,7 +47,6 @@ class StockfishService {
         body: JSON.stringify({
           fen,
           options,
-          enginePath: ENGINE_CONFIG.localBinaryPath,
         }),
         signal: controller.signal,
       });
@@ -82,8 +81,7 @@ class StockfishService {
     } catch (backendError) {
       const reason = backendError instanceof Error ? backendError.message : 'Unknown backend failure';
       throw new Error(
-        `Backend local engine is unavailable. Expected backend to run: ` +
-        `${ENGINE_CONFIG.localBinaryPath}. Reason: ${reason}`,
+        `Backend engine is unavailable. Ensure the server is running and Stockfish is configured. Reason: ${reason}`,
       );
     }
   }
