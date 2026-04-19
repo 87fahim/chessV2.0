@@ -80,10 +80,13 @@ class StockfishService {
       this.lineListeners.add(infoListener);
 
       try {
+        logger.info('[stockfish] enqueued task running — sending UCI commands');
         this.sendCommand(`setoption name Skill Level value ${skillLevel}`);
         this.sendCommand('ucinewgame');
         this.sendCommand('isready');
+        logger.info('[stockfish] waiting for readyok...');
         await this.waitForLine((line) => line === 'readyok', 5000);
+        logger.info('[stockfish] got readyok, sending position + go');
 
         this.sendCommand(`position fen ${fen}`);
         this.sendCommand(searchMode === 'depth' ? `go depth ${searchDepth}` : `go movetime ${moveTimeMs}`);
@@ -92,7 +95,9 @@ class StockfishService {
         const waitTimeout = searchMode === 'depth'
           ? Math.max(30000, searchDepth * 10000)   // ~10s per depth level, min 30s
           : moveTimeMs + 10000;                      // moveTime + 10s buffer
+        logger.info(`[stockfish] waiting for bestmove (timeout=${waitTimeout}ms)...`);
         const bestMoveLine = await this.waitForLine((line) => line.startsWith('bestmove '), waitTimeout);
+        logger.info(`[stockfish] got bestmove: ${bestMoveLine}`);
         const bestMoveMatch = bestMoveLine.match(/^bestmove\s+(\S+)(?:\s+ponder\s+(\S+))?/);
 
         if (!bestMoveMatch) {
