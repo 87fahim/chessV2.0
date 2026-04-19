@@ -13,6 +13,7 @@ import type {
 } from '../../shared/types/socket';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL;
+const DISCONNECT_FORFEIT_MS = 60_000;
 
 export interface OnlineGameState {
   gameId: string | null;
@@ -49,6 +50,7 @@ const CLOCK_TICK_MS = 100;
 
 export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
+  const disconnectFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isInQueue, setIsInQueue] = useState(false);
   const [onlineGame, setOnlineGame] = useState<OnlineGameState>(INITIAL_ONLINE);
@@ -66,6 +68,41 @@ export function useSocket() {
     activeColor: string;
     receivedAt: number;
   } | null>(null);
+
+  const clearDisconnectFallback = useCallback(() => {
+    if (disconnectFallbackTimerRef.current) {
+      clearTimeout(disconnectFallbackTimerRef.current);
+      disconnectFallbackTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleDisconnectFallback = useCallback(() => {
+    clearDisconnectFallback();
+    disconnectFallbackTimerRef.current = setTimeout(() => {
+      setOnlineGame((prev) => {
+        if (prev.status !== 'active' || prev.opponentOnline) {
+          return prev;
+        }
+
+        const result = prev.yourColor === 'white'
+          ? '1-0'
+          : prev.yourColor === 'black'
+            ? '0-1'
+            : prev.result;
+
+        return {
+          ...prev,
+          status: 'abandoned',
+          result,
+          terminationReason: 'abandonment',
+          abortWarning: null,
+        };
+      });
+
+      serverClocksRef.current = null;
+      disconnectFallbackTimerRef.current = null;
+    }, DISCONNECT_FORFEIT_MS);
+  }, [clearDisconnectFallback]);
 
   // Connect socket with auth token
   useEffect(() => {
@@ -119,6 +156,7 @@ export function useSocket() {
 
     // Matchmaking
     socket.on('match:found', (data: MatchFoundPayload) => {
+      clearDisconnectFallback();
       setIsInQueue(false);
       setOnlineGame((prev) => ({
         ...prev,
@@ -138,6 +176,10 @@ export function useSocket() {
 
     // Game events
     socket.on('game:state', (data: GameStatePayload) => {
+      if (data.status !== 'active') {
+        clearDisconnectFallback();
+      }
+
       setOnlineGame((prev) => {
         // Determine our color from player info if not already set
         let yourColor = prev.yourColor;
@@ -204,6 +246,7 @@ export function useSocket() {
     });
 
     socket.on('game:ended', (data: GameEndedPayload) => {
+      clearDisconnectFallback();
       setOnlineGame((prev) => ({
         ...prev,
         status: data.reason === 'abandonment' ? 'abandoned' : 'completed',
@@ -241,6 +284,12 @@ export function useSocket() {
 
     // Opponent presence (FR-41)
     socket.on('game:opponentPresence', (data: OpponentPresencePayload) => {
+      if (data.online) {
+        clearDisconnectFallback();
+      } else {
+        scheduleDisconnectFallback();
+      }
+
       setOnlineGame((prev) => ({
         ...prev,
         opponentOnline: data.online,
@@ -248,10 +297,12 @@ export function useSocket() {
     });
 
     socket.on('game:opponentDisconnected', () => {
+      scheduleDisconnectFallback();
       setOnlineGame((prev) => ({ ...prev, opponentOnline: false }));
     });
 
     socket.on('game:opponentReconnected', () => {
+      clearDisconnectFallback();
       setOnlineGame((prev) => ({ ...prev, opponentOnline: true, abortWarning: null }));
     });
 
@@ -316,11 +367,12 @@ export function useSocket() {
     });
 
     return () => {
+      clearDisconnectFallback();
       socket.disconnect();
       socketRef.current = null;
       serverClocksRef.current = null;
     };
-  }, []);
+  }, [clearDisconnectFallback, scheduleDisconnectFallback]);
 
   // Client-side clock interpolation (NFR-3): smooth visual countdown
   useEffect(() => {
@@ -409,6 +461,7 @@ export function useSocket() {
   }, []);
 
   const resetOnlineGame = useCallback(() => {
+    clearDisconnectFallback();
     setOnlineGame(INITIAL_ONLINE);
     setDrawOffered(false);
     setRematchOffered(false);
@@ -417,7 +470,7 @@ export function useSocket() {
     setRematchDeclineReason(null);
     setError(null);
     serverClocksRef.current = null;
-  }, []);
+  }, [clearDisconnectFallback]);
 
   const syncGame = useCallback((gameId: string) => {
     socketRef.current?.emit('game:syncRequest', { gameId });
