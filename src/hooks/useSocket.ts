@@ -15,6 +15,36 @@ import type {
 const SOCKET_URL = import.meta.env.VITE_API_URL;
 const DISCONNECT_FORFEIT_MS = 60_000;
 
+function getUserIdFromToken(): string | null {
+  try {
+    const token = localStorage.getItem('accessToken');
+    if (!token) return null;
+
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    const decoded = JSON.parse(atob(padded)) as { userId?: string };
+
+    return decoded.userId ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveYourColor(
+  whitePlayer: { userId?: string } | null | undefined,
+  blackPlayer: { userId?: string } | null | undefined,
+  fallback: 'white' | 'black' | null,
+): 'white' | 'black' | null {
+  const currentUserId = getUserIdFromToken();
+  if (!currentUserId) return fallback;
+  if (whitePlayer?.userId === currentUserId) return 'white';
+  if (blackPlayer?.userId === currentUserId) return 'black';
+  return fallback;
+}
+
 export interface OnlineGameState {
   gameId: string | null;
   fen: string;
@@ -181,12 +211,7 @@ export function useSocket() {
       }
 
       setOnlineGame((prev) => {
-        // Determine our color from player info if not already set
-        let yourColor = prev.yourColor;
-        if (!yourColor && data.whitePlayer && data.blackPlayer) {
-          // The server doesn't send who we are, so keep our assigned color
-          yourColor = prev.yourColor;
-        }
+        const yourColor = resolveYourColor(data.whitePlayer, data.blackPlayer, prev.yourColor);
 
         // Update server clocks ref
         if (data.clocks) {
@@ -203,6 +228,7 @@ export function useSocket() {
           gameId: data.gameId,
           fen: data.fen,
           moves: data.moves.map((m) => ({ from: m.from, to: m.to, san: m.san, ply: m.ply })),
+          yourColor,
           status: data.status,
           result: data.result,
           clocks: data.clocks,
@@ -332,12 +358,8 @@ export function useSocket() {
       setDrawOffered(false);
 
       // Determine our color in the new game
-      const token = localStorage.getItem('accessToken');
-      // We can't decode the token here, but we know our userId from the player info
       setOnlineGame((prev) => {
-        const wasWhite = prev.yourColor === 'white';
-        // Colors are swapped in rematch
-        const newColor = wasWhite ? 'black' : 'white';
+        const newColor = resolveYourColor(data.whitePlayer, data.blackPlayer, prev.yourColor);
         return {
           ...INITIAL_ONLINE,
           gameId: data.newGameId,
