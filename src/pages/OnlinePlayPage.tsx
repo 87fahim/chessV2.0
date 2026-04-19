@@ -90,6 +90,7 @@ const OnlinePlayPage: React.FC = () => {
     rematchOffered,
     rematchPending,
     rematchDeclined,
+    rematchDeclineReason,
     error,
     joinQueue,
     leaveQueue,
@@ -115,6 +116,8 @@ const OnlinePlayPage: React.FC = () => {
   // Show curtain when game becomes active
   useEffect(() => {
     if (onlineGame.status === 'active' && prevStatusRef.current !== 'active') {
+      // Auto-dismiss any stale popups from previous game
+      setShowEndDialog(false);
       setShowCurtain(true);
       const timer = setTimeout(() => setShowCurtain(false), 1500);
       return () => clearTimeout(timer);
@@ -560,8 +563,9 @@ const OnlinePlayPage: React.FC = () => {
         mode="online"
         rematchPending={rematchPending}
         rematchDeclined={rematchDeclined}
+        rematchDeclineReason={rematchDeclineReason}
         onRematch={() => {
-          if (onlineGame.gameId) requestRematch(onlineGame.gameId);
+          if (onlineGame.gameId && !rematchPending) requestRematch(onlineGame.gameId);
         }}
         onNewGame={() => {
           setShowEndDialog(false);

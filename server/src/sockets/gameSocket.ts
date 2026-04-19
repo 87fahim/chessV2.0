@@ -10,8 +10,11 @@ import { logger } from '../utils/logger.js';
 // Track draw offers in memory: gameId -> offeringUserId
 const drawOffers = new Map<string, string>();
 
-// Track rematch offers: gameId -> offeringUserId
-const rematchOffers = new Map<string, string>();
+// Track rematch offers: gameId -> { offeredBy, timer }
+const rematchOffers = new Map<string, { offeredBy: string; timer: ReturnType<typeof setTimeout> }>();
+
+/** Rematch offer expires after 5 seconds */
+const REMATCH_TIMEOUT_MS = 5_000;
 
 // Track which games each socket is in: socketId -> Set<gameId>
 const socketGames = new Map<string, Set<string>>();
@@ -284,9 +287,35 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
         return;
       }
 
-      // If opponent already requested rematch, create the game
-      const existingOffer = rematchOffers.get(data.gameId);
-      if (existingOffer && existingOffer !== userId) {
+      // Prevent duplicate: user already has a pending offer for this game
+      const existing = rematchOffers.get(data.gameId);
+      if (existing && existing.offeredBy === userId) {
+        return; // silently ignore duplicate click
+      }
+
+      // Check opponent availability
+      const opponentId = gameService.getOpponentUserId(game, userId);
+      if (!opponentId || !isUserOnline(opponentId)) {
+        socket.emit(SocketEvents.GAME_REMATCH_DECLINED, {
+          gameId: data.gameId,
+          reason: 'Opponent is no longer available for a rematch.',
+        });
+        return;
+      }
+
+      // Check if opponent already started another game
+      const opponentActiveGame = await gameService.findActiveOnlineGame(opponentId);
+      if (opponentActiveGame && opponentActiveGame._id.toString() !== data.gameId) {
+        socket.emit(SocketEvents.GAME_REMATCH_DECLINED, {
+          gameId: data.gameId,
+          reason: 'Opponent has already started another game.',
+        });
+        return;
+      }
+
+      // If opponent already requested rematch (mutual), create game immediately
+      if (existing && existing.offeredBy !== userId) {
+        clearTimeout(existing.timer);
         rematchOffers.delete(data.gameId);
         const newGame = await gameService.createRematchGame(data.gameId);
         const roomId = `game:${data.gameId}`;
@@ -300,12 +329,20 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
           timeControl: newGame.timeControl,
         });
 
-        logger.info(`Rematch accepted for game ${data.gameId} → new game ${newGameId}`);
+        logger.info(`Mutual rematch for game ${data.gameId} → new game ${newGameId}`);
         return;
       }
 
+      // Set a 5-second timeout for the offer
+      const timer = setTimeout(() => {
+        rematchOffers.delete(data.gameId);
+        const roomId = `game:${data.gameId}`;
+        io.to(roomId).emit(SocketEvents.GAME_REMATCH_EXPIRED, { gameId: data.gameId });
+        logger.info(`Rematch offer expired for game ${data.gameId}`);
+      }, REMATCH_TIMEOUT_MS);
+
       // Store the offer and notify opponent
-      rematchOffers.set(data.gameId, userId);
+      rematchOffers.set(data.gameId, { offeredBy: userId, timer });
       const roomId = `game:${data.gameId}`;
       socket.to(roomId).emit(SocketEvents.GAME_REMATCH_OFFERED, {
         gameId: data.gameId,
@@ -322,12 +359,13 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
   // Accept rematch
   socket.on(SocketEvents.GAME_REMATCH_ACCEPT, async (data: { gameId: string }) => {
     try {
-      const offeredBy = rematchOffers.get(data.gameId);
-      if (!offeredBy || offeredBy === userId) {
-        socket.emit(SocketEvents.ERROR, { message: 'No rematch offer to accept' });
+      const offer = rematchOffers.get(data.gameId);
+      if (!offer || offer.offeredBy === userId) {
+        socket.emit(SocketEvents.ERROR, { message: 'This rematch request is no longer valid.' });
         return;
       }
 
+      clearTimeout(offer.timer);
       rematchOffers.delete(data.gameId);
       const newGame = await gameService.createRematchGame(data.gameId);
       const roomId = `game:${data.gameId}`;
@@ -350,7 +388,11 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
 
   // Decline rematch
   socket.on(SocketEvents.GAME_REMATCH_DECLINE, (data: { gameId: string }) => {
-    rematchOffers.delete(data.gameId);
+    const offer = rematchOffers.get(data.gameId);
+    if (offer) {
+      clearTimeout(offer.timer);
+      rematchOffers.delete(data.gameId);
+    }
     const roomId = `game:${data.gameId}`;
     socket.to(roomId).emit(SocketEvents.GAME_REMATCH_DECLINED, { gameId: data.gameId });
     logger.info(`User ${userId} declined rematch for game ${data.gameId}`);
@@ -379,6 +421,17 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
       }
 
       if (!stillInRoom) {
+        // Cancel any pending rematch offers for this game
+        const offer = rematchOffers.get(gameId);
+        if (offer) {
+          clearTimeout(offer.timer);
+          rematchOffers.delete(gameId);
+          io.to(roomId).emit(SocketEvents.GAME_REMATCH_DECLINED, {
+            gameId,
+            reason: 'Opponent is no longer available for a rematch.',
+          });
+        }
+
         io.to(roomId).emit(SocketEvents.GAME_OPPONENT_DISCONNECTED, { userId });
         io.to(roomId).emit(SocketEvents.OPPONENT_PRESENCE, {
           gameId,

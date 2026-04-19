@@ -57,6 +57,7 @@ export function useSocket() {
   const [rematchOffered, setRematchOffered] = useState(false);
   const [rematchPending, setRematchPending] = useState(false);
   const [rematchDeclined, setRematchDeclined] = useState(false);
+  const [rematchDeclineReason, setRematchDeclineReason] = useState<string | null>(null);
 
   // Ref to hold latest clocks from server for interpolation
   const serverClocksRef = useRef<{
@@ -300,9 +301,17 @@ export function useSocket() {
       socket.emit('game:join', { gameId: data.newGameId });
     });
 
-    socket.on('game:rematchDeclined', () => {
+    socket.on('game:rematchDeclined', (data?: { gameId?: string; reason?: string }) => {
       setRematchPending(false);
       setRematchDeclined(true);
+      setRematchDeclineReason(data?.reason || null);
+    });
+
+    socket.on('game:rematchExpired', () => {
+      setRematchPending(false);
+      setRematchOffered(false);
+      setRematchDeclined(true);
+      setRematchDeclineReason('Rematch request expired.');
     });
 
     return () => {
@@ -380,10 +389,13 @@ export function useSocket() {
   }, []);
 
   const requestRematch = useCallback((gameId: string) => {
+    // Prevent duplicate requests
+    if (rematchPending) return;
     socketRef.current?.emit('game:rematchRequest', { gameId });
     setRematchPending(true);
     setRematchDeclined(false);
-  }, []);
+    setRematchDeclineReason(null);
+  }, [rematchPending]);
 
   const acceptRematch = useCallback((gameId: string) => {
     socketRef.current?.emit('game:rematchAccept', { gameId });
@@ -401,6 +413,7 @@ export function useSocket() {
     setRematchOffered(false);
     setRematchPending(false);
     setRematchDeclined(false);
+    setRematchDeclineReason(null);
     setError(null);
     serverClocksRef.current = null;
   }, []);
@@ -417,6 +430,7 @@ export function useSocket() {
     rematchOffered,
     rematchPending,
     rematchDeclined,
+    rematchDeclineReason,
     error,
     joinQueue,
     leaveQueue,

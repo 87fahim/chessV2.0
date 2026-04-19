@@ -28,6 +28,8 @@ export interface GameEndDialogProps {
   rematchPending?: boolean;
   /** Whether a rematch was declined (online) */
   rematchDeclined?: boolean;
+  /** Specific reason why rematch was declined/expired */
+  rematchDeclineReason?: string | null;
   onRematch: () => void;
   onNewGame: () => void;
   onClose: () => void;
@@ -74,6 +76,7 @@ const GameEndDialog: React.FC<GameEndDialogProps> = ({
   mode,
   rematchPending,
   rematchDeclined,
+  rematchDeclineReason,
   onRematch,
   onNewGame,
   onClose,
@@ -111,7 +114,7 @@ const GameEndDialog: React.FC<GameEndDialogProps> = ({
 
         {rematchDeclined && (
           <Typography variant="body2" color="error.main" sx={{ mt: 1.5, fontWeight: 600 }}>
-            Rematch was declined by your opponent.
+            {rematchDeclineReason || 'Rematch was declined by your opponent.'}
           </Typography>
         )}
       </DialogContent>
@@ -122,9 +125,9 @@ const GameEndDialog: React.FC<GameEndDialogProps> = ({
         <Button
           variant="contained"
           onClick={onRematch}
-          disabled={rematchPending}
+          disabled={rematchPending || rematchDeclined}
         >
-          {rematchPending ? 'Waiting for opponent...' : 'Rematch'}
+          {rematchPending ? 'Waiting for opponent...' : rematchDeclined ? 'Rematch Unavailable' : 'Rematch'}
         </Button>
         <Button variant="outlined" onClick={onNewGame}>
           New Game

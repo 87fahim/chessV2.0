@@ -33,6 +33,7 @@ export const SocketEvents = {
   GAME_REMATCH_OFFERED: 'game:rematchOffered',
   GAME_REMATCH_ACCEPTED: 'game:rematchAccepted',
   GAME_REMATCH_DECLINED: 'game:rematchDeclined',
+  GAME_REMATCH_EXPIRED: 'game:rematchExpired',
   OPPONENT_PRESENCE: 'game:opponentPresence',
   ERROR: 'error',
 } as const;
