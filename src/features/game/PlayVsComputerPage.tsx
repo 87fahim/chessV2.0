@@ -54,6 +54,7 @@ const PlayVsComputerPage: React.FC = () => {
   // Show curtain when transitioning to 'playing'
   useEffect(() => {
     if (prevStatusRef.current !== 'playing' && gameState.status === 'playing') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional status-driven transition
       setShowCurtain(true);
       const timer = setTimeout(() => setShowCurtain(false), 1500);
       return () => clearTimeout(timer);
@@ -64,6 +65,7 @@ const PlayVsComputerPage: React.FC = () => {
   // Show end dialog when game finishes
   useEffect(() => {
     if (gameState.status === 'finished') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional status-driven transition
       setShowEndDialog(true);
     }
   }, [gameState.status]);

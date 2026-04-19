@@ -20,10 +20,12 @@ const GameStartCurtain: React.FC<GameStartCurtainProps> = ({
 
   useEffect(() => {
     if (visible) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional mount/fade transition
       setMounted(true);
       // Small delay so the element mounts before fading in
       requestAnimationFrame(() => setOpacity(1));
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional fade-out before unmount
       setOpacity(0);
       const timer = setTimeout(() => setMounted(false), 600);
       return () => clearTimeout(timer);

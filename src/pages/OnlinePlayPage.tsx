@@ -118,6 +118,7 @@ const OnlinePlayPage: React.FC = () => {
   const DISCONNECT_TIMEOUT_S = 60;
   useEffect(() => {
     if (!onlineGame.opponentOnline && onlineGame.status === 'active') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional disconnect countdown init
       setDisconnectCountdown(DISCONNECT_TIMEOUT_S);
       const interval = setInterval(() => {
         setDisconnectCountdown((prev) => {
@@ -138,7 +139,9 @@ const OnlinePlayPage: React.FC = () => {
   useEffect(() => {
     if (onlineGame.status === 'active' && prevStatusRef.current !== 'active') {
       // Auto-dismiss any stale popups from previous game
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional status-driven transition
       setShowEndDialog(false);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional status-driven transition
       setShowCurtain(true);
       const timer = setTimeout(() => setShowCurtain(false), 1500);
       return () => clearTimeout(timer);
@@ -149,8 +152,10 @@ const OnlinePlayPage: React.FC = () => {
   // Close end dialog immediately when a new game starts (e.g. rematch accepted)
   useEffect(() => {
     if (onlineGame.gameId && onlineGame.status === 'active') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional dismiss on rematch
       setShowEndDialog(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onlineGame.gameId]);
 
   // Show end dialog when game completes

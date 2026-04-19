@@ -73,7 +73,7 @@ const GameEndDialog: React.FC<GameEndDialogProps> = ({
   result,
   reason,
   playerColor,
-  mode,
+  mode: _mode,
   rematchPending,
   rematchDeclined,
   rematchDeclineReason,
@@ -81,6 +81,7 @@ const GameEndDialog: React.FC<GameEndDialogProps> = ({
   onNewGame,
   onClose,
 }) => {
+  void _mode;
   const outcome = getOutcome(result, playerColor);
   const cfg = outcomeConfig[outcome];
   const reasonLabel = getReasonLabel(reason);
@@ -91,8 +92,8 @@ const GameEndDialog: React.FC<GameEndDialogProps> = ({
       onClose={onClose}
       maxWidth="xs"
       fullWidth
-      PaperProps={{
-        sx: { borderRadius: 3, overflow: 'visible' },
+      slotProps={{
+        paper: { sx: { borderRadius: 3, overflow: 'visible' } },
       }}
     >
       <DialogTitle sx={{ textAlign: 'center', pb: 0, pt: 3 }}>
