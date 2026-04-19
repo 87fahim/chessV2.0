@@ -84,8 +84,10 @@ export async function findMatch(userId: string): Promise<MatchResult | null> {
   const myEntry = await MatchmakingQueue.findOne({ userId });
   if (!myEntry) return null;
 
-  // Find a compatible opponent
-  const opponent = await MatchmakingQueue.findOne({
+  // Atomically claim a compatible opponent — findOneAndDelete ensures only one
+  // concurrent findMatch call can grab the same opponent (prevents race conditions
+  // when multiple players join the queue near-simultaneously).
+  const opponent = await MatchmakingQueue.findOneAndDelete({
     userId: { $ne: userId },
     'timeControl.initialMs': myEntry.timeControl.initialMs,
     'timeControl.incrementMs': myEntry.timeControl.incrementMs,
@@ -93,6 +95,9 @@ export async function findMatch(userId: string): Promise<MatchResult | null> {
   }).sort({ joinedAt: 1 });
 
   if (!opponent) return null;
+
+  // Also remove ourselves from the queue atomically
+  await MatchmakingQueue.deleteOne({ userId: myEntry.userId });
 
   // Determine colors
   let whiteUserId = myEntry.userId.toString();
@@ -132,11 +137,6 @@ export async function findMatch(userId: string): Promise<MatchResult | null> {
       activeColor: 'white',
       activeSince: new Date(),
     },
-  });
-
-  // Remove both from queue
-  await MatchmakingQueue.deleteMany({
-    userId: { $in: [myEntry.userId, opponent.userId] },
   });
 
   return {
