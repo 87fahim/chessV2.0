@@ -125,6 +125,13 @@ const OnlinePlayPage: React.FC = () => {
     prevStatusRef.current = onlineGame.status;
   }, [onlineGame.status]);
 
+  // Close end dialog immediately when a new game starts (e.g. rematch accepted)
+  useEffect(() => {
+    if (onlineGame.gameId && onlineGame.status === 'active') {
+      setShowEndDialog(false);
+    }
+  }, [onlineGame.gameId]);
+
   // Show end dialog when game completes
   useEffect(() => {
     if (onlineGame.status === 'completed' || onlineGame.status === 'abandoned') {
