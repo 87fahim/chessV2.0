@@ -113,7 +113,11 @@ async function tick(): Promise<void> {
       }
 
       // 2. Check per-move inactivity (1 minute without making a move)
-      if (game.clocks?.activeSince) {
+      // Skip inactivity check if there's a disconnect pending for this game —
+      // disconnect abandonment (step 3) takes priority.
+      const hasDisconnect = [...disconnected.keys()].some((k) => k.startsWith(`${gameId}:`));
+
+      if (!hasDisconnect && game.clocks?.activeSince) {
         const elapsed = now - new Date(game.clocks.activeSince).getTime();
         if (elapsed >= MOVE_INACTIVITY_MS) {
           const loser = game.clocks.activeColor as 'white' | 'black';
@@ -178,14 +182,12 @@ async function tick(): Promise<void> {
           break;
         }
 
-        // Send warning at specific intervals
-        if (WARN_AT_SECONDS.includes(secondsLeft)) {
-          ioRef.to(roomId).emit(SocketEvents.GAME_ABORT_WARNING, {
-            gameId,
-            secondsLeft,
-            reason: 'disconnect',
-          });
-        }
+        // Send disconnect countdown updates every second so the UI stays in sync.
+        ioRef.to(roomId).emit(SocketEvents.GAME_ABORT_WARNING, {
+          gameId,
+          secondsLeft,
+          reason: 'disconnect',
+        });
       }
     }
   } catch (err) {

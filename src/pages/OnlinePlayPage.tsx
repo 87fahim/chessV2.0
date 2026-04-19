@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -19,6 +19,8 @@ import { Chess } from 'chess.js';
 import { useNavigate } from 'react-router-dom';
 import ChessBoard from '../components/chess/ChessBoard';
 import MoveList from '../components/chess/MoveList';
+import GameStartCurtain from '../components/chess/GameStartCurtain';
+import GameEndDialog from '../components/chess/GameEndDialog';
 import { useSocket } from '../hooks/useSocket';
 import { useAppSelector, useAppDispatch } from '../hooks/useStore';
 import { setFen, moveMade, gameOver, setStatus, resetGame, setFlipped, setLastMove } from '../features/game/gameSlice';
@@ -85,6 +87,10 @@ const OnlinePlayPage: React.FC = () => {
     isInQueue,
     onlineGame,
     drawOffered,
+    rematchOffered,
+    rematchPending,
+    rematchDeclined,
+    rematchDeclineReason,
     error,
     joinQueue,
     leaveQueue,
@@ -93,6 +99,9 @@ const OnlinePlayPage: React.FC = () => {
     offerDraw,
     acceptDraw,
     declineDraw,
+    requestRematch,
+    acceptRematch,
+    declineRematch,
     resetOnlineGame,
     clearError,
   } = useSocket();
@@ -100,6 +109,57 @@ const OnlinePlayPage: React.FC = () => {
   const [selectedTC, setSelectedTC] = useState(TIME_CONTROLS[2].value);
   const [preferredColor, setPreferredColor] = useState<'random' | 'white' | 'black'>('random');
   const [showResignDialog, setShowResignDialog] = useState(false);
+  const [showCurtain, setShowCurtain] = useState(false);
+  const [showEndDialog, setShowEndDialog] = useState(false);
+  const prevStatusRef = useRef(onlineGame.status);
+  const [disconnectCountdown, setDisconnectCountdown] = useState<number | null>(null);
+
+  // Disconnect countdown: tick from 60 → 0 when opponent goes offline
+  const DISCONNECT_TIMEOUT_S = 60;
+  useEffect(() => {
+    if (!onlineGame.opponentOnline && onlineGame.status === 'active') {
+      setDisconnectCountdown(DISCONNECT_TIMEOUT_S);
+      const interval = setInterval(() => {
+        setDisconnectCountdown((prev) => {
+          if (prev === null || prev <= 0) {
+            clearInterval(interval);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      setDisconnectCountdown(null);
+    }
+  }, [onlineGame.opponentOnline, onlineGame.status]);
+
+  // Show curtain when game becomes active
+  useEffect(() => {
+    if (onlineGame.status === 'active' && prevStatusRef.current !== 'active') {
+      // Auto-dismiss any stale popups from previous game
+      setShowEndDialog(false);
+      setShowCurtain(true);
+      const timer = setTimeout(() => setShowCurtain(false), 1500);
+      return () => clearTimeout(timer);
+    }
+    prevStatusRef.current = onlineGame.status;
+  }, [onlineGame.status]);
+
+  // Close end dialog immediately when a new game starts (e.g. rematch accepted)
+  useEffect(() => {
+    if (onlineGame.gameId && onlineGame.status === 'active') {
+      setShowEndDialog(false);
+    }
+  }, [onlineGame.gameId]);
+
+  // Show end dialog when game completes
+  useEffect(() => {
+    if (onlineGame.status === 'completed' || onlineGame.status === 'abandoned') {
+      const timer = setTimeout(() => setShowEndDialog(true), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [onlineGame.status]);
 
   // Sync online game fen to redux for ChessBoard rendering
   useEffect(() => {
@@ -141,10 +201,10 @@ const OnlinePlayPage: React.FC = () => {
 
   // Game ended
   useEffect(() => {
-    if (onlineGame.status === 'completed' && onlineGame.result !== '*') {
-      dispatch(gameOver(onlineGame.result));
+    if ((onlineGame.status === 'completed' || onlineGame.status === 'abandoned') && onlineGame.result !== '*') {
+      dispatch(gameOver({ result: onlineGame.result, reason: onlineGame.terminationReason || undefined }));
     }
-  }, [dispatch, onlineGame.status, onlineGame.result]);
+  }, [dispatch, onlineGame.result, onlineGame.status, onlineGame.terminationReason]);
 
   const handleMove = useCallback(
     (from: string, to: string, promotion?: string) => {
@@ -274,7 +334,7 @@ const OnlinePlayPage: React.FC = () => {
     ((onlineGame.yourColor === 'white' && new Chess(onlineGame.fen).turn() === 'w') ||
      (onlineGame.yourColor === 'black' && new Chess(onlineGame.fen).turn() === 'b'));
 
-  const gameEnded = onlineGame.status === 'completed';
+  const gameEnded = onlineGame.status === 'completed' || onlineGame.status === 'abandoned';
   const { capturedByWhite, capturedByBlack } = getCapturedCounts(onlineGame.fen);
 
   const isYouWhite = onlineGame.yourColor === 'white';
@@ -310,6 +370,7 @@ const OnlinePlayPage: React.FC = () => {
     avatarSeed: string,
     isSelf: boolean,
     online?: boolean,
+    countdown?: number | null,
   ) => {
     const isLowTime = clockMs !== null && clockMs > 0 && clockMs <= LOW_TIME_MS;
     return (
@@ -355,7 +416,7 @@ const OnlinePlayPage: React.FC = () => {
               {name}
               {online === false && !gameEnded && (
                 <Typography component="span" variant="caption" color="error.main" sx={{ ml: 0.5 }}>
-                  (disconnected)
+                  {countdown != null ? `(disconnected ... ${countdown})` : '(disconnected)'}
                 </Typography>
               )}
             </Typography>
@@ -404,9 +465,14 @@ const OnlinePlayPage: React.FC = () => {
     >
       {/* Board */}
       <Box sx={{ flex: '1 1 auto', minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column', gap: 0.85 }}>
-        {renderPlayerStrip(opponentName, opponentCapturedCount, opponentClock, opponentActive, opponentName, false, onlineGame.opponentOnline)}
-        <Box sx={{ width: '90%', mx: 'auto' }}>
+        {renderPlayerStrip(opponentName, opponentCapturedCount, opponentClock, opponentActive, opponentName, false, onlineGame.opponentOnline, disconnectCountdown)}
+        <Box sx={{ width: '90%', mx: 'auto', position: 'relative' }}>
           <ChessBoard onMove={handleMove} />
+          <GameStartCurtain
+            visible={showCurtain}
+            playerLabel={onlineGame.yourColor === 'white' ? 'White' : 'Black'}
+            subtitle={`vs ${opponentName}`}
+          />
         </Box>
         {renderPlayerStrip(yourName, yourCapturedCount, yourClock, youActive, yourName, true)}
       </Box>
@@ -504,6 +570,38 @@ const OnlinePlayPage: React.FC = () => {
           <Button color="error" variant="contained" onClick={handleResign}>Resign</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Rematch offer from opponent */}
+      <Dialog open={rematchOffered} onClose={() => onlineGame.gameId && declineRematch(onlineGame.gameId)}>
+        <DialogTitle>Rematch Offer</DialogTitle>
+        <DialogContent>
+          <Typography>Your opponent wants a rematch!</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => onlineGame.gameId && declineRematch(onlineGame.gameId)}>Decline</Button>
+          <Button variant="contained" onClick={() => onlineGame.gameId && acceptRematch(onlineGame.gameId)}>Accept</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Game End Dialog */}
+      <GameEndDialog
+        open={showEndDialog}
+        result={onlineGame.result as '1-0' | '0-1' | '1/2-1/2'}
+        reason={onlineGame.terminationReason || 'unknown'}
+        playerColor={onlineGame.yourColor || 'white'}
+        mode="online"
+        rematchPending={rematchPending}
+        rematchDeclined={rematchDeclined}
+        rematchDeclineReason={rematchDeclineReason}
+        onRematch={() => {
+          if (onlineGame.gameId && !rematchPending) requestRematch(onlineGame.gameId);
+        }}
+        onNewGame={() => {
+          setShowEndDialog(false);
+          handleNewGame();
+        }}
+        onClose={() => setShowEndDialog(false)}
+      />
     </Box>
   );
 };

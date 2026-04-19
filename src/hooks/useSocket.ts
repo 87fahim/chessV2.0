@@ -13,6 +13,37 @@ import type {
 } from '../../shared/types/socket';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL;
+const DISCONNECT_FORFEIT_MS = 60_000;
+
+function getUserIdFromToken(): string | null {
+  try {
+    const token = localStorage.getItem('accessToken');
+    if (!token) return null;
+
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    const decoded = JSON.parse(atob(padded)) as { userId?: string };
+
+    return decoded.userId ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveYourColor(
+  whitePlayer: { userId?: string } | null | undefined,
+  blackPlayer: { userId?: string } | null | undefined,
+  fallback: 'white' | 'black' | null,
+): 'white' | 'black' | null {
+  const currentUserId = getUserIdFromToken();
+  if (!currentUserId) return fallback;
+  if (whitePlayer?.userId === currentUserId) return 'white';
+  if (blackPlayer?.userId === currentUserId) return 'black';
+  return fallback;
+}
 
 export interface OnlineGameState {
   gameId: string | null;
@@ -21,6 +52,7 @@ export interface OnlineGameState {
   yourColor: 'white' | 'black' | null;
   status: string;
   result: string;
+  terminationReason: string | null;
   clocks: { whiteRemainingMs: number; blackRemainingMs: number; activeColor: string } | null;
   whitePlayer: { type: string; name: string; userId?: string } | null;
   blackPlayer: { type: string; name: string; userId?: string } | null;
@@ -35,6 +67,7 @@ const INITIAL_ONLINE: OnlineGameState = {
   yourColor: null,
   status: 'idle',
   result: '*',
+  terminationReason: null,
   clocks: null,
   whitePlayer: null,
   blackPlayer: null,
@@ -47,11 +80,16 @@ const CLOCK_TICK_MS = 100;
 
 export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
+  const disconnectFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isInQueue, setIsInQueue] = useState(false);
   const [onlineGame, setOnlineGame] = useState<OnlineGameState>(INITIAL_ONLINE);
   const [drawOffered, setDrawOffered] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rematchOffered, setRematchOffered] = useState(false);
+  const [rematchPending, setRematchPending] = useState(false);
+  const [rematchDeclined, setRematchDeclined] = useState(false);
+  const [rematchDeclineReason, setRematchDeclineReason] = useState<string | null>(null);
 
   // Ref to hold latest clocks from server for interpolation
   const serverClocksRef = useRef<{
@@ -60,6 +98,41 @@ export function useSocket() {
     activeColor: string;
     receivedAt: number;
   } | null>(null);
+
+  const clearDisconnectFallback = useCallback(() => {
+    if (disconnectFallbackTimerRef.current) {
+      clearTimeout(disconnectFallbackTimerRef.current);
+      disconnectFallbackTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleDisconnectFallback = useCallback(() => {
+    clearDisconnectFallback();
+    disconnectFallbackTimerRef.current = setTimeout(() => {
+      setOnlineGame((prev) => {
+        if (prev.status !== 'active' || prev.opponentOnline) {
+          return prev;
+        }
+
+        const result = prev.yourColor === 'white'
+          ? '1-0'
+          : prev.yourColor === 'black'
+            ? '0-1'
+            : prev.result;
+
+        return {
+          ...prev,
+          status: 'abandoned',
+          result,
+          terminationReason: 'abandonment',
+          abortWarning: null,
+        };
+      });
+
+      serverClocksRef.current = null;
+      disconnectFallbackTimerRef.current = null;
+    }, DISCONNECT_FORFEIT_MS);
+  }, [clearDisconnectFallback]);
 
   // Connect socket with auth token
   useEffect(() => {
@@ -113,6 +186,7 @@ export function useSocket() {
 
     // Matchmaking
     socket.on('match:found', (data: MatchFoundPayload) => {
+      clearDisconnectFallback();
       setIsInQueue(false);
       setOnlineGame((prev) => ({
         ...prev,
@@ -132,13 +206,12 @@ export function useSocket() {
 
     // Game events
     socket.on('game:state', (data: GameStatePayload) => {
+      if (data.status !== 'active') {
+        clearDisconnectFallback();
+      }
+
       setOnlineGame((prev) => {
-        // Determine our color from player info if not already set
-        let yourColor = prev.yourColor;
-        if (!yourColor && data.whitePlayer && data.blackPlayer) {
-          // The server doesn't send who we are, so keep our assigned color
-          yourColor = prev.yourColor;
-        }
+        const yourColor = resolveYourColor(data.whitePlayer, data.blackPlayer, prev.yourColor);
 
         // Update server clocks ref
         if (data.clocks) {
@@ -155,6 +228,7 @@ export function useSocket() {
           gameId: data.gameId,
           fen: data.fen,
           moves: data.moves.map((m) => ({ from: m.from, to: m.to, san: m.san, ply: m.ply })),
+          yourColor,
           status: data.status,
           result: data.result,
           clocks: data.clocks,
@@ -198,11 +272,14 @@ export function useSocket() {
     });
 
     socket.on('game:ended', (data: GameEndedPayload) => {
+      clearDisconnectFallback();
       setOnlineGame((prev) => ({
         ...prev,
-        status: 'completed',
+        status: data.reason === 'abandonment' ? 'abandoned' : 'completed',
         result: data.result,
+        terminationReason: data.reason,
         abortWarning: null,
+        opponentOnline: true,
       }));
       serverClocksRef.current = null;
     });
@@ -233,6 +310,12 @@ export function useSocket() {
 
     // Opponent presence (FR-41)
     socket.on('game:opponentPresence', (data: OpponentPresencePayload) => {
+      if (data.online) {
+        clearDisconnectFallback();
+      } else {
+        scheduleDisconnectFallback();
+      }
+
       setOnlineGame((prev) => ({
         ...prev,
         opponentOnline: data.online,
@@ -240,10 +323,12 @@ export function useSocket() {
     });
 
     socket.on('game:opponentDisconnected', () => {
+      scheduleDisconnectFallback();
       setOnlineGame((prev) => ({ ...prev, opponentOnline: false }));
     });
 
     socket.on('game:opponentReconnected', () => {
+      clearDisconnectFallback();
       setOnlineGame((prev) => ({ ...prev, opponentOnline: true, abortWarning: null }));
     });
 
@@ -255,12 +340,61 @@ export function useSocket() {
       }));
     });
 
+    // Rematch events
+    socket.on('game:rematchOffered', () => {
+      setRematchOffered(true);
+    });
+
+    socket.on('game:rematchAccepted', (data: {
+      oldGameId: string;
+      newGameId: string;
+      whitePlayer: { type: string; name: string; userId?: string };
+      blackPlayer: { type: string; name: string; userId?: string };
+      timeControl?: { initialMs: number; incrementMs: number };
+    }) => {
+      setRematchPending(false);
+      setRematchOffered(false);
+      setRematchDeclined(false);
+      setDrawOffered(false);
+
+      // Determine our color in the new game
+      setOnlineGame((prev) => {
+        const newColor = resolveYourColor(data.whitePlayer, data.blackPlayer, prev.yourColor);
+        return {
+          ...INITIAL_ONLINE,
+          gameId: data.newGameId,
+          yourColor: newColor as 'white' | 'black',
+          status: 'active',
+          opponentOnline: true,
+          whitePlayer: data.whitePlayer,
+          blackPlayer: data.blackPlayer,
+        };
+      });
+
+      // Join the new game room
+      socket.emit('game:join', { gameId: data.newGameId });
+    });
+
+    socket.on('game:rematchDeclined', (data?: { gameId?: string; reason?: string }) => {
+      setRematchPending(false);
+      setRematchDeclined(true);
+      setRematchDeclineReason(data?.reason || null);
+    });
+
+    socket.on('game:rematchExpired', () => {
+      setRematchPending(false);
+      setRematchOffered(false);
+      setRematchDeclined(true);
+      setRematchDeclineReason('Rematch request expired.');
+    });
+
     return () => {
+      clearDisconnectFallback();
       socket.disconnect();
       socketRef.current = null;
       serverClocksRef.current = null;
     };
-  }, []);
+  }, [clearDisconnectFallback, scheduleDisconnectFallback]);
 
   // Client-side clock interpolation (NFR-3): smooth visual countdown
   useEffect(() => {
@@ -329,12 +463,36 @@ export function useSocket() {
     setDrawOffered(false);
   }, []);
 
+  const requestRematch = useCallback((gameId: string) => {
+    // Prevent duplicate requests
+    if (rematchPending) return;
+    socketRef.current?.emit('game:rematchRequest', { gameId });
+    setRematchPending(true);
+    setRematchDeclined(false);
+    setRematchDeclineReason(null);
+  }, [rematchPending]);
+
+  const acceptRematch = useCallback((gameId: string) => {
+    socketRef.current?.emit('game:rematchAccept', { gameId });
+    setRematchOffered(false);
+  }, []);
+
+  const declineRematch = useCallback((gameId: string) => {
+    socketRef.current?.emit('game:rematchDecline', { gameId });
+    setRematchOffered(false);
+  }, []);
+
   const resetOnlineGame = useCallback(() => {
+    clearDisconnectFallback();
     setOnlineGame(INITIAL_ONLINE);
     setDrawOffered(false);
+    setRematchOffered(false);
+    setRematchPending(false);
+    setRematchDeclined(false);
+    setRematchDeclineReason(null);
     setError(null);
     serverClocksRef.current = null;
-  }, []);
+  }, [clearDisconnectFallback]);
 
   const syncGame = useCallback((gameId: string) => {
     socketRef.current?.emit('game:syncRequest', { gameId });
@@ -345,6 +503,10 @@ export function useSocket() {
     isInQueue,
     onlineGame,
     drawOffered,
+    rematchOffered,
+    rematchPending,
+    rematchDeclined,
+    rematchDeclineReason,
     error,
     joinQueue,
     leaveQueue,
@@ -353,6 +515,9 @@ export function useSocket() {
     offerDraw,
     acceptDraw,
     declineDraw,
+    requestRematch,
+    acceptRematch,
+    declineRematch,
     resetOnlineGame,
     syncGame,
     clearError: () => setError(null),
