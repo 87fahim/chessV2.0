@@ -112,6 +112,27 @@ const OnlinePlayPage: React.FC = () => {
   const [showCurtain, setShowCurtain] = useState(false);
   const [showEndDialog, setShowEndDialog] = useState(false);
   const prevStatusRef = useRef(onlineGame.status);
+  const [disconnectCountdown, setDisconnectCountdown] = useState<number | null>(null);
+
+  // Disconnect countdown: tick from 60 → 0 when opponent goes offline
+  const DISCONNECT_TIMEOUT_S = 60;
+  useEffect(() => {
+    if (!onlineGame.opponentOnline && onlineGame.status === 'active') {
+      setDisconnectCountdown(DISCONNECT_TIMEOUT_S);
+      const interval = setInterval(() => {
+        setDisconnectCountdown((prev) => {
+          if (prev === null || prev <= 0) {
+            clearInterval(interval);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      setDisconnectCountdown(null);
+    }
+  }, [onlineGame.opponentOnline, onlineGame.status]);
 
   // Show curtain when game becomes active
   useEffect(() => {
@@ -349,6 +370,7 @@ const OnlinePlayPage: React.FC = () => {
     avatarSeed: string,
     isSelf: boolean,
     online?: boolean,
+    countdown?: number | null,
   ) => {
     const isLowTime = clockMs !== null && clockMs > 0 && clockMs <= LOW_TIME_MS;
     return (
@@ -394,7 +416,7 @@ const OnlinePlayPage: React.FC = () => {
               {name}
               {online === false && !gameEnded && (
                 <Typography component="span" variant="caption" color="error.main" sx={{ ml: 0.5 }}>
-                  (disconnected)
+                  {countdown != null ? `(disconnected ... ${countdown})` : '(disconnected)'}
                 </Typography>
               )}
             </Typography>
@@ -443,7 +465,7 @@ const OnlinePlayPage: React.FC = () => {
     >
       {/* Board */}
       <Box sx={{ flex: '1 1 auto', minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column', gap: 0.85 }}>
-        {renderPlayerStrip(opponentName, opponentCapturedCount, opponentClock, opponentActive, opponentName, false, onlineGame.opponentOnline)}
+        {renderPlayerStrip(opponentName, opponentCapturedCount, opponentClock, opponentActive, opponentName, false, onlineGame.opponentOnline, disconnectCountdown)}
         <Box sx={{ width: '90%', mx: 'auto', position: 'relative' }}>
           <ChessBoard onMove={handleMove} />
           <GameStartCurtain
