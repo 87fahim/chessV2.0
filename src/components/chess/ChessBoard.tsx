@@ -148,8 +148,6 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
 
       /* ---------- Premove click mode ---------- */
       if (inPremoveMode) {
-        const isOwnPremoveSource = !!playerColor && virtualOwnPieces.has(square);
-
         if (premoveFrom) {
           // Clicked same square → deselect
           if (premoveFrom === square) {
@@ -158,7 +156,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
             return;
           }
 
-          // Clicked another own piece (actual board piece) → switch selection
+          // Clicked an actual own piece on the real board → switch selection
           const actualPiece = game.get(square as ChessSquare);
           if (actualPiece && actualPiece.color === playerColor) {
             setPremoveFrom(square);
@@ -166,7 +164,8 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
             return;
           }
 
-          // Destination click → create premove (auto-select destination for chaining)
+          // Any other square → queue premove, auto-select destination for unlimited chaining
+          // Check if this looks like a pawn promotion
           const srcType = virtualOwnPieces.get(premoveFrom);
           if (srcType === 'p') {
             const promoRank = playerColor === 'w' ? '8' : '1';
@@ -177,14 +176,18 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
           }
 
           onPremove!(premoveFrom, square);
-          // Auto-select destination so the user can keep chaining
+          // Keep destination selected so user can keep chaining indefinitely
           setPremoveFrom(square);
           dispatch(setSelectedSquare({ square, legalMoves: [] }));
           return;
         }
 
-        // First click → select own piece or virtual premove destination
-        if (isOwnPremoveSource) {
+        // No source selected yet → allow selecting actual own piece or any premove destination square
+        const piece = game.get(square as ChessSquare);
+        const isActualOwnPiece = piece && piece.color === playerColor;
+        const isVirtualOwnPiece = !!playerColor && virtualOwnPieces.has(square);
+        const isPremoveDestination = premoveSquares?.has(square) ?? false;
+        if (isActualOwnPiece || isVirtualOwnPiece || isPremoveDestination) {
           setPremoveFrom(square);
           dispatch(setSelectedSquare({ square, legalMoves: [] }));
         }
@@ -227,9 +230,13 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
       pendingClickSquare.current = square;
 
       if (inPremoveMode) {
-        const isOwnPiece = piece && piece.color === playerColor;
-        if (isOwnPiece) {
-          setDragPiece({ color: piece.color as PieceColor, type: piece.type as PieceType });
+        const isActualOwnPiece = piece && piece.color === playerColor;
+        const virtualType = playerColor ? virtualOwnPieces.get(square) : undefined;
+        const isDraggable = isActualOwnPiece || !!virtualType;
+        if (isDraggable) {
+          const pColor = (piece?.color ?? playerColor) as PieceColor;
+          const pType = (piece?.type ?? virtualType ?? 'p') as PieceType;
+          setDragPiece({ color: pColor, type: pType });
           setDragSource(square);
           setDragLegalMoves([]); // No legal-move hints for premoves
           setPremoveFrom(square);
