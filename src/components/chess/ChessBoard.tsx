@@ -158,32 +158,32 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
             return;
           }
 
-          // Clicked another own piece → switch selection
-          if (isOwnPremoveSource) {
+          // Clicked another own piece (actual board piece) → switch selection
+          const actualPiece = game.get(square as ChessSquare);
+          if (actualPiece && actualPiece.color === playerColor) {
             setPremoveFrom(square);
             dispatch(setSelectedSquare({ square, legalMoves: [] }));
             return;
           }
 
-          // Destination click → create premove
+          // Destination click → create premove (auto-select destination for chaining)
           const srcType = virtualOwnPieces.get(premoveFrom);
           if (srcType === 'p') {
             const promoRank = playerColor === 'w' ? '8' : '1';
             if (square[1] === promoRank) {
               setPremovePromotionPending({ from: premoveFrom, to: square });
-              setPremoveFrom(null);
-              dispatch(clearSelection());
               return;
             }
           }
 
           onPremove!(premoveFrom, square);
-          setPremoveFrom(null);
-          dispatch(clearSelection());
+          // Auto-select destination so the user can keep chaining
+          setPremoveFrom(square);
+          dispatch(setSelectedSquare({ square, legalMoves: [] }));
           return;
         }
 
-        // First click → select own piece for premove
+        // First click → select own piece or virtual premove destination
         if (isOwnPremoveSource) {
           setPremoveFrom(square);
           dispatch(setSelectedSquare({ square, legalMoves: [] }));
@@ -306,9 +306,13 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
               }
             }
             onPremove?.(dragSource, toSquare);
+            // Auto-select destination for chaining
+            setPremoveFrom(toSquare);
+            dispatch(setSelectedSquare({ square: toSquare, legalMoves: [] }));
+          } else {
+            setPremoveFrom(null);
+            dispatch(clearSelection());
           }
-          setPremoveFrom(null);
-          dispatch(clearSelection());
         } else {
           // Normal drag drop
           if (toSquare && dragLegalMoves.includes(toSquare)) {
@@ -361,10 +365,13 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
     (piece: string) => {
       if (premovePromotionPending) {
         onPremove?.(premovePromotionPending.from, premovePromotionPending.to, piece);
+        // Auto-select destination for chaining after promotion
+        setPremoveFrom(premovePromotionPending.to);
+        dispatch(setSelectedSquare({ square: premovePromotionPending.to, legalMoves: [] }));
         setPremovePromotionPending(null);
       }
     },
-    [premovePromotionPending, onPremove],
+    [premovePromotionPending, onPremove, dispatch],
   );
 
   const handlePremovePromotionCancel = useCallback(() => {
