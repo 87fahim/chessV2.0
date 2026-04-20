@@ -10,8 +10,8 @@ export interface Premove {
 export function usePremoveQueue() {
   const [queue, setQueue] = useState<Premove[]>([]);
 
-  const addPremove = useCallback((premove: Premove) => {
-    setQueue((prev) => [...prev, premove]);
+  const addPremove = useCallback((from: string, to: string, promotion?: string) => {
+    setQueue((prev) => [...prev, { from, to, promotion }]);
   }, []);
 
   const clearPremoves = useCallback(() => {
