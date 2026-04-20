@@ -199,6 +199,7 @@ const PlayVsComputerPage: React.FC = () => {
             onMove={handleMoveAndClearPremoves}
             onPremove={addPremove}
             onClearPremoves={clearPremoves}
+            premoveQueue={premoveQueue}
             premoveSquares={premoveSquares}
             playerColor={gameState.playerColor}
           />

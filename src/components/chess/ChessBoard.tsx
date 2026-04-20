@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef, useEffect } from 'react';
+import React, { useCallback, useState, useRef, useEffect, useMemo } from 'react';
 import { Box } from '@mui/material';
 import { Chess } from 'chess.js';
 import type { Square as ChessSquare } from 'chess.js';
@@ -18,6 +18,7 @@ interface ChessBoardProps {
   onMove: (from: string, to: string, promotion?: string) => void;
   onPremove?: (from: string, to: string, promotion?: string) => void;
   onClearPremoves?: () => void;
+  premoveQueue?: Array<{ from: string; to: string; promotion?: string }>;
   premoveSquares?: Set<string>;
   playerColor?: PieceColor;
 }
@@ -25,7 +26,7 @@ interface ChessBoardProps {
 /* Threshold in px before a pointerdown is considered a drag rather than a click */
 const DRAG_THRESHOLD = 4;
 
-const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremoves, premoveSquares, playerColor }) => {
+const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremoves, premoveQueue, premoveSquares, playerColor }) => {
   const dispatch = useAppDispatch();
   const { fen, selectedSquare, legalMoves, lastMove, isFlipped, promotionPending, status } =
     useAppSelector((s) => s.game);
@@ -53,6 +54,55 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
   const boardSquares = getBoardSquares(isFlipped);
   const isInCheck = game.inCheck();
   const currentTurn = game.turn();
+
+  /**
+   * Virtual own-piece map after applying queued premoves in order.
+   * This enables chaining premoves with the same piece across future turns.
+   */
+  const virtualOwnPieces = useMemo(() => {
+    const virtual = new Map<string, { color: PieceColor; type: PieceType }>();
+    const rankChars = ['1', '2', '3', '4', '5', '6', '7', '8'];
+
+    for (const file of FILES) {
+      for (const rank of rankChars) {
+        const square = `${file}${rank}`;
+        const piece = game.get(square as ChessSquare);
+        if (!piece) continue;
+        virtual.set(square, {
+          color: piece.color as PieceColor,
+          type: piece.type as PieceType,
+        });
+      }
+    }
+
+    if (!playerColor || !premoveQueue || premoveQueue.length === 0) {
+      const own = new Map<string, PieceType>();
+      for (const [square, piece] of virtual) {
+        if (piece.color === playerColor) own.set(square, piece.type);
+      }
+      return own;
+    }
+
+    for (const pm of premoveQueue) {
+      const movingPiece = virtual.get(pm.from);
+      if (!movingPiece || movingPiece.color !== playerColor) continue;
+
+      virtual.delete(pm.from);
+      const promoteRank = playerColor === 'w' ? '8' : '1';
+      const promotedType =
+        movingPiece.type === 'p' && pm.promotion && pm.to[1] === promoteRank
+          ? (pm.promotion as PieceType)
+          : movingPiece.type;
+
+      virtual.set(pm.to, { color: movingPiece.color, type: promotedType });
+    }
+
+    const own = new Map<string, PieceType>();
+    for (const [square, piece] of virtual) {
+      if (piece.color === playerColor) own.set(square, piece.type);
+    }
+    return own;
+  }, [fen, game, playerColor, premoveQueue]);
 
   /** True when the player can queue premoves (opponent's turn, game active). */
   const inPremoveMode = !!(onPremove && playerColor && currentTurn !== playerColor && status === 'playing');
@@ -98,7 +148,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
 
       /* ---------- Premove click mode ---------- */
       if (inPremoveMode) {
-        const piece = game.get(square as ChessSquare);
+        const isOwnPremoveSource = !!playerColor && virtualOwnPieces.has(square);
 
         if (premoveFrom) {
           // Clicked same square → deselect
@@ -109,15 +159,15 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
           }
 
           // Clicked another own piece → switch selection
-          if (piece && piece.color === playerColor) {
+          if (isOwnPremoveSource) {
             setPremoveFrom(square);
             dispatch(setSelectedSquare({ square, legalMoves: [] }));
             return;
           }
 
           // Destination click → create premove
-          const srcPiece = game.get(premoveFrom as ChessSquare);
-          if (srcPiece?.type === 'p') {
+          const srcType = virtualOwnPieces.get(premoveFrom);
+          if (srcType === 'p') {
             const promoRank = playerColor === 'w' ? '8' : '1';
             if (square[1] === promoRank) {
               setPremovePromotionPending({ from: premoveFrom, to: square });
@@ -134,7 +184,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
         }
 
         // First click → select own piece for premove
-        if (piece && piece.color === playerColor) {
+        if (isOwnPremoveSource) {
           setPremoveFrom(square);
           dispatch(setSelectedSquare({ square, legalMoves: [] }));
         }
@@ -160,7 +210,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
 
       dispatch(clearSelection());
     },
-    [selectedSquare, legalMoves, fen, status, promotionPending, premovePromotionPending, currentTurn, inPremoveMode, premoveFrom, playerColor, dispatch, onMove, onPremove, game],
+    [selectedSquare, legalMoves, fen, status, promotionPending, premovePromotionPending, currentTurn, inPremoveMode, premoveFrom, playerColor, dispatch, onMove, onPremove, game, virtualOwnPieces],
   );
 
   /* ---- Pointer handlers -------------------------------------------- */

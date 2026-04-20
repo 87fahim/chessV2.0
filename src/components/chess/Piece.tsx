@@ -18,8 +18,8 @@ const Piece: React.FC<PieceProps> = ({ type, color, isDragging }) => {
       alt={`${color}${type}`}
       draggable={false}                            /* native img drag disabled; we use the square wrapper */
       sx={{
-        width: '80%',
-        height: '80%',
+        width: '88%',
+        height: '88%',
         objectFit: 'contain',
         userSelect: 'none',
         pointerEvents: 'none',                      /* clicks go through to square */

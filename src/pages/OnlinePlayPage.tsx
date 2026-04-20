@@ -529,6 +529,7 @@ const OnlinePlayPage: React.FC = () => {
             onMove={handleMove}
             onPremove={addPremove}
             onClearPremoves={clearPremoves}
+            premoveQueue={premoveQueue}
             premoveSquares={premoveSquares}
             playerColor={myPieceColor}
           />
