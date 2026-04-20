@@ -16,12 +16,16 @@ import type { PieceColor, PieceType } from '../../types/chess';
 
 interface ChessBoardProps {
   onMove: (from: string, to: string, promotion?: string) => void;
+  onPremove?: (from: string, to: string, promotion?: string) => void;
+  onClearPremoves?: () => void;
+  premoveSquares?: Set<string>;
+  playerColor?: PieceColor;
 }
 
 /* Threshold in px before a pointerdown is considered a drag rather than a click */
 const DRAG_THRESHOLD = 4;
 
-const ChessBoard: React.FC<ChessBoardProps> = ({ onMove }) => {
+const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremoves, premoveSquares, playerColor }) => {
   const dispatch = useAppDispatch();
   const { fen, selectedSquare, legalMoves, lastMove, isFlipped, promotionPending, status } =
     useAppSelector((s) => s.game);
@@ -40,11 +44,25 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove }) => {
   const isDragging = useRef(false);
   const pendingClickSquare = useRef<string | null>(null);
 
+  /* --- Premove selection state -------------------------------------- */
+  const [premoveFrom, setPremoveFrom] = useState<string | null>(null);
+  const [premovePromotionPending, setPremovePromotionPending] = useState<{ from: string; to: string } | null>(null);
+
   const game = new Chess(fen);
   const board = game.board();
   const boardSquares = getBoardSquares(isFlipped);
   const isInCheck = game.inCheck();
   const currentTurn = game.turn();
+
+  /** True when the player can queue premoves (opponent's turn, game active). */
+  const inPremoveMode = !!(onPremove && playerColor && currentTurn !== playerColor && status === 'playing');
+
+  /* Clear premove selection when leaving premove mode */
+  useEffect(() => {
+    if (!inPremoveMode) {
+      setPremoveFrom(null);
+    }
+  }, [inPremoveMode]);
 
   /* Compute square size whenever the board element resizes */
   useEffect(() => {
@@ -76,8 +94,54 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove }) => {
   const handleClick = useCallback(
     (square: string) => {
       if (status !== 'playing') return;
-      if (promotionPending) return;
+      if (promotionPending || premovePromotionPending) return;
 
+      /* ---------- Premove click mode ---------- */
+      if (inPremoveMode) {
+        const piece = game.get(square as ChessSquare);
+
+        if (premoveFrom) {
+          // Clicked same square → deselect
+          if (premoveFrom === square) {
+            setPremoveFrom(null);
+            dispatch(clearSelection());
+            return;
+          }
+
+          // Clicked another own piece → switch selection
+          if (piece && piece.color === playerColor) {
+            setPremoveFrom(square);
+            dispatch(setSelectedSquare({ square, legalMoves: [] }));
+            return;
+          }
+
+          // Destination click → create premove
+          const srcPiece = game.get(premoveFrom as ChessSquare);
+          if (srcPiece?.type === 'p') {
+            const promoRank = playerColor === 'w' ? '8' : '1';
+            if (square[1] === promoRank) {
+              setPremovePromotionPending({ from: premoveFrom, to: square });
+              setPremoveFrom(null);
+              dispatch(clearSelection());
+              return;
+            }
+          }
+
+          onPremove!(premoveFrom, square);
+          setPremoveFrom(null);
+          dispatch(clearSelection());
+          return;
+        }
+
+        // First click → select own piece for premove
+        if (piece && piece.color === playerColor) {
+          setPremoveFrom(square);
+          dispatch(setSelectedSquare({ square, legalMoves: [] }));
+        }
+        return;
+      }
+
+      /* ---------- Normal click mode ---------- */
       if (selectedSquare && legalMoves.includes(square)) {
         if (isPromotion(game, selectedSquare, square)) {
           dispatch(setPromotionPending({ from: selectedSquare, to: square }));
@@ -96,22 +160,36 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove }) => {
 
       dispatch(clearSelection());
     },
-    [selectedSquare, legalMoves, fen, status, promotionPending, currentTurn, dispatch, onMove, game],
+    [selectedSquare, legalMoves, fen, status, promotionPending, premovePromotionPending, currentTurn, inPremoveMode, premoveFrom, playerColor, dispatch, onMove, onPremove, game],
   );
 
   /* ---- Pointer handlers -------------------------------------------- */
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent, square: string) => {
-      if (status !== 'playing' || promotionPending) return;
+      if (status !== 'playing' || promotionPending || premovePromotionPending) return;
 
       const piece = game.get(square as ChessSquare);
-      const isOwnPiece = piece && piece.color === currentTurn;
 
       // Store origin to detect drag vs click later
       pointerOrigin.current = { x: e.clientX, y: e.clientY };
       isDragging.current = false;
       pendingClickSquare.current = square;
+
+      if (inPremoveMode) {
+        const isOwnPiece = piece && piece.color === playerColor;
+        if (isOwnPiece) {
+          setDragPiece({ color: piece.color as PieceColor, type: piece.type as PieceType });
+          setDragSource(square);
+          setDragLegalMoves([]); // No legal-move hints for premoves
+          setPremoveFrom(square);
+          dispatch(setSelectedSquare({ square, legalMoves: [] }));
+          (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        }
+        return;
+      }
+
+      const isOwnPiece = piece && piece.color === currentTurn;
 
       if (isOwnPiece) {
         // Prepare drag payload (don't start visual drag yet — wait for threshold)
@@ -125,7 +203,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove }) => {
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
       }
     },
-    [fen, status, promotionPending, currentTurn, dispatch, game],
+    [fen, status, promotionPending, premovePromotionPending, currentTurn, inPremoveMode, playerColor, dispatch, game],
   );
 
   const handlePointerMove = useCallback(
@@ -153,16 +231,45 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove }) => {
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
 
       if (isDragging.current && dragSource) {
-        // Complete the drop
         const toSquare = squareAtPoint(e.clientX, e.clientY);
-        if (toSquare && dragLegalMoves.includes(toSquare)) {
-          if (isPromotion(game, dragSource, toSquare)) {
-            dispatch(setPromotionPending({ from: dragSource, to: toSquare }));
-          } else {
-            onMove(dragSource, toSquare);
+
+        if (inPremoveMode) {
+          // Premove drag drop
+          if (toSquare && toSquare !== dragSource) {
+            const srcPiece = game.get(dragSource as ChessSquare);
+            if (srcPiece?.type === 'p') {
+              const promoRank = playerColor === 'w' ? '8' : '1';
+              if (toSquare[1] === promoRank) {
+                setPremovePromotionPending({ from: dragSource, to: toSquare });
+                setPremoveFrom(null);
+                dispatch(clearSelection());
+                // Fall through to reset drag state below
+                setDragSource(null);
+                setDragPiece(null);
+                setDragLegalMoves([]);
+                setDragOverSquare(null);
+                setCursorPos(null);
+                pointerOrigin.current = null;
+                isDragging.current = false;
+                pendingClickSquare.current = null;
+                return;
+              }
+            }
+            onPremove?.(dragSource, toSquare);
           }
-        } else {
+          setPremoveFrom(null);
           dispatch(clearSelection());
+        } else {
+          // Normal drag drop
+          if (toSquare && dragLegalMoves.includes(toSquare)) {
+            if (isPromotion(game, dragSource, toSquare)) {
+              dispatch(setPromotionPending({ from: dragSource, to: toSquare }));
+            } else {
+              onMove(dragSource, toSquare);
+            }
+          } else {
+            dispatch(clearSelection());
+          }
         }
       } else if (pendingClickSquare.current) {
         // It was a click, not a drag
@@ -179,7 +286,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove }) => {
       isDragging.current = false;
       pendingClickSquare.current = null;
     },
-    [dragSource, dragLegalMoves, game, dispatch, onMove, squareAtPoint, handleClick],
+    [dragSource, dragLegalMoves, game, dispatch, onMove, onPremove, squareAtPoint, handleClick, inPremoveMode, playerColor],
   );
 
   /* ---- end pointer handlers --------------------------------------- */
@@ -198,6 +305,34 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove }) => {
     dispatch(setPromotionPending(null));
     dispatch(clearSelection());
   }, [dispatch]);
+
+  /* ---- Premove promotion handlers --------------------------------- */
+  const handlePremovePromotion = useCallback(
+    (piece: string) => {
+      if (premovePromotionPending) {
+        onPremove?.(premovePromotionPending.from, premovePromotionPending.to, piece);
+        setPremovePromotionPending(null);
+      }
+    },
+    [premovePromotionPending, onPremove],
+  );
+
+  const handlePremovePromotionCancel = useCallback(() => {
+    setPremovePromotionPending(null);
+  }, []);
+
+  /* ---- Right-click clears premoves -------------------------------- */
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      if (onClearPremoves && premoveSquares && premoveSquares.size > 0) {
+        e.preventDefault();
+        onClearPremoves();
+        setPremoveFrom(null);
+        dispatch(clearSelection());
+      }
+    },
+    [onClearPremoves, premoveSquares, dispatch],
+  );
 
   // Find king square if in check
   let kingSquare: string | null = null;
@@ -220,6 +355,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove }) => {
       ref={boardRef}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onContextMenu={handleContextMenu}
       sx={{
         position: 'relative',
         width: '100%',
@@ -255,6 +391,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove }) => {
                 isLegalMove={legalMoves.includes(square) || dragLegalMoves.includes(square)}
                 isLastMove={lastMove?.from === square || lastMove?.to === square}
                 isCheck={kingSquare === square}
+                isPremove={premoveSquares?.has(square) ?? false}
                 isDragSource={dragSource === square && isDragging.current}
                 isDragOver={dragOverSquare === square}
                 rankLabel={colIdx === 0 ? ranks[rowIdx] : undefined}
@@ -272,6 +409,15 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove }) => {
           color={currentTurn}
           onSelect={handlePromotion}
           onCancel={handlePromotionCancel}
+        />
+      )}
+
+      {/* Premove Promotion Dialog */}
+      {premovePromotionPending && playerColor && (
+        <PromotionDialog
+          color={playerColor}
+          onSelect={handlePremovePromotion}
+          onCancel={handlePremovePromotionCancel}
         />
       )}
 

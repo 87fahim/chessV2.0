@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -22,6 +22,7 @@ import GameControls from '../../components/chess/GameControls';
 import GameStartCurtain from '../../components/chess/GameStartCurtain';
 import GameEndDialog from '../../components/chess/GameEndDialog';
 import { useChessGame } from '../../hooks/useChessGame';
+import { usePremoveQueue } from '../../hooks/usePremoveQueue';
 import { useAppSelector, useAppDispatch } from '../../hooks/useStore';
 import { saveCurrentGame } from '../savedGames/savedGamesSlice';
 import type { PieceColor } from '../../types/chess';
@@ -51,6 +52,9 @@ const PlayVsComputerPage: React.FC = () => {
   const [showEndDialog, setShowEndDialog] = useState(false);
   const prevStatusRef = useRef(gameState.status);
 
+  /* --- Premove queue ----------------------------------------------- */
+  const { queue: premoveQueue, premoveSquares, addPremove, clearPremoves, processNextPremove } = usePremoveQueue();
+
   // Show curtain when transitioning to 'playing'
   useEffect(() => {
     if (prevStatusRef.current !== 'playing' && gameState.status === 'playing') {
@@ -69,6 +73,44 @@ const PlayVsComputerPage: React.FC = () => {
       setShowEndDialog(true);
     }
   }, [gameState.status]);
+
+  /* --- Premove: clear on game end / new game ----------------------- */
+  useEffect(() => {
+    if (gameState.status !== 'playing') {
+      clearPremoves();
+    }
+  }, [gameState.status, clearPremoves]);
+
+  /* --- Premove: process queue when computer finishes --------------- */
+  const prevFenRef = useRef(gameState.fen);
+  useEffect(() => {
+    if (prevFenRef.current === gameState.fen) return;
+    prevFenRef.current = gameState.fen;
+
+    if (gameState.status !== 'playing') return;
+    if (premoveQueue.length === 0) return;
+
+    const game = new Chess(gameState.fen);
+    const isPlayerTurn =
+      (game.turn() === 'w' && gameState.playerColor === 'w') ||
+      (game.turn() === 'b' && gameState.playerColor === 'b');
+    if (!isPlayerTurn) return;
+
+    const premove = processNextPremove(gameState.fen);
+    if (premove) {
+      handleMove(premove.from, premove.to, premove.promotion);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState.fen]);
+
+  /** Board-facing move handler — clears premoves when user makes a manual move. */
+  const handleMoveAndClearPremoves = useCallback(
+    (from: string, to: string, promotion?: string) => {
+      clearPremoves();
+      handleMove(from, to, promotion);
+    },
+    [clearPremoves, handleMove],
+  );
 
   const handleStartGame = () => {
     startNewGame('vs-computer', selectedColor, selectedDifficulty);
@@ -153,7 +195,13 @@ const PlayVsComputerPage: React.FC = () => {
       >
         <CapturedPieces pieces={gameState.capturedPieces} />
         <Box sx={{ position: 'relative' }}>
-          <ChessBoard onMove={handleMove} />
+          <ChessBoard
+            onMove={handleMoveAndClearPremoves}
+            onPremove={addPremove}
+            onClearPremoves={clearPremoves}
+            premoveSquares={premoveSquares}
+            playerColor={gameState.playerColor}
+          />
           <GameStartCurtain
             visible={showCurtain}
             playerLabel={gameState.playerColor === 'w' ? 'White' : 'Black'}
@@ -163,7 +211,7 @@ const PlayVsComputerPage: React.FC = () => {
         <GameControls
           canUndo={gameState.moves.length > 0 && gameState.status === 'playing'}
           isPlaying={gameState.status === 'playing'}
-          onUndo={handleUndo}
+          onUndo={() => { clearPremoves(); handleUndo(); }}
           onFlip={handleFlip}
           onNewGame={handleNewGame}
           onResign={handleResign}

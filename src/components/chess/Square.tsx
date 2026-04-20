@@ -11,6 +11,7 @@ interface SquareProps {
   isLegalMove: boolean;
   isLastMove: boolean;
   isCheck: boolean;
+  isPremove?: boolean;
   isDragSource: boolean;
   isDragOver: boolean;
   /** Label shown in the top-left (rank number) */
@@ -28,6 +29,7 @@ const Square: React.FC<SquareProps> = ({
   isLegalMove,
   isLastMove,
   isCheck,
+  isPremove,
   isDragSource,
   isDragOver,
   rankLabel,
@@ -37,6 +39,7 @@ const Square: React.FC<SquareProps> = ({
   const getBgColor = () => {
     if (isCheck) return isLight ? '#f7a5a5' : '#e04040';
     if (isSelected) return isLight ? '#829ee0' : '#5d7bc4';
+    if (isPremove) return isLight ? '#aab4d0' : '#7b88a8';
     if (isDragOver && isLegalMove) return isLight ? '#b3d4a5' : '#6aad55';
     if (isLastMove) return isLight ? '#ced26b' : '#a9a238';
     return isLight ? '#ecd8b4' : '#ae7b4e';

@@ -22,6 +22,7 @@ import MoveList from '../components/chess/MoveList';
 import GameStartCurtain from '../components/chess/GameStartCurtain';
 import GameEndDialog from '../components/chess/GameEndDialog';
 import { useSocket } from '../hooks/useSocket';
+import { usePremoveQueue } from '../hooks/usePremoveQueue';
 import { useAppSelector, useAppDispatch } from '../hooks/useStore';
 import { setFen, moveMade, gameOver, setStatus, resetGame, setFlipped, setLastMove } from '../features/game/gameSlice';
 import type { PieceColor, PieceType } from '../types/chess';
@@ -113,6 +114,12 @@ const OnlinePlayPage: React.FC = () => {
   const [showEndDialog, setShowEndDialog] = useState(false);
   const prevStatusRef = useRef(onlineGame.status);
   const [disconnectCountdown, setDisconnectCountdown] = useState<number | null>(null);
+
+  /* --- Premove queue ----------------------------------------------- */
+  const { queue: premoveQueue, premoveSquares, addPremove, clearPremoves, processNextPremove } = usePremoveQueue();
+
+  // Derive player color as PieceColor for ChessBoard
+  const myPieceColor: PieceColor | undefined = onlineGame.yourColor === 'white' ? 'w' : onlineGame.yourColor === 'black' ? 'b' : undefined;
 
   // Disconnect countdown: tick from 60 → 0 when opponent goes offline
   const DISCONNECT_TIMEOUT_S = 60;
@@ -211,7 +218,44 @@ const OnlinePlayPage: React.FC = () => {
     }
   }, [dispatch, onlineGame.result, onlineGame.status, onlineGame.terminationReason]);
 
-  const handleMove = useCallback(
+  /* --- Premove: clear on game end / leave / new game --------------- */
+  useEffect(() => {
+    if (onlineGame.status !== 'active') {
+      clearPremoves();
+    }
+  }, [onlineGame.status, clearPremoves]);
+
+  useEffect(() => {
+    clearPremoves();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onlineGame.gameId]);
+
+  /* --- Premove: process queue when turn arrives -------------------- */
+  const prevFenRef = useRef(onlineGame.fen);
+  useEffect(() => {
+    // Only trigger on FEN changes (opponent moved or server sync)
+    if (prevFenRef.current === onlineGame.fen) return;
+    prevFenRef.current = onlineGame.fen;
+
+    if (onlineGame.status !== 'active' || !onlineGame.gameId) return;
+    if (premoveQueue.length === 0) return;
+
+    const game = new Chess(onlineGame.fen);
+    const isMyTurn =
+      (onlineGame.yourColor === 'white' && game.turn() === 'w') ||
+      (onlineGame.yourColor === 'black' && game.turn() === 'b');
+    if (!isMyTurn) return;
+
+    const premove = processNextPremove(onlineGame.fen);
+    if (premove) {
+      // Execute the premove through the normal move handler
+      handleMoveInternal(premove.from, premove.to, premove.promotion);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onlineGame.fen]);
+
+  /** Raw move handler — executes the move without clearing premoves. */
+  const handleMoveInternal = useCallback(
     (from: string, to: string, promotion?: string) => {
       if (!onlineGame.gameId) return;
 
@@ -240,6 +284,15 @@ const OnlinePlayPage: React.FC = () => {
       sendMove(onlineGame.gameId, { from, to, promotion });
     },
     [dispatch, onlineGame.gameId, onlineGame.fen, onlineGame.yourColor, sendMove],
+  );
+
+  /** Board-facing move handler — clears premoves when user makes a manual move. */
+  const handleMove = useCallback(
+    (from: string, to: string, promotion?: string) => {
+      clearPremoves();
+      handleMoveInternal(from, to, promotion);
+    },
+    [clearPremoves, handleMoveInternal],
   );
 
   const handleResign = () => {
@@ -472,7 +525,13 @@ const OnlinePlayPage: React.FC = () => {
       <Box sx={{ flex: '1 1 auto', minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column', gap: 0.85 }}>
         {renderPlayerStrip(opponentName, opponentCapturedCount, opponentClock, opponentActive, opponentName, false, onlineGame.opponentOnline, disconnectCountdown)}
         <Box sx={{ width: '90%', mx: 'auto', position: 'relative' }}>
-          <ChessBoard onMove={handleMove} />
+          <ChessBoard
+            onMove={handleMove}
+            onPremove={addPremove}
+            onClearPremoves={clearPremoves}
+            premoveSquares={premoveSquares}
+            playerColor={myPieceColor}
+          />
           <GameStartCurtain
             visible={showCurtain}
             playerLabel={onlineGame.yourColor === 'white' ? 'White' : 'Black'}
