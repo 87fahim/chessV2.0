@@ -106,7 +106,7 @@ const ReplayMoveList: React.FC<ReplayMoveListProps> = ({ moves, currentMoveIndex
                 <Box
                   ref={pair.blackIdx === currentMoveIndex ? activeRef : undefined}
                   sx={cellSx(pair.blackIdx)}
-                  onClick={() => onMoveClick(pair.blackIdx)}
+                  onClick={() => onMoveClick(pair.blackIdx!)}
                 >
                   {moves[pair.blackIdx].san}
                 </Box>

@@ -88,12 +88,12 @@ const PlayVsComputerPage: React.FC = () => {
           mode: 'computer',
           whitePlayer: {
             type: isWhite ? 'user' : 'computer',
-            userId: isWhite ? user.id : undefined,
+            userId: isWhite ? user._id : undefined,
             name: isWhite ? user.username : 'Computer',
           },
           blackPlayer: {
             type: isWhite ? 'computer' : 'user',
-            userId: isWhite ? undefined : user.id,
+            userId: isWhite ? undefined : user._id,
             name: isWhite ? 'Computer' : user.username,
           },
           finalFen: gameState.fen,

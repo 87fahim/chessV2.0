@@ -207,7 +207,7 @@ const HistoryPage: React.FC = () => {
               size="small"
               value={filters.dateFrom}
               onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
-              InputLabelProps={{ shrink: true }}
+              slotProps={{ inputLabel: { shrink: true } }}
               sx={{ minWidth: 150 }}
             />
             <TextField
@@ -216,7 +216,7 @@ const HistoryPage: React.FC = () => {
               size="small"
               value={filters.dateTo}
               onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
-              InputLabelProps={{ shrink: true }}
+              slotProps={{ inputLabel: { shrink: true } }}
               sx={{ minWidth: 150 }}
             />
             <Button variant="contained" size="small" onClick={handleApplyFilters}>
