@@ -10,6 +10,7 @@ import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
 import SavedGamesPage from '../pages/SavedGamesPage';
 import HistoryPage from '../pages/HistoryPage';
+import GameReplayPage from '../pages/GameReplayPage';
 import OnlinePlayPage from '../pages/OnlinePlayPage';
 import ProfilePage from '../pages/ProfilePage';
 import SocialPage from '../pages/SocialPage';
@@ -28,7 +29,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/saved-games" element={<SavedGamesPage />} />
         <Route path="/history" element={<HistoryPage />} />
-        <Route path="/history/:id" element={<HistoryPage />} />
+        <Route path="/history/:id" element={<GameReplayPage />} />
         <Route path="/online" element={<OnlinePlayPage />} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/social" element={<ProtectedRoute><SocialPage /></ProtectedRoute>} />

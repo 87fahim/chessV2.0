@@ -8,6 +8,7 @@ export interface HistoryFilter {
   dateFrom?: Date;
   dateTo?: Date;
   color?: 'white' | 'black';
+  opponent?: string;
 }
 
 export async function getUserHistory(
@@ -21,6 +22,7 @@ export async function getUserHistory(
     $or: [
       { 'whitePlayer.userId': userId },
       { 'blackPlayer.userId': userId },
+      { ownerUserId: userId },
     ],
   };
 
@@ -39,6 +41,19 @@ export async function getUserHistory(
     query.$or = [{ 'whitePlayer.userId': userId }];
   } else if (filter?.color === 'black') {
     query.$or = [{ 'blackPlayer.userId': userId }];
+  }
+
+  // Opponent name filter (case-insensitive partial match on whitePlayer.name or blackPlayer.name)
+  if (filter?.opponent) {
+    const opponentRegex = new RegExp(filter.opponent, 'i');
+    query.$and = [
+      {
+        $or: [
+          { 'whitePlayer.name': opponentRegex },
+          { 'blackPlayer.name': opponentRegex },
+        ],
+      },
+    ];
   }
 
   const skip = (page - 1) * limit;

@@ -272,6 +272,51 @@ export async function makeMove(input: MakeMoveInput): Promise<MoveResult> {
   };
 }
 
+export interface CreateCompletedGameInput {
+  mode: 'local' | 'computer' | 'practice';
+  ownerUserId?: string;
+  whitePlayer: CreatePlayerInput;
+  blackPlayer: CreatePlayerInput;
+  initialFen?: string;
+  finalFen: string;
+  moves: Array<{ ply: number; from: string; to: string; san: string; fenAfter: string }>;
+  result: string;
+  terminationReason?: string;
+  difficulty?: string;
+  timeControl?: ITimeControl;
+  label?: string;
+  completedAt?: Date;
+}
+
+export async function createCompletedGame(input: CreateCompletedGameInput): Promise<IGame> {
+  const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+  const game = await Game.create({
+    mode: input.mode,
+    status: GameStatus.COMPLETED,
+    ownerUserId: input.ownerUserId,
+    whitePlayer: input.whitePlayer,
+    blackPlayer: input.blackPlayer,
+    fen: input.finalFen,
+    moves: input.moves.map((m) => ({
+      ply: m.ply,
+      from: m.from,
+      to: m.to,
+      san: m.san,
+      fenAfter: m.fenAfter,
+      movedAt: input.completedAt ?? new Date(),
+    })),
+    result: input.result,
+    terminationReason: input.terminationReason,
+    difficulty: input.difficulty,
+    timeControl: input.timeControl,
+    label: input.label,
+    completedAt: input.completedAt ?? new Date(),
+  });
+
+  return game;
+}
+
 export async function resignGame(gameId: string, userId: string): Promise<IGame> {
   const game = await Game.findById(gameId);
   if (!game) {

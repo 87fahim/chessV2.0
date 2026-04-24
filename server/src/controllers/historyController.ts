@@ -12,6 +12,7 @@ export const getHistory = asyncHandler(async (req: Request, res: Response) => {
   if (req.query.color) filter.color = req.query.color as 'white' | 'black';
   if (req.query.dateFrom) filter.dateFrom = new Date(req.query.dateFrom as string);
   if (req.query.dateTo) filter.dateTo = new Date(req.query.dateTo as string);
+  if (req.query.opponent) filter.opponent = req.query.opponent as string;
 
   const { games, total } = await historyService.getUserHistory(req.user!.userId, filter, page, limit);
 

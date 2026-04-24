@@ -8,6 +8,7 @@ interface GameSliceState {
   fen: string;
   moves: string[];       // SAN move list
   history: string[];     // FEN history for undo
+  moveDetails: Array<{ san: string; from: string; to: string; fenAfter: string }>;
   mode: GameMode;
   playerColor: PieceColor;
   difficulty: Difficulty;
@@ -26,6 +27,7 @@ const initialState: GameSliceState = {
   fen: DEFAULT_FEN,
   moves: [],
   history: [DEFAULT_FEN],
+  moveDetails: [],
   mode: 'vs-computer',
   playerColor: 'w',
   difficulty: 'medium',
@@ -49,6 +51,7 @@ const gameSlice = createSlice({
       state.fen = DEFAULT_FEN;
       state.moves = [];
       state.history = [DEFAULT_FEN];
+      state.moveDetails = [];
       state.mode = mode;
       state.playerColor = playerColor;
       state.difficulty = difficulty;
@@ -72,6 +75,7 @@ const gameSlice = createSlice({
       state.fen = fen;
       state.moves.push(san);
       state.history.push(fen);
+      state.moveDetails.push({ san, from, to, fenAfter: fen });
       state.lastMove = { from, to };
       state.selectedSquare = null;
       state.legalMoves = [];
@@ -104,6 +108,7 @@ const gameSlice = createSlice({
 
       state.history = state.history.slice(0, -actual);
       state.moves = state.moves.slice(0, -actual);
+      state.moveDetails = state.moveDetails.slice(0, -actual);
       state.fen = state.history[state.history.length - 1];
       state.lastMove = null;
       state.selectedSquare = null;
@@ -143,6 +148,7 @@ const gameSlice = createSlice({
       state.fen = action.payload;
       state.moves = [];
       state.history = [action.payload];
+      state.moveDetails = [];
       state.lastMove = null;
       state.selectedSquare = null;
       state.legalMoves = [];
