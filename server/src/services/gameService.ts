@@ -289,8 +289,6 @@ export interface CreateCompletedGameInput {
 }
 
 export async function createCompletedGame(input: CreateCompletedGameInput): Promise<IGame> {
-  const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-
   const game = await Game.create({
     mode: input.mode,
     status: GameStatus.COMPLETED,
