@@ -1,6 +1,7 @@
 import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { Box } from '@mui/material';
 import Piece from './Piece';
+import { BOARD_THEME } from '../../lib/chess/boardTheme';
 import { getBoardSquares, getSquareColor, getPieceImage, FILES, RANKS } from '../../lib/chess/boardUtils';
 import type { PieceColor, PieceType } from '../../types/chess';
 import type { BoardPosition, DragSource, PieceOnBoard } from '../../features/analysis/boardEditorTypes';
@@ -202,9 +203,10 @@ const EditableBoard: React.FC<EditableBoardProps> = ({
           display: 'grid',
           gridTemplateColumns: 'repeat(8, 1fr)',
           gridTemplateRows: 'repeat(8, 1fr)',
-          border: '2px solid #333',
-          borderRadius: '4px',
+          border: BOARD_THEME.border,
+          borderRadius: BOARD_THEME.borderRadius,
           overflow: 'hidden',
+          boxShadow: BOARD_THEME.boxShadow,
         }}
       >
         {boardSquares.map((row, rowIdx) =>
@@ -221,17 +223,15 @@ const EditableBoard: React.FC<EditableBoardProps> = ({
               isDragging.current;
             const isDragOver = dragOverSquare === square;
 
-            const labelColor = isLight
-              ? 'rgba(100,60,30,0.7)'
-              : 'rgba(240,220,190,0.7)';
+            const labelColor = isLight ? BOARD_THEME.labelOnLight : BOARD_THEME.labelOnDark;
 
             let bgColor: string;
             if (isHighlightFrom || isHighlightTo) {
-              bgColor = isLight ? '#acd46b' : '#87a843';
+              bgColor = isLight ? BOARD_THEME.highlightLight : BOARD_THEME.highlightDark;
             } else if (isDragOver) {
-              bgColor = isLight ? '#b3d4a5' : '#6aad55';
+              bgColor = isLight ? BOARD_THEME.dragOverLight : BOARD_THEME.dragOverDark;
             } else {
-              bgColor = isLight ? '#ecd8b4' : '#ae7b4e';
+              bgColor = isLight ? BOARD_THEME.light : BOARD_THEME.dark;
             }
 
             return (

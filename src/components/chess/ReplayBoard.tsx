@@ -2,7 +2,8 @@ import React from 'react';
 import { Box } from '@mui/material';
 import { Chess } from 'chess.js';
 import Piece from './Piece';
-import { getBoardSquares, getSquareColor, getPieceImage, FILES, RANKS } from '../../lib/chess/boardUtils';
+import { BOARD_THEME } from '../../lib/chess/boardTheme';
+import { getBoardSquares, getSquareColor, FILES, RANKS } from '../../lib/chess/boardUtils';
 import type { PieceColor, PieceType } from '../../types/chess';
 
 interface ReplayBoardProps {
@@ -29,10 +30,10 @@ const ReplayBoard: React.FC<ReplayBoardProps> = ({ fen, lastMove, isFlipped = fa
   })();
 
   const getSquareBg = (square: string, isLight: boolean) => {
-    if (square === kingSq) return isLight ? '#f7a5a5' : '#e04040';
+    if (square === kingSq) return isLight ? BOARD_THEME.checkLight : BOARD_THEME.checkDark;
     if (lastMove && (square === lastMove.from || square === lastMove.to))
-      return isLight ? '#ced26b' : '#a9a238';
-    return isLight ? '#ecd8b4' : '#ae7b4e';
+      return isLight ? BOARD_THEME.lastMoveLight : BOARD_THEME.lastMoveDark;
+    return isLight ? BOARD_THEME.light : BOARD_THEME.dark;
   };
 
   return (
@@ -43,9 +44,10 @@ const ReplayBoard: React.FC<ReplayBoardProps> = ({ fen, lastMove, isFlipped = fa
         display: 'grid',
         gridTemplateColumns: 'repeat(8, 1fr)',
         userSelect: 'none',
-        borderRadius: 1,
+        border: BOARD_THEME.border,
+        borderRadius: BOARD_THEME.borderRadius,
         overflow: 'hidden',
-        boxShadow: 3,
+        boxShadow: BOARD_THEME.boxShadow,
       }}
     >
       {boardSquares.flat().map((square) => {
@@ -62,7 +64,7 @@ const ReplayBoard: React.FC<ReplayBoardProps> = ({ fen, lastMove, isFlipped = fa
         const rankLabel = isFirstCol ? square[1] : undefined;
         const fileLabel = isLastRow ? square[0] : undefined;
 
-        const labelColor = isLight ? 'rgba(100,60,30,0.7)' : 'rgba(240,220,190,0.7)';
+        const labelColor = isLight ? BOARD_THEME.labelOnLight : BOARD_THEME.labelOnDark;
 
         return (
           <Box

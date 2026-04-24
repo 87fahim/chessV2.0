@@ -4,6 +4,7 @@ import { Chess } from 'chess.js';
 import type { Square as ChessSquare } from 'chess.js';
 import SquareComponent from './Square';
 import PromotionDialog from './PromotionDialog';
+import { BOARD_THEME } from '../../lib/chess/boardTheme';
 import { getBoardSquares, getSquareColor, getPieceImage, FILES, RANKS } from '../../lib/chess/boardUtils';
 import { getLegalMoves, isPromotion } from '../../lib/chess/moveUtils';
 import { useAppSelector, useAppDispatch } from '../../hooks/useStore';
@@ -423,7 +424,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
       sx={{
         position: 'relative',
         width: '100%',
-        maxWidth: { xs: '100%', lg: 800 },
+        maxWidth: { xs: '100%', lg: 700 },
         mx: 0,
         userSelect: 'none',
       }}
@@ -433,9 +434,10 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
           display: 'grid',
           gridTemplateColumns: 'repeat(8, 1fr)',
           gridTemplateRows: 'repeat(8, 1fr)',
-          border: '2px solid #333',
-          borderRadius: '4px',
+          border: BOARD_THEME.border,
+          borderRadius: BOARD_THEME.borderRadius,
           overflow: 'hidden',
+          boxShadow: BOARD_THEME.boxShadow,
         }}
       >
         {boardSquares.map((row, rowIdx) =>

@@ -31,6 +31,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import CheckIcon from '@mui/icons-material/Check';
 import CancelIcon from '@mui/icons-material/Cancel';
 import EditableBoard from '../../components/chess/EditableBoard';
+import BoardLayout from '../../components/chess/BoardLayout';
 import { useBoardEditor } from './useBoardEditor';
 import type { PieceColor } from '../../types/chess';
 import type { CastlingRights } from './boardEditorTypes';
@@ -107,108 +108,54 @@ const AnalysisPage: React.FC = () => {
 
   return (
   <>
-    <Box
-      sx={{
-        display: 'flex',
-        gap: { xs: 1.5, lg: 3 },
-        p: { xs: 1, lg: 2 },
-        height: '100%',
-        flexDirection: { xs: 'column', lg: 'row' },
-        justifyContent: 'flex-start',
-        alignItems: { xs: 'stretch', lg: 'flex-start' },
-        overflow: 'auto',
-      }}
-    >
-      {/* Left: Board area */}
-      <Box
-        sx={{
-          flex: { xs: '1 1 auto', lg: '0 0 auto' },
-          minWidth: 0,
-          width: { xs: '100%', lg: 'auto' },
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: { xs: 'flex-start', lg: 'flex-start' },
-          gap: 1,
-          '@media (max-width:1023.95px)': {
-            px: '80px',
-            boxSizing: 'border-box',
-          },
-          
-        }}
-      >
-        <Box
-          sx={{
-            width: '100%',
-            maxWidth: '100%',
-            mx: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: { xs: 'stretch', lg: 'left' },
-          }}
-        >
-          <EditableBoard
-            position={editor.position}
-            isFlipped={editor.isFlipped}
-            highlightSquares={editor.highlightSquares}
-            onDrop={editor.handleDrop}
-          />
-
-          {/* Board action buttons */}
-          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-            <Tooltip title="Flip Board">
-              <IconButton onClick={editor.flipBoard} size="small">
-                <SwapVertIcon />
+    <BoardLayout
+      panelWidth={360}
+      board={<>
+        <EditableBoard
+          position={editor.position}
+          isFlipped={editor.isFlipped}
+          highlightSquares={editor.highlightSquares}
+          onDrop={editor.handleDrop}
+        />
+        {/* Board action buttons */}
+        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+          <Tooltip title="Flip Board">
+            <IconButton onClick={editor.flipBoard} size="small">
+              <SwapVertIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Undo">
+            <span>
+              <IconButton onClick={editor.undo} size="small" disabled={!editor.canUndo}>
+                <UndoIcon />
               </IconButton>
-            </Tooltip>
-            <Tooltip title="Undo">
-              <span>
-                <IconButton onClick={editor.undo} size="small" disabled={!editor.canUndo}>
-                  <UndoIcon />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="Redo">
-              <span>
-                <IconButton onClick={editor.redo} size="small" disabled={!editor.canRedo}>
-                  <RedoIcon />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="Reset to Starting Position">
-              <IconButton onClick={editor.resetToStart} size="small">
-                <RestartAltIcon />
+            </span>
+          </Tooltip>
+          <Tooltip title="Redo">
+            <span>
+              <IconButton onClick={editor.redo} size="small" disabled={!editor.canRedo}>
+                <RedoIcon />
               </IconButton>
-            </Tooltip>
-            <Tooltip title="Clear Board">
-              <IconButton onClick={editor.clearBoard} size="small">
-                <DeleteOutlinedIcon />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Keep Kings Only">
-              <IconButton onClick={editor.keepKingsOnly} size="small" sx={{ fontSize: '1.1rem' }}>
-                ♚
-              </IconButton>
-            </Tooltip>
-          </Box>
+            </span>
+          </Tooltip>
+          <Tooltip title="Reset to Starting Position">
+            <IconButton onClick={editor.resetToStart} size="small">
+              <RestartAltIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Clear Board">
+            <IconButton onClick={editor.clearBoard} size="small">
+              <DeleteOutlinedIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Keep Kings Only">
+            <IconButton onClick={editor.keepKingsOnly} size="small" sx={{ fontSize: '1.1rem' }}>
+              ♚
+            </IconButton>
+          </Tooltip>
         </Box>
-      </Box>
-
-      {/* Right: Controls panel */}
-      <Box
-        sx={{
-          flex: { xs: '1 1 auto', lg: '0 0 360px' },
-          width: { xs: '100%', lg: 360 },
-          maxWidth: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 1,
-          pb: 2,
-          alignSelf: { lg: 'flex-start' },
-          maxHeight: { lg: 'calc(100vh - 32px)' },
-          overflowY: { lg: 'auto' },
-          pr: { lg: 0.5 },
-        }}
-      >
+      </>}
+      panel={<>
         {/* FEN Display & Load */}
         <Paper elevation={2} sx={{ p: 1.25 }}>
           <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
@@ -559,8 +506,8 @@ const AnalysisPage: React.FC = () => {
           </Paper>
         )}
 
-      </Box>
-    </Box>
+      </>}
+    />
 
     {/* Save Position Dialog */}
     <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)} maxWidth="xs" fullWidth>

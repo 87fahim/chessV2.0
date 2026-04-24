@@ -21,6 +21,7 @@ import ChessBoard from '../components/chess/ChessBoard';
 import MoveList from '../components/chess/MoveList';
 import GameStartCurtain from '../components/chess/GameStartCurtain';
 import GameEndDialog from '../components/chess/GameEndDialog';
+import BoardLayout from '../components/chess/BoardLayout';
 import { useSocket } from '../hooks/useSocket';
 import { usePremoveQueue } from '../hooks/usePremoveQueue';
 import { useAppSelector, useAppDispatch } from '../hooks/useStore';
@@ -511,118 +512,109 @@ const OnlinePlayPage: React.FC = () => {
   };
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        gap: { xs: 1.25, lg: 2 },
-        p: { xs: 1, lg: 2 },
-        height: '100%',
-        flexDirection: { xs: 'column', lg: 'row' },
-        alignItems: 'stretch',
-      }}
-    >
-      {/* Board */}
-      <Box sx={{ flex: '1 1 auto', minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column', gap: 0.85 }}>
-        {renderPlayerStrip(opponentName, opponentCapturedCount, opponentClock, opponentActive, opponentName, false, onlineGame.opponentOnline, disconnectCountdown)}
-        <Box sx={{ width: '90%', mx: 'auto', position: 'relative' }}>
-          <ChessBoard
-            onMove={handleMove}
-            onPremove={addPremove}
-            onClearPremoves={clearPremoves}
-            premoveQueue={premoveQueue}
-            premoveSquares={premoveSquares}
-            playerColor={myPieceColor}
-          />
-          <GameStartCurtain
-            visible={showCurtain}
-            playerLabel={onlineGame.yourColor === 'white' ? 'White' : 'Black'}
-            subtitle={`vs ${opponentName}`}
-          />
-        </Box>
-        {renderPlayerStrip(yourName, yourCapturedCount, yourClock, youActive, yourName, true)}
-      </Box>
-
-      {/* Side Panel */}
-      <Box sx={{ flex: { xs: '1 1 auto', lg: '0 1 380px' }, width: { xs: '100%', lg: 380 }, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-        {/* Status */}
-        <Paper elevation={2} sx={{ p: 2 }}>
-          <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
-            Status
-          </Typography>
-          {gameEnded ? (
-            <Typography variant="h6" sx={{ fontWeight: 800 }} color="primary">
-              {resultText()}
-            </Typography>
-          ) : (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <Chip
-                label={isYourTurn ? 'Your turn' : "Opponent's turn"}
-                color={isYourTurn ? 'success' : 'default'}
-                size="small"
-              />
-              {!isConnected && (
-                <Chip label="Reconnecting..." color="warning" size="small" variant="outlined" />
-              )}
-            </Box>
-          )}
-
-          {/* Abort / disconnect / inactivity warning */}
-          {onlineGame.abortWarning && !gameEnded && (
-            <Alert severity="warning" sx={{ mt: 1 }}>
-              {onlineGame.abortWarning.reason === 'inactivity'
-                ? `You must move within ${onlineGame.abortWarning.secondsLeft}s or you will lose!`
-                : `Opponent disconnected — game will end in ${onlineGame.abortWarning.secondsLeft}s if they don't return.`}
-            </Alert>
-          )}
-
-          {error && <Alert severity="error" sx={{ mt: 1 }} onClose={clearError}>{error}</Alert>}
-        </Paper>
-
-        {/* Draw offer banner */}
-        {drawOffered && !gameEnded && (
+    <>
+      <BoardLayout
+        panelWidth={380}
+        board={<>
+          {renderPlayerStrip(opponentName, opponentCapturedCount, opponentClock, opponentActive, opponentName, false, onlineGame.opponentOnline, disconnectCountdown)}
+          <Box sx={{ position: 'relative' }}>
+            <ChessBoard
+              onMove={handleMove}
+              onPremove={addPremove}
+              onClearPremoves={clearPremoves}
+              premoveQueue={premoveQueue}
+              premoveSquares={premoveSquares}
+              playerColor={myPieceColor}
+            />
+            <GameStartCurtain
+              visible={showCurtain}
+              playerLabel={onlineGame.yourColor === 'white' ? 'White' : 'Black'}
+              subtitle={`vs ${opponentName}`}
+            />
+          </Box>
+          {renderPlayerStrip(yourName, yourCapturedCount, yourClock, youActive, yourName, true)}
+        </>}
+        panel={<>
+          {/* Status */}
           <Paper elevation={2} sx={{ p: 2 }}>
-            <Typography variant="body2" sx={{ mb: 1 }}>Your opponent offers a draw</Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button size="small" variant="contained" onClick={() => onlineGame.gameId && acceptDraw(onlineGame.gameId)}>
-                Accept
-              </Button>
-              <Button size="small" variant="outlined" onClick={() => onlineGame.gameId && declineDraw(onlineGame.gameId)}>
-                Decline
-              </Button>
-            </Box>
+            <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700 }}>
+              Status
+            </Typography>
+            {gameEnded ? (
+              <Typography variant="h6" sx={{ fontWeight: 800 }} color="primary">
+                {resultText()}
+              </Typography>
+            ) : (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                <Chip
+                  label={isYourTurn ? 'Your turn' : "Opponent's turn"}
+                  color={isYourTurn ? 'success' : 'default'}
+                  size="small"
+                />
+                {!isConnected && (
+                  <Chip label="Reconnecting..." color="warning" size="small" variant="outlined" />
+                )}
+              </Box>
+            )}
+
+            {/* Abort / disconnect / inactivity warning */}
+            {onlineGame.abortWarning && !gameEnded && (
+              <Alert severity="warning" sx={{ mt: 1 }}>
+                {onlineGame.abortWarning.reason === 'inactivity'
+                  ? `You must move within ${onlineGame.abortWarning.secondsLeft}s or you will lose!`
+                  : `Opponent disconnected — game will end in ${onlineGame.abortWarning.secondsLeft}s if they don't return.`}
+              </Alert>
+            )}
+
+            {error && <Alert severity="error" sx={{ mt: 1 }} onClose={clearError}>{error}</Alert>}
           </Paper>
-        )}
 
-        <MoveList moves={onlineGame.moves.map((m) => m.san)} />
+          {/* Draw offer banner */}
+          {drawOffered && !gameEnded && (
+            <Paper elevation={2} sx={{ p: 2 }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>Your opponent offers a draw</Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button size="small" variant="contained" onClick={() => onlineGame.gameId && acceptDraw(onlineGame.gameId)}>
+                  Accept
+                </Button>
+                <Button size="small" variant="outlined" onClick={() => onlineGame.gameId && declineDraw(onlineGame.gameId)}>
+                  Decline
+                </Button>
+              </Box>
+            </Paper>
+          )}
 
-        {/* Controls */}
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          {!gameEnded && (
-            <>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => onlineGame.gameId && offerDraw(onlineGame.gameId)}
-              >
-                Offer Draw
+          <MoveList moves={onlineGame.moves.map((m) => m.san)} />
+
+          {/* Controls */}
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            {!gameEnded && (
+              <>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => onlineGame.gameId && offerDraw(onlineGame.gameId)}
+                >
+                  Offer Draw
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  size="small"
+                  onClick={() => setShowResignDialog(true)}
+                >
+                  Resign
+                </Button>
+              </>
+            )}
+            {gameEnded && (
+              <Button variant="contained" onClick={handleNewGame}>
+                New Game
               </Button>
-              <Button
-                variant="outlined"
-                color="error"
-                size="small"
-                onClick={() => setShowResignDialog(true)}
-              >
-                Resign
-              </Button>
-            </>
-          )}
-          {gameEnded && (
-            <Button variant="contained" onClick={handleNewGame}>
-              New Game
-            </Button>
-          )}
-        </Box>
-      </Box>
+            )}
+          </Box>
+        </>}
+      />
 
       {/* Resign confirmation */}
       <Dialog open={showResignDialog} onClose={() => setShowResignDialog(false)}>
@@ -667,7 +659,7 @@ const OnlinePlayPage: React.FC = () => {
         }}
         onClose={() => setShowEndDialog(false)}
       />
-    </Box>
+    </>
   );
 };
 

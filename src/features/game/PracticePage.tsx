@@ -5,6 +5,7 @@ import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import SwapVertIcon from '@mui/icons-material/SwapVert';
 import { Chess } from 'chess.js';
 import ChessBoard from '../../components/chess/ChessBoard';
+import BoardLayout from '../../components/chess/BoardLayout';
 import { useAppDispatch, useAppSelector } from '../../hooks/useStore';
 import { loadPosition, flipBoard, moveMade } from '../../features/game/gameSlice';
 import { DEFAULT_FEN, isValidFen } from '../../lib/chess/fen';
@@ -72,29 +73,9 @@ const PracticePage: React.FC = () => {
   );
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        gap: { xs: 1.5, lg: 3 },
-        p: { xs: 1, lg: 2 },
-        height: '100%',
-        flexDirection: { xs: 'column', lg: 'row' },
-      }}
-    >
-      <Box
-        sx={{
-          flex: '1 1 auto',
-          minWidth: 0,
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 1,
-          '@media (max-width:1023.95px)': {
-            px: '80px',
-            boxSizing: 'border-box',
-          },
-        }}
-      >
+    <BoardLayout
+      panelWidth={420}
+      board={<>
         <ChessBoard onMove={handleMove} />
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Tooltip title="Flip Board">
@@ -108,18 +89,8 @@ const PracticePage: React.FC = () => {
             </IconButton>
           </Tooltip>
         </Box>
-      </Box>
-
-      <Box
-        sx={{
-          flex: { xs: '1 1 auto', lg: '0 1 420px' },
-          width: { xs: '100%', lg: 420 },
-          maxWidth: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-        }}
-      >
+      </>}
+      panel={<>
         <Paper elevation={2} sx={{ p: 2 }}>
           <Typography variant="subtitle2" gutterBottom sx={{ fontSize: { xs: '0.95rem', lg: '1.2rem' }, fontWeight: 600 }}>
             FEN Position
@@ -157,10 +128,9 @@ const PracticePage: React.FC = () => {
             Both sides can be played.
           </Typography>
         </Paper>
-      </Box>
-    </Box>
+      </>}
+    />
   );
-
 };
 
 export default PracticePage;

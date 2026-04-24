@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box } from '@mui/material';
 import Piece from './Piece';
+import { BOARD_THEME } from '../../lib/chess/boardTheme';
 import type { PieceColor, PieceType } from '../../types/chess';
 
 interface SquareProps {
@@ -37,15 +38,15 @@ const Square: React.FC<SquareProps> = ({
   onPointerDown,
 }) => {
   const getBgColor = () => {
-    if (isCheck) return isLight ? '#f7a5a5' : '#e04040';
-    if (isSelected) return isLight ? '#829ee0' : '#5d7bc4';
-    if (isPremove) return isLight ? '#aab4d0' : '#7b88a8';
-    if (isDragOver && isLegalMove) return isLight ? '#b3d4a5' : '#6aad55';
-    if (isLastMove) return isLight ? '#ced26b' : '#a9a238';
-    return isLight ? '#ecd8b4' : '#ae7b4e';
+    if (isCheck) return isLight ? BOARD_THEME.checkLight : BOARD_THEME.checkDark;
+    if (isSelected) return isLight ? BOARD_THEME.selectedLight : BOARD_THEME.selectedDark;
+    if (isPremove) return isLight ? BOARD_THEME.premoveLight : BOARD_THEME.premoveDark;
+    if (isDragOver && isLegalMove) return isLight ? BOARD_THEME.dragOverLight : BOARD_THEME.dragOverDark;
+    if (isLastMove) return isLight ? BOARD_THEME.lastMoveLight : BOARD_THEME.lastMoveDark;
+    return isLight ? BOARD_THEME.light : BOARD_THEME.dark;
   };
 
-  const labelColor = isLight ? 'rgba(100,60,30,0.7)' : 'rgba(240,220,190,0.7)';
+  const labelColor = isLight ? BOARD_THEME.labelOnLight : BOARD_THEME.labelOnDark;
 
   return (
     <Box

@@ -23,6 +23,7 @@ import GameStartCurtain from '../../components/chess/GameStartCurtain';
 import GameEndDialog from '../../components/chess/GameEndDialog';
 import { useChessGame } from '../../hooks/useChessGame';
 import { usePremoveQueue } from '../../hooks/usePremoveQueue';
+import BoardLayout from '../../components/chess/BoardLayout';
 import { useAppSelector, useAppDispatch } from '../../hooks/useStore';
 import { saveCurrentGame, autoSaveGame } from '../savedGames/savedGamesSlice';
 import type { PieceColor } from '../../types/chess';
@@ -210,120 +211,88 @@ const PlayVsComputerPage: React.FC = () => {
   };
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        gap: { xs: 1.5, lg: 3 },
-        p: { xs: 1, lg: 2 },
-        height: '100%',
-        flexDirection: { xs: 'column', lg: 'row' },
-        alignItems: 'stretch',
-      }}
-    >
-      {/* Board Area */}
-      <Box
-        sx={{
-          flex: '1 1 auto',
-          minWidth: 0,
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 1,
-          '@media (max-width:1023.95px)': {
-            px: '80px',
-            boxSizing: 'border-box',
-          },
-        }}
-      >
-        <CapturedPieces pieces={gameState.capturedPieces} />
-        <Box sx={{ position: 'relative' }}>
-          <ChessBoard
-            onMove={handleMoveAndClearPremoves}
-            onPremove={addPremove}
-            onClearPremoves={clearPremoves}
-            premoveQueue={premoveQueue}
-            premoveSquares={premoveSquares}
-            playerColor={gameState.playerColor}
+    <>
+      <BoardLayout
+        panelWidth={420}
+        board={<>
+          <CapturedPieces pieces={gameState.capturedPieces} />
+          <Box sx={{ position: 'relative' }}>
+            <ChessBoard
+              onMove={handleMoveAndClearPremoves}
+              onPremove={addPremove}
+              onClearPremoves={clearPremoves}
+              premoveQueue={premoveQueue}
+              premoveSquares={premoveSquares}
+              playerColor={gameState.playerColor}
+            />
+            <GameStartCurtain
+              visible={showCurtain}
+              playerLabel={gameState.playerColor === 'w' ? 'White' : 'Black'}
+              subtitle={`vs Computer (${gameState.difficulty.charAt(0).toUpperCase() + gameState.difficulty.slice(1)})`}
+            />
+          </Box>
+          <GameControls
+            canUndo={gameState.moves.length > 0 && gameState.status === 'playing'}
+            isPlaying={gameState.status === 'playing'}
+            onUndo={() => { clearPremoves(); handleUndo(); }}
+            onFlip={handleFlip}
+            onNewGame={handleNewGame}
+            onResign={handleResign}
           />
-          <GameStartCurtain
-            visible={showCurtain}
-            playerLabel={gameState.playerColor === 'w' ? 'White' : 'Black'}
-            subtitle={`vs Computer (${gameState.difficulty.charAt(0).toUpperCase() + gameState.difficulty.slice(1)})`}
-          />
-        </Box>
-        <GameControls
-          canUndo={gameState.moves.length > 0 && gameState.status === 'playing'}
-          isPlaying={gameState.status === 'playing'}
-          onUndo={() => { clearPremoves(); handleUndo(); }}
-          onFlip={handleFlip}
-          onNewGame={handleNewGame}
-          onResign={handleResign}
-        />
-        {isAuthenticated && gameState.moves.length > 0 && (
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<SaveIcon />}
-            onClick={handleSaveGame}
-            sx={{ mt: 0.5, alignSelf: 'flex-start' }}
-          >
-            Save Game
-          </Button>
-        )}
-      </Box>
-
-      {/* Side Panel */}
-      <Box
-        sx={{
-          flex: { xs: '1 1 auto', lg: '0 1 420px' },
-          width: { xs: '100%', lg: 420 },
-          maxWidth: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-          minHeight: { xs: 'auto', lg: 300 },
-        }}
-      >
-        {/* Status */}
-        <Paper elevation={2} sx={{ p: 2 }}>
-          <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: { xs: '0.95rem', lg: '1.28rem' }, fontWeight: 700 }}>
-            Status
-          </Typography>
-          {gameState.status === 'finished' ? (
-            <Typography variant="h6" sx={{ fontWeight: 800, fontSize: { xs: '1.25rem', lg: '2.15rem' }, lineHeight: 1.1 }} color="primary">
-              {resultText()}
-            </Typography>
-          ) : gameState.status === 'playing' ? (
-            <Typography variant="body2" sx={{ fontSize: { xs: '0.95rem', lg: '1.2rem' } }}>
-              {new Chess(gameState.fen).turn() === gameState.playerColor
-                ? 'Your turn'
-                : isComputerThinking
-                  ? 'Computer thinking...'
-                  : "Computer's turn"}
-            </Typography>
-          ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.95rem', lg: '1.2rem' } }}>
-              Start a new game
-            </Typography>
-          )}
-
-          {engineError && (
-            <Alert
-              severity="error"
-              sx={{ mt: 1.5 }}
-              action={
-                <Button color="inherit" size="small" onClick={retryComputerMove}>
-                  Retry
-                </Button>
-              }
+          {isAuthenticated && gameState.moves.length > 0 && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<SaveIcon />}
+              onClick={handleSaveGame}
+              sx={{ mt: 0.5, alignSelf: 'flex-start' }}
             >
-              {engineError}
-            </Alert>
+              Save Game
+            </Button>
           )}
-        </Paper>
+        </>}
+        panel={<>
+          {/* Status */}
+          <Paper elevation={2} sx={{ p: 2 }}>
+            <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: { xs: '0.95rem', lg: '1.28rem' }, fontWeight: 700 }}>
+              Status
+            </Typography>
+            {gameState.status === 'finished' ? (
+              <Typography variant="h6" sx={{ fontWeight: 800, fontSize: { xs: '1.25rem', lg: '2.15rem' }, lineHeight: 1.1 }} color="primary">
+                {resultText()}
+              </Typography>
+            ) : gameState.status === 'playing' ? (
+              <Typography variant="body2" sx={{ fontSize: { xs: '0.95rem', lg: '1.2rem' } }}>
+                {new Chess(gameState.fen).turn() === gameState.playerColor
+                  ? 'Your turn'
+                  : isComputerThinking
+                    ? 'Computer thinking...'
+                    : "Computer's turn"}
+              </Typography>
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.95rem', lg: '1.2rem' } }}>
+                Start a new game
+              </Typography>
+            )}
 
-        <MoveList moves={gameState.moves} />
-      </Box>
+            {engineError && (
+              <Alert
+                severity="error"
+                sx={{ mt: 1.5 }}
+                action={
+                  <Button color="inherit" size="small" onClick={retryComputerMove}>
+                    Retry
+                  </Button>
+                }
+              >
+                {engineError}
+              </Alert>
+            )}
+          </Paper>
+
+          <MoveList moves={gameState.moves} />
+        </>}
+      />
 
       {/* New Game Dialog */}
       <Dialog open={showNewGameDialog} onClose={() => gameState.status !== 'idle' && setShowNewGameDialog(false)}>
@@ -384,7 +353,7 @@ const PlayVsComputerPage: React.FC = () => {
         onNewGame={handleNewGame}
         onClose={() => setShowEndDialog(false)}
       />
-    </Box>
+    </>
   );
 };
 

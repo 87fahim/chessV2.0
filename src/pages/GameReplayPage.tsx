@@ -27,6 +27,7 @@ import { fetchHistoryGame, clearCurrentGame } from '../features/savedGames/saved
 import ReplayBoard from '../components/chess/ReplayBoard';
 import ReplayMoveList from '../components/chess/ReplayMoveList';
 import { type ReplaySpeed } from '../components/chess/ReplayControls';
+import BoardLayout from '../components/chess/BoardLayout';
 
 const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -219,29 +220,9 @@ const GameReplayPage: React.FC = () => {
   const atEnd = moveIndex === totalMoves - 1;
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        gap: { xs: 1.5, lg: 3 },
-        p: { xs: 1, lg: 2 },
-        height: '100%',
-        flexDirection: { xs: 'column', lg: 'row' },
-        alignItems: 'stretch',
-      }}
-    >
-      {/* ── Board Area ── */}
-      <Box
-        sx={{
-          flex: '1 1 auto',
-          minWidth: 0,
-          maxWidth: 'min(100%, calc(100vh - 180px))',
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 1,
-          '@media (max-width:1023.95px)': { px: '80px', boxSizing: 'border-box', maxWidth: '100%' },
-        }}
-      >
+    <BoardLayout
+      panelWidth={420}
+      board={<>
         <ReplayBoard fen={currentFen} lastMove={lastMove} isFlipped={isFlipped} />
 
         {/* Controls row — mirrors GameControls position in VS Computer */}
@@ -329,20 +310,8 @@ const GameReplayPage: React.FC = () => {
         <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
           ← → arrow keys · Space to play/pause
         </Typography>
-      </Box>
-
-      {/* ── Side Panel ── */}
-      <Box
-        sx={{
-          flex: { xs: '1 1 auto', lg: '0 1 420px' },
-          width: { xs: '100%', lg: 420 },
-          maxWidth: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2,
-          minHeight: { xs: 'auto', lg: 300 },
-        }}
-      >
+      </>}
+      panel={<>
         {/* Status card */}
         <Paper elevation={2} sx={{ p: 2 }}>
           <Typography
@@ -395,8 +364,8 @@ const GameReplayPage: React.FC = () => {
           currentMoveIndex={moveIndex}
           onMoveClick={handleMoveClick}
         />
-      </Box>
-    </Box>
+      </>}
+    />
   );
 };
 
