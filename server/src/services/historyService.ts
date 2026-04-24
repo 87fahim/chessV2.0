@@ -22,6 +22,7 @@ export async function getUserHistory(
     $or: [
       { 'whitePlayer.userId': userId },
       { 'blackPlayer.userId': userId },
+      { ownerUserId: userId },
     ],
   };
 

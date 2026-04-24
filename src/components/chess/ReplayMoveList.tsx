@@ -68,7 +68,14 @@ const ReplayMoveList: React.FC<ReplayMoveListProps> = ({ moves, currentMoveIndex
           pairs.map((pair) => (
             <Box
               key={pair.number}
-              sx={{ display: 'flex', alignItems: 'center', gap: 0.25, py: 0.15 }}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.25,
+                py: 0.15,
+                bgcolor: pair.number % 2 === 0 ? 'action.hover' : 'transparent',
+                borderRadius: 0.5,
+              }}
             >
               {/* Move number */}
               <Box

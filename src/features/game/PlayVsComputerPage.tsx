@@ -24,7 +24,7 @@ import GameEndDialog from '../../components/chess/GameEndDialog';
 import { useChessGame } from '../../hooks/useChessGame';
 import { usePremoveQueue } from '../../hooks/usePremoveQueue';
 import { useAppSelector, useAppDispatch } from '../../hooks/useStore';
-import { saveCurrentGame } from '../savedGames/savedGamesSlice';
+import { saveCurrentGame, autoSaveGame } from '../savedGames/savedGamesSlice';
 import type { PieceColor } from '../../types/chess';
 import type { Difficulty } from '../../types/game';
 
@@ -51,6 +51,8 @@ const PlayVsComputerPage: React.FC = () => {
   const [showCurtain, setShowCurtain] = useState(false);
   const [showEndDialog, setShowEndDialog] = useState(false);
   const prevStatusRef = useRef(gameState.status);
+  const autoSavedRef = useRef(false);
+  const gameStartedAtRef = useRef<string | null>(null);
 
   /* --- Premove queue ----------------------------------------------- */
   const { queue: premoveQueue, premoveSquares, addPremove, clearPremoves, processNextPremove } = usePremoveQueue();
@@ -60,10 +62,50 @@ const PlayVsComputerPage: React.FC = () => {
     if (prevStatusRef.current !== 'playing' && gameState.status === 'playing') {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional status-driven transition
       setShowCurtain(true);
+      gameStartedAtRef.current = new Date().toISOString();
+      autoSavedRef.current = false;
       const timer = setTimeout(() => setShowCurtain(false), 1500);
       return () => clearTimeout(timer);
     }
     prevStatusRef.current = gameState.status;
+  }, [gameState.status]);
+
+  // Auto-save completed computer games to history
+  useEffect(() => {
+    if (
+      gameState.status === 'finished' &&
+      isAuthenticated &&
+      user &&
+      !autoSavedRef.current &&
+      gameState.moveDetails.length > 0 &&
+      gameState.result
+    ) {
+      autoSavedRef.current = true;
+      const isWhite = gameState.playerColor === 'w';
+      dispatch(
+        autoSaveGame({
+          mode: 'computer',
+          whitePlayer: {
+            type: isWhite ? 'user' : 'computer',
+            userId: isWhite ? user.id : undefined,
+            name: isWhite ? user.username : 'Computer',
+          },
+          blackPlayer: {
+            type: isWhite ? 'computer' : 'user',
+            userId: isWhite ? undefined : user.id,
+            name: isWhite ? 'Computer' : user.username,
+          },
+          finalFen: gameState.fen,
+          moves: gameState.moveDetails.map((m, i) => ({ ply: i + 1, ...m })),
+          result: gameState.result,
+          terminationReason: gameState.terminationReason ?? undefined,
+          difficulty: gameState.difficulty,
+          startedAt: gameStartedAtRef.current ?? undefined,
+          endedAt: new Date().toISOString(),
+        }),
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState.status]);
 
   // Show end dialog when game finishes

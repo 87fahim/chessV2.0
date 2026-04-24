@@ -78,7 +78,7 @@ const gameSchema = new Schema<IGame>(
     mode: {
       type: String,
       required: true,
-      enum: ['local', 'computer', 'analysis', 'online'],
+      enum: ['local', 'computer', 'analysis', 'online', 'practice'],
     },
     status: {
       type: String,

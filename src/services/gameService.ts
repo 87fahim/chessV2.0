@@ -10,9 +10,26 @@ export interface CreateGameInput {
   label?: string;
 }
 
+export interface SaveCompletedGameInput {
+  mode: 'local' | 'computer' | 'practice';
+  whitePlayer: { type: string; userId?: string; name: string };
+  blackPlayer: { type: string; userId?: string; name: string };
+  initialFen?: string;
+  finalFen: string;
+  moves: Array<{ ply: number; from: string; to: string; san: string; fenAfter: string }>;
+  result: string;
+  terminationReason?: string;
+  difficulty?: string;
+  timeControl?: { initialMs: number; incrementMs: number };
+  label?: string;
+  startedAt?: string;
+  endedAt?: string;
+}
+
 export const gameApi = {
   list: (status?: string) => api.get('/games', { params: status ? { status } : {} }),
   create: (data: CreateGameInput) => api.post('/games', data),
+  saveCompleted: (data: SaveCompletedGameInput) => api.post('/games/save-completed', data),
   get: (id: string) => api.get(`/games/${id}`),
   update: (id: string, data: Record<string, unknown>) => api.put(`/games/${id}`, data),
   delete: (id: string) => api.delete(`/games/${id}`),

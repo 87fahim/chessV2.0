@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { gameApi, historyApi } from '../../services/gameService';
+import { gameApi, historyApi, type SaveCompletedGameInput } from '../../services/gameService';
 
 interface GameRecord {
   _id: string;
@@ -85,6 +85,18 @@ export const deleteSavedGame = createAsyncThunk('savedGames/delete', async (id: 
     return rejectWithValue('Failed to delete game');
   }
 });
+
+export const autoSaveGame = createAsyncThunk(
+  'savedGames/autoSave',
+  async (input: SaveCompletedGameInput, { rejectWithValue }) => {
+    try {
+      const { data } = await gameApi.saveCompleted(input);
+      return data.data.game as GameRecord;
+    } catch {
+      return rejectWithValue('Failed to auto-save game');
+    }
+  },
+);
 
 export const fetchHistory = createAsyncThunk(
   'savedGames/fetchHistory',

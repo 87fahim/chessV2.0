@@ -35,6 +35,51 @@ const updateGameSchema = z.object({
   label: z.string().max(100).optional(),
 });
 
+const playerInfoSchema = z.object({
+  type: z.enum(['user', 'guest', 'computer']),
+  userId: z.string().optional(),
+  name: z.string(),
+});
+
+const saveCompletedGameSchema = z.object({
+  mode: z.enum(['local', 'computer', 'practice']),
+  whitePlayer: playerInfoSchema,
+  blackPlayer: playerInfoSchema,
+  initialFen: z.string().optional(),
+  finalFen: z.string().min(1),
+  moves: z
+    .array(
+      z.object({
+        ply: z.number().int().positive(),
+        from: z.string().min(2).max(2),
+        to: z.string().min(2).max(2),
+        san: z.string().min(1),
+        fenAfter: z.string().min(1),
+      })
+    )
+    .max(600),
+  result: z.enum(['1-0', '0-1', '1/2-1/2', '*']),
+  terminationReason: z
+    .enum([
+      'checkmate',
+      'resignation',
+      'timeout',
+      'stalemate',
+      'draw_agreement',
+      'repetition',
+      'insufficient_material',
+      'abandonment',
+    ])
+    .optional(),
+  difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+  timeControl: z
+    .object({ initialMs: z.number().positive(), incrementMs: z.number().min(0) })
+    .optional(),
+  label: z.string().max(100).optional(),
+  startedAt: z.string().datetime().optional(),
+  endedAt: z.string().datetime().optional(),
+});
+
 export const createGame = asyncHandler(async (req: Request, res: Response) => {
   const input = createGameSchema.parse(req.body);
 
@@ -82,4 +127,29 @@ export const deleteGame = asyncHandler(async (req: Request, res: Response) => {
   await gameService.deleteGame(req.params.id as string, req.user!.userId);
 
   res.json({ success: true, data: { message: 'Game deleted' } });
+});
+
+export const saveCompletedGame = asyncHandler(async (req: Request, res: Response) => {
+  const input = saveCompletedGameSchema.parse(req.body);
+
+  const now = new Date();
+  const completedAt = input.endedAt ? new Date(input.endedAt) : now;
+
+  const game = await gameService.createCompletedGame({
+    mode: input.mode as 'local' | 'computer',
+    ownerUserId: req.user!.userId,
+    whitePlayer: input.whitePlayer,
+    blackPlayer: input.blackPlayer,
+    initialFen: input.initialFen,
+    finalFen: input.finalFen,
+    moves: input.moves,
+    result: input.result,
+    terminationReason: input.terminationReason,
+    difficulty: input.difficulty,
+    timeControl: input.timeControl,
+    label: input.label,
+    completedAt,
+  });
+
+  res.status(201).json({ success: true, data: { game } });
 });

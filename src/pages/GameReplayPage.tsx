@@ -14,11 +14,19 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SwapVertIcon from '@mui/icons-material/SwapVert';
+import FirstPageIcon from '@mui/icons-material/FirstPage';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PauseIcon from '@mui/icons-material/Pause';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import LastPageIcon from '@mui/icons-material/LastPage';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
 import { useAppDispatch, useAppSelector } from '../hooks/useStore';
 import { fetchHistoryGame, clearCurrentGame } from '../features/savedGames/savedGamesSlice';
 import ReplayBoard from '../components/chess/ReplayBoard';
 import ReplayMoveList from '../components/chess/ReplayMoveList';
-import ReplayControls, { type ReplaySpeed } from '../components/chess/ReplayControls';
+import { type ReplaySpeed } from '../components/chess/ReplayControls';
 
 const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -207,112 +215,185 @@ const GameReplayPage: React.FC = () => {
   const tc = formatTimeControl(currentGame.timeControl);
   const date = new Date(currentGame.completedAt || currentGame.updatedAt).toLocaleString();
 
+  const atStart = moveIndex === -1;
+  const atEnd = moveIndex === totalMoves - 1;
+
   return (
-    <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 }, maxWidth: 1100, mx: 'auto' }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          size="small"
-          onClick={() => navigate('/history')}
-          variant="outlined"
-        >
-          History
-        </Button>
-        <Typography variant="h6" sx={{ fontWeight: 700, flex: 1 }}>
-          {currentGame.whitePlayer.name} vs {currentGame.blackPlayer.name}
-        </Typography>
-        <Tooltip title="Flip board">
-          <IconButton onClick={() => setIsFlipped((f) => !f)} size="small">
-            <SwapVertIcon />
-          </IconButton>
-        </Tooltip>
-      </Box>
-
-      {/* Game meta */}
-      <Paper elevation={1} sx={{ p: 1.5, mb: 2 }}>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-          <Chip label={res.text} color={res.color} size="small" />
-          <Chip label={currentGame.mode} size="small" variant="outlined" />
-          <Chip label={`${totalMoves} moves`} size="small" variant="outlined" />
-          <Chip label={tc} size="small" variant="outlined" />
-          <Chip label={duration} size="small" variant="outlined" />
-          <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
-            {date}
-          </Typography>
-        </Box>
-      </Paper>
-
-      {/* Main layout */}
+    <Box
+      sx={{
+        display: 'flex',
+        gap: { xs: 1.5, lg: 3 },
+        p: { xs: 1, lg: 2 },
+        height: '100%',
+        flexDirection: { xs: 'column', lg: 'row' },
+        alignItems: 'stretch',
+      }}
+    >
+      {/* ── Board Area ── */}
       <Box
         sx={{
+          flex: '1 1 auto',
+          minWidth: 0,
+          width: '100%',
           display: 'flex',
-          flexDirection: { xs: 'column', md: 'row' },
-          gap: 2,
-          alignItems: { md: 'flex-start' },
+          flexDirection: 'column',
+          gap: 1,
+          '@media (max-width:1023.95px)': { px: '80px', boxSizing: 'border-box' },
         }}
       >
-        {/* Board + controls */}
-        <Box sx={{ flex: '0 0 auto', width: { xs: '100%', md: 480, lg: 560 } }}>
-          <ReplayBoard fen={currentFen} lastMove={lastMove} isFlipped={isFlipped} />
-          <Paper elevation={2} sx={{ mt: 1 }}>
-            <ReplayControls
-              currentMoveIndex={moveIndex}
-              totalMoves={totalMoves}
-              isPlaying={isPlaying}
-              speed={speed}
-              onFirst={handleFirst}
-              onPrev={handlePrev}
-              onPlayPause={handlePlayPause}
-              onNext={handleNext}
-              onLast={handleLast}
-              onSpeedChange={handleSpeedChange}
-            />
-          </Paper>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 0.5 }}>
-            Use ← → arrow keys or Space to navigate
+        <ReplayBoard fen={currentFen} lastMove={lastMove} isFlipped={isFlipped} />
+
+        {/* Controls row — mirrors GameControls position in VS Computer */}
+        <Paper elevation={2} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, py: 0.75, flexWrap: 'wrap' }}>
+          <Tooltip title="Back to History">
+            <IconButton size="small" onClick={() => navigate('/history')}>
+              <ArrowBackIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Flip board">
+            <IconButton size="small" onClick={() => setIsFlipped((f) => !f)}>
+              <SwapVertIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+
+          <Tooltip title="First move">
+            <span>
+              <IconButton onClick={handleFirst} disabled={atStart} size="small" color="primary">
+                <FirstPageIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <Tooltip title="Previous move (←)">
+            <span>
+              <IconButton onClick={handlePrev} disabled={atStart} size="small" color="primary">
+                <ChevronLeftIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <Tooltip title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}>
+            <span>
+              <IconButton
+                onClick={handlePlayPause}
+                disabled={totalMoves === 0}
+                size="medium"
+                color="primary"
+                sx={{
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                  '&:hover': { bgcolor: 'primary.dark' },
+                  '&:disabled': { bgcolor: 'action.disabledBackground' },
+                }}
+              >
+                {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <Tooltip title="Next move (→)">
+            <span>
+              <IconButton onClick={handleNext} disabled={atEnd} size="small" color="primary">
+                <ChevronRightIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <Tooltip title="Last move">
+            <span>
+              <IconButton onClick={handleLast} disabled={atEnd} size="small" color="primary">
+                <LastPageIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+
+          <Select
+            value={speed}
+            onChange={(e) => handleSpeedChange(Number(e.target.value) as ReplaySpeed)}
+            size="small"
+            sx={{ fontSize: '0.75rem', minWidth: 72 }}
+          >
+            <MenuItem value={0.5}>0.5×</MenuItem>
+            <MenuItem value={1}>1×</MenuItem>
+            <MenuItem value={2}>2×</MenuItem>
+            <MenuItem value={4}>Fast</MenuItem>
+          </Select>
+        </Paper>
+
+        <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
+          ← → arrow keys · Space to play/pause
+        </Typography>
+      </Box>
+
+      {/* ── Side Panel ── */}
+      <Box
+        sx={{
+          flex: { xs: '1 1 auto', lg: '0 1 420px' },
+          width: { xs: '100%', lg: 420 },
+          maxWidth: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          minHeight: { xs: 'auto', lg: 300 },
+        }}
+      >
+        {/* Status card */}
+        <Paper elevation={2} sx={{ p: 2 }}>
+          <Typography
+            variant="subtitle2"
+            color="text.secondary"
+            sx={{ fontSize: { xs: '0.95rem', lg: '1.28rem' }, fontWeight: 700 }}
+          >
+            Status
           </Typography>
-        </Box>
 
-        {/* Right panel: players + move list */}
-        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0, minHeight: { md: 540 } }}>
-          {/* Player info */}
-          <Paper elevation={2} sx={{ p: 1.5 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box>
-                <Typography variant="caption" color="text.secondary">White</Typography>
-                <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                  {currentGame.whitePlayer.name}
-                </Typography>
-              </Box>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.secondary' }}>vs</Typography>
-              <Box sx={{ textAlign: 'right' }}>
-                <Typography variant="caption" color="text.secondary">Black</Typography>
-                <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                  {currentGame.blackPlayer.name}
-                </Typography>
-              </Box>
-            </Box>
-            <Divider sx={{ my: 1 }} />
-            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-              <Chip label={res.text} color={res.color} size="small" />
-            </Box>
-          </Paper>
+          <Chip
+            label={res.text}
+            color={res.color}
+            sx={{ mt: 0.75, fontWeight: 700, fontSize: { xs: '0.85rem', lg: '1rem' } }}
+          />
 
-          {/* Move list */}
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: { md: 380 } }}>
-            <ReplayMoveList
-              moves={moves}
-              currentMoveIndex={moveIndex}
-              onMoveClick={handleMoveClick}
-            />
+          <Divider sx={{ my: 1.25 }} />
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="caption" color="text.secondary">White</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>{currentGame.whitePlayer.name}</Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700 }}>vs</Typography>
+            <Box sx={{ textAlign: 'right' }}>
+              <Typography variant="caption" color="text.secondary">Black</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>{currentGame.blackPlayer.name}</Typography>
+            </Box>
           </Box>
 
-          {/* Move counter */}
-          <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
+          <Divider sx={{ my: 1.25 }} />
+
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+            <Chip label={currentGame.mode} size="small" variant="outlined" />
+            <Chip label={tc} size="small" variant="outlined" />
+            {duration !== '—' && <Chip label={duration} size="small" variant="outlined" />}
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+            {date}
+          </Typography>
+
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
             {moveIndex === -1 ? 'Starting position' : `Move ${moveIndex + 1} of ${totalMoves}`}
           </Typography>
-        </Box>
+        </Paper>
+
+        {/* Moves */}
+        <ReplayMoveList
+          moves={moves}
+          currentMoveIndex={moveIndex}
+          onMoveClick={handleMoveClick}
+        />
       </Box>
     </Box>
   );
