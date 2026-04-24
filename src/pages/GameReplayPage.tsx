@@ -90,7 +90,9 @@ const GameReplayPage: React.FC = () => {
   // Reset replay position when game loads
   useEffect(() => {
     if (currentGame) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMoveIndex(-1);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsPlaying(false);
     }
   }, [currentGame?._id]);

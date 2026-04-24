@@ -3,7 +3,7 @@ import { Box } from '@mui/material';
 import { Chess } from 'chess.js';
 import Piece from './Piece';
 import { BOARD_THEME } from '../../lib/chess/boardTheme';
-import { getBoardSquares, getSquareColor, FILES, RANKS } from '../../lib/chess/boardUtils';
+import { getBoardSquares, getSquareColor, FILES } from '../../lib/chess/boardUtils';
 import type { PieceColor, PieceType } from '../../types/chess';
 
 interface ReplayBoardProps {

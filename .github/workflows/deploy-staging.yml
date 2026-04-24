@@ -2,7 +2,9 @@ name: Deploy Staging
 
 on:
   workflow_dispatch:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [staging]
 
 env:
@@ -17,6 +19,9 @@ jobs:
     name: Deploy To Staging Server
     runs-on: ubuntu-latest
     environment: staging
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     env:
       SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
       SERVER_HOST: ${{ secrets.SERVER_HOST }}
