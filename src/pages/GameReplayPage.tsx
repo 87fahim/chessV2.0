@@ -234,11 +234,12 @@ const GameReplayPage: React.FC = () => {
         sx={{
           flex: '1 1 auto',
           minWidth: 0,
+          maxWidth: 'min(100%, calc(100vh - 180px))',
           width: '100%',
           display: 'flex',
           flexDirection: 'column',
           gap: 1,
-          '@media (max-width:1023.95px)': { px: '80px', boxSizing: 'border-box' },
+          '@media (max-width:1023.95px)': { px: '80px', boxSizing: 'border-box', maxWidth: '100%' },
         }}
       >
         <ReplayBoard fen={currentFen} lastMove={lastMove} isFlipped={isFlipped} />
