@@ -22,6 +22,8 @@ import MoveList from '../components/chess/MoveList';
 import GameStartCurtain from '../components/chess/GameStartCurtain';
 import GameEndDialog from '../components/chess/GameEndDialog';
 import BoardLayout from '../components/chess/BoardLayout';
+import ZoomControls from '../components/chess/ZoomControls';
+import { useBoardZoom } from '../hooks/useBoardZoom';
 import { useSocket } from '../hooks/useSocket';
 import { usePremoveQueue } from '../hooks/usePremoveQueue';
 import { useAppSelector, useAppDispatch } from '../hooks/useStore';
@@ -80,6 +82,7 @@ function getCapturedCounts(fen: string) {
 }
 
 const OnlinePlayPage: React.FC = () => {
+  const zoom = useBoardZoom();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { isAuthenticated, user } = useAppSelector((s) => s.auth);
@@ -515,6 +518,8 @@ const OnlinePlayPage: React.FC = () => {
     <>
       <BoardLayout
         panelWidth={380}
+        boardColRef={zoom.boardColRef}
+        boardWidth={zoom.boardWidth}
         board={<>
           {renderPlayerStrip(opponentName, opponentCapturedCount, opponentClock, opponentActive, opponentName, false, onlineGame.opponentOnline, disconnectCountdown)}
           <Box sx={{ position: 'relative' }}>
@@ -533,6 +538,15 @@ const OnlinePlayPage: React.FC = () => {
             />
           </Box>
           {renderPlayerStrip(yourName, yourCapturedCount, yourClock, youActive, yourName, true)}
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <ZoomControls
+              onZoomIn={zoom.handleZoomIn}
+              onZoomOut={zoom.handleZoomOut}
+              canZoomIn={zoom.canZoomIn}
+              canZoomOut={zoom.canZoomOut}
+              zoomPercent={zoom.zoomPercent}
+            />
+          </Box>
         </>}
         panel={<>
           {/* Status */}

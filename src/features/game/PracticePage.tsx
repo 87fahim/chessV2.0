@@ -6,6 +6,8 @@ import SwapVertIcon from '@mui/icons-material/SwapVert';
 import { Chess } from 'chess.js';
 import ChessBoard from '../../components/chess/ChessBoard';
 import BoardLayout from '../../components/chess/BoardLayout';
+import ZoomControls from '../../components/chess/ZoomControls';
+import { useBoardZoom } from '../../hooks/useBoardZoom';
 import { useAppDispatch, useAppSelector } from '../../hooks/useStore';
 import { loadPosition, flipBoard, moveMade } from '../../features/game/gameSlice';
 import { DEFAULT_FEN, isValidFen } from '../../lib/chess/fen';
@@ -14,6 +16,7 @@ import type { PieceColor } from '../../types/chess';
 import { userApi } from '../../services/userService';
 
 const PracticePage: React.FC = () => {
+  const zoom = useBoardZoom();
   const dispatch = useAppDispatch();
   const { fen } = useAppSelector((s) => s.game);
   const { isAuthenticated } = useAppSelector((s) => s.auth);
@@ -75,9 +78,11 @@ const PracticePage: React.FC = () => {
   return (
     <BoardLayout
       panelWidth={420}
+      boardColRef={zoom.boardColRef}
+      boardWidth={zoom.boardWidth}
       board={<>
         <ChessBoard onMove={handleMove} />
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <Tooltip title="Flip Board">
             <IconButton onClick={() => dispatch(flipBoard())} size="small">
               <SwapVertIcon />
@@ -88,6 +93,13 @@ const PracticePage: React.FC = () => {
               <RestartAltIcon />
             </IconButton>
           </Tooltip>
+          <ZoomControls
+            onZoomIn={zoom.handleZoomIn}
+            onZoomOut={zoom.handleZoomOut}
+            canZoomIn={zoom.canZoomIn}
+            canZoomOut={zoom.canZoomOut}
+            zoomPercent={zoom.zoomPercent}
+          />
         </Box>
       </>}
       panel={<>

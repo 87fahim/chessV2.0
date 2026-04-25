@@ -28,6 +28,8 @@ import ReplayBoard from '../components/chess/ReplayBoard';
 import ReplayMoveList from '../components/chess/ReplayMoveList';
 import { type ReplaySpeed } from '../components/chess/ReplayControls';
 import BoardLayout from '../components/chess/BoardLayout';
+import ZoomControls from '../components/chess/ZoomControls';
+import { useBoardZoom } from '../hooks/useBoardZoom';
 
 const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -67,6 +69,7 @@ function resultLabel(result: string, reason?: string): { text: string; color: 's
 }
 
 const GameReplayPage: React.FC = () => {
+  const zoom = useBoardZoom();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -224,6 +227,8 @@ const GameReplayPage: React.FC = () => {
   return (
     <BoardLayout
       panelWidth={420}
+      boardColRef={zoom.boardColRef}
+      boardWidth={zoom.boardWidth}
       board={<>
         <ReplayBoard fen={currentFen} lastMove={lastMove} isFlipped={isFlipped} />
 
@@ -307,6 +312,14 @@ const GameReplayPage: React.FC = () => {
             <MenuItem value={2}>2×</MenuItem>
             <MenuItem value={4}>Fast</MenuItem>
           </Select>
+
+          <ZoomControls
+            onZoomIn={zoom.handleZoomIn}
+            onZoomOut={zoom.handleZoomOut}
+            canZoomIn={zoom.canZoomIn}
+            canZoomOut={zoom.canZoomOut}
+            zoomPercent={zoom.zoomPercent}
+          />
         </Paper>
 
         <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>

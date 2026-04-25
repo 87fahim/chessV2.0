@@ -32,6 +32,8 @@ import CheckIcon from '@mui/icons-material/Check';
 import CancelIcon from '@mui/icons-material/Cancel';
 import EditableBoard from '../../components/chess/EditableBoard';
 import BoardLayout from '../../components/chess/BoardLayout';
+import ZoomControls from '../../components/chess/ZoomControls';
+import { useBoardZoom } from '../../hooks/useBoardZoom';
 import { useBoardEditor } from './useBoardEditor';
 import type { PieceColor } from '../../types/chess';
 import type { CastlingRights } from './boardEditorTypes';
@@ -39,6 +41,7 @@ import { useAppSelector } from '../../hooks/useStore';
 import { userApi, type SavedPositionData } from '../../services/userService';
 
 const AnalysisPage: React.FC = () => {
+  const zoom = useBoardZoom();
   const editor = useBoardEditor();
   const { isAuthenticated } = useAppSelector((s) => s.auth);
   const [fenInput, setFenInput] = useState(editor.fen);
@@ -110,6 +113,8 @@ const AnalysisPage: React.FC = () => {
   <>
     <BoardLayout
       panelWidth={360}
+      boardColRef={zoom.boardColRef}
+      boardWidth={zoom.boardWidth}
       board={<>
         <EditableBoard
           position={editor.position}
@@ -153,6 +158,13 @@ const AnalysisPage: React.FC = () => {
               ♚
             </IconButton>
           </Tooltip>
+          <ZoomControls
+            onZoomIn={zoom.handleZoomIn}
+            onZoomOut={zoom.handleZoomOut}
+            canZoomIn={zoom.canZoomIn}
+            canZoomOut={zoom.canZoomOut}
+            zoomPercent={zoom.zoomPercent}
+          />
         </Box>
       </>}
       panel={<>

@@ -12,6 +12,8 @@ interface GameControlsProps {
   onFlip: () => void;
   onNewGame: () => void;
   onResign: () => void;
+  /** Optional extra controls rendered at the right end of the button row */
+  zoomControls?: React.ReactNode;
 }
 
 const GameControls: React.FC<GameControlsProps> = ({
@@ -21,9 +23,10 @@ const GameControls: React.FC<GameControlsProps> = ({
   onFlip,
   onNewGame,
   onResign,
+  zoomControls,
 }) => {
   return (
-    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
       <Tooltip title="Undo">
         <span>
           <IconButton onClick={onUndo} disabled={!canUndo} size="small">
@@ -45,6 +48,7 @@ const GameControls: React.FC<GameControlsProps> = ({
           Resign
         </Button>
       )}
+      {zoomControls}
     </Box>
   );
 };

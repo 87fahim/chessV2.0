@@ -24,12 +24,15 @@ import GameEndDialog from '../../components/chess/GameEndDialog';
 import { useChessGame } from '../../hooks/useChessGame';
 import { usePremoveQueue } from '../../hooks/usePremoveQueue';
 import BoardLayout from '../../components/chess/BoardLayout';
+import ZoomControls from '../../components/chess/ZoomControls';
+import { useBoardZoom } from '../../hooks/useBoardZoom';
 import { useAppSelector, useAppDispatch } from '../../hooks/useStore';
 import { saveCurrentGame, autoSaveGame } from '../savedGames/savedGamesSlice';
 import type { PieceColor } from '../../types/chess';
 import type { Difficulty } from '../../types/game';
 
 const PlayVsComputerPage: React.FC = () => {
+  const zoom = useBoardZoom();
   const {
     gameState,
     engineError,
@@ -214,6 +217,8 @@ const PlayVsComputerPage: React.FC = () => {
     <>
       <BoardLayout
         panelWidth={420}
+        boardColRef={zoom.boardColRef}
+        boardWidth={zoom.boardWidth}
         board={<>
           <CapturedPieces pieces={gameState.capturedPieces} />
           <Box sx={{ position: 'relative' }}>
@@ -238,6 +243,15 @@ const PlayVsComputerPage: React.FC = () => {
             onFlip={handleFlip}
             onNewGame={handleNewGame}
             onResign={handleResign}
+            zoomControls={
+              <ZoomControls
+                onZoomIn={zoom.handleZoomIn}
+                onZoomOut={zoom.handleZoomOut}
+                canZoomIn={zoom.canZoomIn}
+                canZoomOut={zoom.canZoomOut}
+                zoomPercent={zoom.zoomPercent}
+              />
+            }
           />
           {isAuthenticated && gameState.moves.length > 0 && (
             <Button
