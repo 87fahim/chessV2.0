@@ -122,90 +122,8 @@ const AnalysisPage: React.FC = () => {
           highlightSquares={editor.highlightSquares}
           onDrop={editor.handleDrop}
         />
-        {/* Board action buttons */}
-        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-          <Tooltip title="Flip Board">
-            <IconButton onClick={editor.flipBoard} size="small">
-              <SwapVertIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Undo">
-            <span>
-              <IconButton onClick={editor.undo} size="small" disabled={!editor.canUndo}>
-                <UndoIcon />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title="Redo">
-            <span>
-              <IconButton onClick={editor.redo} size="small" disabled={!editor.canRedo}>
-                <RedoIcon />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title="Reset to Starting Position">
-            <IconButton onClick={editor.resetToStart} size="small">
-              <RestartAltIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Clear Board">
-            <IconButton onClick={editor.clearBoard} size="small">
-              <DeleteOutlinedIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Keep Kings Only">
-            <IconButton onClick={editor.keepKingsOnly} size="small" sx={{ fontSize: '1.1rem' }}>
-              ♚
-            </IconButton>
-          </Tooltip>
-          <ZoomControls
-            onZoomIn={zoom.handleZoomIn}
-            onZoomOut={zoom.handleZoomOut}
-            canZoomIn={zoom.canZoomIn}
-            canZoomOut={zoom.canZoomOut}
-            zoomPercent={zoom.zoomPercent}
-          />
-        </Box>
       </>}
       panel={<>
-        {/* FEN Display & Load */}
-        <Paper elevation={2} sx={{ p: 1.25 }}>
-          <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
-            FEN Position
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 0.75, mb: 0.75 }}>
-            <TextField
-              size="small"
-              fullWidth
-              value={fenInput}
-              onChange={(e) => {
-                const nextFen = e.target.value;
-                setFenInput(nextFen);
-
-                if (!nextFen.trim()) {
-                  setFenError('Invalid FEN string');
-                  return;
-                }
-
-                const err = editor.loadFen(nextFen);
-                setFenError(err ?? '');
-              }}
-              error={!!fenError}
-              helperText={fenError}
-              placeholder="Paste or edit FEN..."
-              slotProps={{
-                htmlInput: { sx: { fontSize: '0.76rem', fontFamily: 'monospace', py: 0.85 } },
-                formHelperText: { sx: { fontSize: '0.68rem', mx: 0 } },
-              }}
-            />
-            <Tooltip title="Copy Current FEN">
-              <IconButton onClick={handleCopyFen} size="small" sx={{ width: 30, height: 30 }}>
-                <ContentCopyIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Paper>
-
         {/* Engine Analysis */}
         <Paper elevation={2} sx={{ p: 1.25 }}>
           <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
@@ -300,6 +218,55 @@ const AnalysisPage: React.FC = () => {
           )}
         </Paper>
 
+        <Paper elevation={2} sx={{ p: 1.25 }}>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, fontSize: '0.86rem', mb: 0.75 }}>
+            Controls
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 0.25, alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto' }}>
+            <Tooltip title="Flip Board">
+              <IconButton onClick={editor.flipBoard} size="small" sx={{ p: 0.4 }}>
+                <SwapVertIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Undo">
+              <span>
+                <IconButton onClick={editor.undo} size="small" disabled={!editor.canUndo} sx={{ p: 0.4 }}>
+                  <UndoIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Redo">
+              <span>
+                <IconButton onClick={editor.redo} size="small" disabled={!editor.canRedo} sx={{ p: 0.4 }}>
+                  <RedoIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Reset to Starting Position">
+              <IconButton onClick={editor.resetToStart} size="small" sx={{ p: 0.4 }}>
+                <RestartAltIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Clear Board">
+              <IconButton onClick={editor.clearBoard} size="small" sx={{ p: 0.4 }}>
+                <DeleteOutlinedIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Keep Kings Only">
+              <IconButton onClick={editor.keepKingsOnly} size="small" sx={{ p: 0.4, fontSize: '0.95rem' }}>
+                ♚
+              </IconButton>
+            </Tooltip>
+            <ZoomControls
+              onZoomIn={zoom.handleZoomIn}
+              onZoomOut={zoom.handleZoomOut}
+              canZoomIn={zoom.canZoomIn}
+              canZoomOut={zoom.canZoomOut}
+              zoomPercent={zoom.zoomPercent}
+            />
+          </Box>
+        </Paper>
+
         {isAuthenticated && (
           <Paper elevation={2} sx={{ p: 1.25 }}>
             <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
@@ -330,6 +297,44 @@ const AnalysisPage: React.FC = () => {
             </Box>
           </Paper>
         )}
+
+        {/* FEN Display & Load */}
+        <Paper elevation={2} sx={{ p: 1.25 }}>
+          <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
+            FEN Position
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 0.75, mb: 0.75 }}>
+            <TextField
+              size="small"
+              fullWidth
+              value={fenInput}
+              onChange={(e) => {
+                const nextFen = e.target.value;
+                setFenInput(nextFen);
+
+                if (!nextFen.trim()) {
+                  setFenError('Invalid FEN string');
+                  return;
+                }
+
+                const err = editor.loadFen(nextFen);
+                setFenError(err ?? '');
+              }}
+              error={!!fenError}
+              helperText={fenError}
+              placeholder="Paste or edit FEN..."
+              slotProps={{
+                htmlInput: { sx: { fontSize: '0.76rem', fontFamily: 'monospace', py: 0.85 } },
+                formHelperText: { sx: { fontSize: '0.68rem', mx: 0 } },
+              }}
+            />
+            <Tooltip title="Copy Current FEN">
+              <IconButton onClick={handleCopyFen} size="small" sx={{ width: 30, height: 30 }}>
+                <ContentCopyIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Paper>
 
         <Paper elevation={2} sx={{ p: 1.25 }}>
           <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>

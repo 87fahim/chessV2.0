@@ -82,25 +82,6 @@ const PracticePage: React.FC = () => {
       boardWidth={zoom.boardWidth}
       board={<>
         <ChessBoard onMove={handleMove} />
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <Tooltip title="Flip Board">
-            <IconButton onClick={() => dispatch(flipBoard())} size="small">
-              <SwapVertIcon />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Reset Board">
-            <IconButton onClick={handleReset} size="small">
-              <RestartAltIcon />
-            </IconButton>
-          </Tooltip>
-          <ZoomControls
-            onZoomIn={zoom.handleZoomIn}
-            onZoomOut={zoom.handleZoomOut}
-            canZoomIn={zoom.canZoomIn}
-            canZoomOut={zoom.canZoomOut}
-            zoomPercent={zoom.zoomPercent}
-          />
-        </Box>
       </>}
       panel={<>
         <Paper elevation={2} sx={{ p: 2 }}>
@@ -129,6 +110,31 @@ const PracticePage: React.FC = () => {
           <Button variant="contained" size="small" onClick={handleLoadFen} fullWidth>
             Load FEN
           </Button>
+        </Paper>
+
+        <Paper elevation={2} sx={{ p: 1.25 }}>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: { xs: '0.95rem', lg: '1.15rem' }, fontWeight: 700, mb: 0.75 }}>
+            Controls
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto' }}>
+            <Tooltip title="Flip Board">
+              <IconButton onClick={() => dispatch(flipBoard())} size="small" sx={{ p: 0.4 }}>
+                <SwapVertIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Reset Board">
+              <IconButton onClick={handleReset} size="small" sx={{ p: 0.4 }}>
+                <RestartAltIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <ZoomControls
+              onZoomIn={zoom.handleZoomIn}
+              onZoomOut={zoom.handleZoomOut}
+              canZoomIn={zoom.canZoomIn}
+              canZoomOut={zoom.canZoomOut}
+              zoomPercent={zoom.zoomPercent}
+            />
+          </Box>
         </Paper>
 
         <Paper elevation={2} sx={{ p: 2 }}>

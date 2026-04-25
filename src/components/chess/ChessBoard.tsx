@@ -424,7 +424,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
       sx={{
         position: 'relative',
         width: '100%',
-        maxWidth: { xs: '100%', lg: 700 },
+        maxWidth: '100%',
         mx: 0,
         userSelect: 'none',
       }}

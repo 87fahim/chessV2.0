@@ -231,100 +231,6 @@ const GameReplayPage: React.FC = () => {
       boardWidth={zoom.boardWidth}
       board={<>
         <ReplayBoard fen={currentFen} lastMove={lastMove} isFlipped={isFlipped} />
-
-        {/* Controls row — mirrors GameControls position in VS Computer */}
-        <Paper elevation={2} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, py: 0.75, flexWrap: 'wrap' }}>
-          <Tooltip title="Back to History">
-            <IconButton size="small" onClick={() => navigate('/history')}>
-              <ArrowBackIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title="Flip board">
-            <IconButton size="small" onClick={() => setIsFlipped((f) => !f)}>
-              <SwapVertIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-
-          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-
-          <Tooltip title="First move">
-            <span>
-              <IconButton onClick={handleFirst} disabled={atStart} size="small" color="primary">
-                <FirstPageIcon />
-              </IconButton>
-            </span>
-          </Tooltip>
-
-          <Tooltip title="Previous move (←)">
-            <span>
-              <IconButton onClick={handlePrev} disabled={atStart} size="small" color="primary">
-                <ChevronLeftIcon />
-              </IconButton>
-            </span>
-          </Tooltip>
-
-          <Tooltip title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}>
-            <span>
-              <IconButton
-                onClick={handlePlayPause}
-                disabled={totalMoves === 0}
-                size="medium"
-                color="primary"
-                sx={{
-                  bgcolor: 'primary.main',
-                  color: 'primary.contrastText',
-                  '&:hover': { bgcolor: 'primary.dark' },
-                  '&:disabled': { bgcolor: 'action.disabledBackground' },
-                }}
-              >
-                {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
-              </IconButton>
-            </span>
-          </Tooltip>
-
-          <Tooltip title="Next move (→)">
-            <span>
-              <IconButton onClick={handleNext} disabled={atEnd} size="small" color="primary">
-                <ChevronRightIcon />
-              </IconButton>
-            </span>
-          </Tooltip>
-
-          <Tooltip title="Last move">
-            <span>
-              <IconButton onClick={handleLast} disabled={atEnd} size="small" color="primary">
-                <LastPageIcon />
-              </IconButton>
-            </span>
-          </Tooltip>
-
-          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-
-          <Select
-            value={speed}
-            onChange={(e) => handleSpeedChange(Number(e.target.value) as ReplaySpeed)}
-            size="small"
-            sx={{ fontSize: '0.75rem', minWidth: 72 }}
-          >
-            <MenuItem value={0.5}>0.5×</MenuItem>
-            <MenuItem value={1}>1×</MenuItem>
-            <MenuItem value={2}>2×</MenuItem>
-            <MenuItem value={4}>Fast</MenuItem>
-          </Select>
-
-          <ZoomControls
-            onZoomIn={zoom.handleZoomIn}
-            onZoomOut={zoom.handleZoomOut}
-            canZoomIn={zoom.canZoomIn}
-            canZoomOut={zoom.canZoomOut}
-            zoomPercent={zoom.zoomPercent}
-          />
-        </Paper>
-
-        <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
-          ← → arrow keys · Space to play/pause
-        </Typography>
       </>}
       panel={<>
         {/* Status card */}
@@ -370,6 +276,110 @@ const GameReplayPage: React.FC = () => {
 
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
             {moveIndex === -1 ? 'Starting position' : `Move ${moveIndex + 1} of ${totalMoves}`}
+          </Typography>
+        </Paper>
+
+        <Paper elevation={2} sx={{ p: 1.25 }}>
+          <Typography
+            variant="subtitle2"
+            color="text.secondary"
+            sx={{ fontSize: { xs: '0.95rem', lg: '1.15rem' }, fontWeight: 700, mb: 0.75 }}
+          >
+            Controls
+          </Typography>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexWrap: 'nowrap', overflowX: 'auto' }}>
+            <Tooltip title="Back to History">
+              <IconButton size="small" onClick={() => navigate('/history')} sx={{ p: 0.4 }}>
+                <ArrowBackIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Flip board">
+              <IconButton size="small" onClick={() => setIsFlipped((f) => !f)} sx={{ p: 0.4 }}>
+                <SwapVertIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+
+            <Divider orientation="vertical" flexItem sx={{ mx: 0.25 }} />
+
+            <Tooltip title="First move">
+              <span>
+                <IconButton onClick={handleFirst} disabled={atStart} size="small" color="primary" sx={{ p: 0.4 }}>
+                  <FirstPageIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+
+            <Tooltip title="Previous move (←)">
+              <span>
+                <IconButton onClick={handlePrev} disabled={atStart} size="small" color="primary" sx={{ p: 0.4 }}>
+                  <ChevronLeftIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+
+            <Tooltip title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}>
+              <span>
+                <IconButton
+                  onClick={handlePlayPause}
+                  disabled={totalMoves === 0}
+                  size="small"
+                  color="primary"
+                  sx={{
+                    p: 0.5,
+                    bgcolor: 'primary.main',
+                    color: 'primary.contrastText',
+                    '&:hover': { bgcolor: 'primary.dark' },
+                    '&:disabled': { bgcolor: 'action.disabledBackground' },
+                  }}
+                >
+                  {isPlaying ? <PauseIcon sx={{ fontSize: 18 }} /> : <PlayArrowIcon sx={{ fontSize: 18 }} />}
+                </IconButton>
+              </span>
+            </Tooltip>
+
+            <Tooltip title="Next move (→)">
+              <span>
+                <IconButton onClick={handleNext} disabled={atEnd} size="small" color="primary" sx={{ p: 0.4 }}>
+                  <ChevronRightIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+
+            <Tooltip title="Last move">
+              <span>
+                <IconButton onClick={handleLast} disabled={atEnd} size="small" color="primary" sx={{ p: 0.4 }}>
+                  <LastPageIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+
+            <Divider orientation="vertical" flexItem sx={{ mx: 0.25 }} />
+
+            <Select
+              value={speed}
+              onChange={(e) => handleSpeedChange(Number(e.target.value) as ReplaySpeed)}
+              size="small"
+              sx={{ fontSize: '0.7rem', minWidth: 58 }}
+            >
+              <MenuItem value={0.5}>0.5×</MenuItem>
+              <MenuItem value={1}>1×</MenuItem>
+              <MenuItem value={2}>2×</MenuItem>
+              <MenuItem value={4}>Fast</MenuItem>
+            </Select>
+
+            <ZoomControls
+              onZoomIn={zoom.handleZoomIn}
+              onZoomOut={zoom.handleZoomOut}
+              canZoomIn={zoom.canZoomIn}
+              canZoomOut={zoom.canZoomOut}
+              zoomPercent={zoom.zoomPercent}
+            />
+          </Box>
+
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+            ← → arrow keys · Space to play/pause
           </Typography>
         </Paper>
 

@@ -26,25 +26,38 @@ const GameControls: React.FC<GameControlsProps> = ({
   zoomControls,
 }) => {
   return (
-    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', width: '100%' }}>
+    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', alignItems: 'center', width: '100%', overflowX: 'auto' }}>
       <Tooltip title="Undo">
         <span>
-          <IconButton onClick={onUndo} disabled={!canUndo} size="small">
-            <UndoIcon />
+          <IconButton onClick={onUndo} disabled={!canUndo} size="small" sx={{ p: 0.4 }}>
+            <UndoIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </span>
       </Tooltip>
       <Tooltip title="Flip Board">
-        <IconButton onClick={onFlip} size="small">
-          <SwapVertIcon />
+        <IconButton onClick={onFlip} size="small" sx={{ p: 0.4 }}>
+          <SwapVertIcon sx={{ fontSize: 18 }} />
         </IconButton>
       </Tooltip>
-      <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-      <Button variant="outlined" size="small" startIcon={<RestartAltIcon />} onClick={onNewGame}>
-        New Game
+      <Divider orientation="vertical" flexItem sx={{ mx: 0.25 }} />
+      <Button
+        variant="outlined"
+        size="small"
+        startIcon={<RestartAltIcon sx={{ fontSize: 16 }} />}
+        onClick={onNewGame}
+        sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem', '& .MuiButton-startIcon': { mr: 0.4 } }}
+      >
+        New
       </Button>
       {isPlaying && (
-        <Button variant="outlined" color="error" size="small" startIcon={<FlagIcon />} onClick={onResign}>
+        <Button
+          variant="outlined"
+          color="error"
+          size="small"
+          startIcon={<FlagIcon sx={{ fontSize: 16 }} />}
+          onClick={onResign}
+          sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem', '& .MuiButton-startIcon': { mr: 0.4 } }}
+        >
           Resign
         </Button>
       )}

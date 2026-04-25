@@ -236,34 +236,6 @@ const PlayVsComputerPage: React.FC = () => {
               subtitle={`vs Computer (${gameState.difficulty.charAt(0).toUpperCase() + gameState.difficulty.slice(1)})`}
             />
           </Box>
-          <GameControls
-            canUndo={gameState.moves.length > 0 && gameState.status === 'playing'}
-            isPlaying={gameState.status === 'playing'}
-            onUndo={() => { clearPremoves(); handleUndo(); }}
-            onFlip={handleFlip}
-            onNewGame={handleNewGame}
-            onResign={handleResign}
-            zoomControls={
-              <ZoomControls
-                onZoomIn={zoom.handleZoomIn}
-                onZoomOut={zoom.handleZoomOut}
-                canZoomIn={zoom.canZoomIn}
-                canZoomOut={zoom.canZoomOut}
-                zoomPercent={zoom.zoomPercent}
-              />
-            }
-          />
-          {isAuthenticated && gameState.moves.length > 0 && (
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<SaveIcon />}
-              onClick={handleSaveGame}
-              sx={{ mt: 0.5, alignSelf: 'flex-start' }}
-            >
-              Save Game
-            </Button>
-          )}
         </>}
         panel={<>
           {/* Status */}
@@ -301,6 +273,41 @@ const PlayVsComputerPage: React.FC = () => {
               >
                 {engineError}
               </Alert>
+            )}
+          </Paper>
+
+          {/* Controls */}
+          <Paper elevation={2} sx={{ p: 1.25 }}>
+            <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: { xs: '0.95rem', lg: '1.15rem' }, fontWeight: 700, mb: 0.75 }}>
+              Controls
+            </Typography>
+            <GameControls
+              canUndo={gameState.moves.length > 0 && gameState.status === 'playing'}
+              isPlaying={gameState.status === 'playing'}
+              onUndo={() => { clearPremoves(); handleUndo(); }}
+              onFlip={handleFlip}
+              onNewGame={handleNewGame}
+              onResign={handleResign}
+              zoomControls={
+                <ZoomControls
+                  onZoomIn={zoom.handleZoomIn}
+                  onZoomOut={zoom.handleZoomOut}
+                  canZoomIn={zoom.canZoomIn}
+                  canZoomOut={zoom.canZoomOut}
+                  zoomPercent={zoom.zoomPercent}
+                />
+              }
+            />
+            {isAuthenticated && gameState.moves.length > 0 && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<SaveIcon />}
+                onClick={handleSaveGame}
+                sx={{ mt: 0.75 }}
+              >
+                Save Game
+              </Button>
             )}
           </Paper>
 

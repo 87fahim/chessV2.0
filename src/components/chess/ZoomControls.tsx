@@ -18,7 +18,7 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
   canZoomOut,
   zoomPercent,
 }) => (
-  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 'auto' }}>
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, ml: 'auto', flex: '0 0 auto' }}>
     <Tooltip title="Zoom out">
       {/* span needed so Tooltip works on a disabled button */}
       <span>
@@ -26,9 +26,9 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
           size="small"
           onClick={onZoomOut}
           disabled={!canZoomOut}
-          sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: '4px' }}
+          sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: '2px' }}
         >
-          <RemoveIcon fontSize="small" />
+          <RemoveIcon sx={{ fontSize: 16 }} />
         </IconButton>
       </span>
     </Tooltip>
@@ -36,10 +36,10 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
     <Typography
       variant="caption"
       sx={{
-        minWidth: 38,
+        minWidth: 30,
         textAlign: 'center',
         userSelect: 'none',
-        fontSize: '0.72rem',
+        fontSize: '0.64rem',
         color: 'text.secondary',
       }}
     >
@@ -52,9 +52,9 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
           size="small"
           onClick={onZoomIn}
           disabled={!canZoomIn}
-          sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: '4px' }}
+          sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: '2px' }}
         >
-          <AddIcon fontSize="small" />
+          <AddIcon sx={{ fontSize: 16 }} />
         </IconButton>
       </span>
     </Tooltip>
