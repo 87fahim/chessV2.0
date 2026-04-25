@@ -21,7 +21,7 @@ interface BoardLayoutProps {
    */
   boardWidth?: number | null;
   /** Ref to attach to the board column div – used by useBoardZoom to measure natural width. */
-  boardColRef?: React.RefObject<HTMLDivElement>;
+  boardColRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 /**

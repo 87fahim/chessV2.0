@@ -9,7 +9,7 @@ const TOP_CHROME_HEIGHT = 60;
 
 export interface UseBoardZoomReturn {
   /** Attach this ref to the board column wrapper element in BoardLayout */
-  boardColRef: React.RefObject<HTMLDivElement>;
+  boardColRef: React.RefObject<HTMLDivElement | null>;
   /** Explicit board column width in px when zoomed; null = let CSS control */
   boardWidth: number | null;
   canZoomIn: boolean;
@@ -67,8 +67,6 @@ export function useBoardZoom(): UseBoardZoomReturn {
     });
     ro.observe(el);
     return () => ro.disconnect();
-    // Re-attach observer if naturalWidth resets (e.g. layout remount)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const maxBoardSize = Math.min(winW - 60, winH - TOP_CHROME_HEIGHT);
