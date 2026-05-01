@@ -74,11 +74,23 @@ export function useGameSounds() {
     [play],
   );
 
+  const playGameStart = useCallback(() => {
+    play('game-start');
+  }, [play]);
+
+  const playGameEnd = useCallback(() => {
+    play('game-end');
+  }, [play]);
+
+  const playIllegalMove = useCallback(() => {
+    play('illegal-move');
+  }, [play]);
+
   return {
     play,
     playMoveOutcome,
-    playGameStart: () => play('game-start'),
-    playGameEnd: () => play('game-end'),
-    playIllegalMove: () => play('illegal-move'),
+    playGameStart,
+    playGameEnd,
+    playIllegalMove,
   };
 }
