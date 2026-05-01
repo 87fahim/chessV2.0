@@ -113,6 +113,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
   /* Clear premove selection when leaving premove mode */
   useEffect(() => {
     if (!inPremoveMode) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPremoveFrom(null);
     }
   }, [inPremoveMode]);

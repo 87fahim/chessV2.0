@@ -154,9 +154,7 @@ const OnlinePlayPage: React.FC = () => {
   useEffect(() => {
     if (onlineGame.status === 'active' && prevStatusRef.current !== 'active') {
       // Auto-dismiss any stale popups from previous game
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional status-driven transition
       setShowEndDialog(false);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional status-driven transition
       setShowCurtain(true);
       const timer = setTimeout(() => setShowCurtain(false), 1500);
       return () => clearTimeout(timer);
@@ -167,7 +165,7 @@ const OnlinePlayPage: React.FC = () => {
   // Close end dialog immediately when a new game starts (e.g. rematch accepted)
   useEffect(() => {
     if (onlineGame.gameId && onlineGame.status === 'active') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional dismiss on rematch
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowEndDialog(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -238,30 +236,6 @@ const OnlinePlayPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onlineGame.gameId]);
 
-  /* --- Premove: process queue when turn arrives -------------------- */
-  const prevFenRef = useRef(onlineGame.fen);
-  useEffect(() => {
-    // Only trigger on FEN changes (opponent moved or server sync)
-    if (prevFenRef.current === onlineGame.fen) return;
-    prevFenRef.current = onlineGame.fen;
-
-    if (onlineGame.status !== 'active' || !onlineGame.gameId) return;
-    if (premoveQueue.length === 0) return;
-
-    const game = new Chess(onlineGame.fen);
-    const isMyTurn =
-      (onlineGame.yourColor === 'white' && game.turn() === 'w') ||
-      (onlineGame.yourColor === 'black' && game.turn() === 'b');
-    if (!isMyTurn) return;
-
-    const premove = processNextPremove(onlineGame.fen);
-    if (premove) {
-      // Execute the premove through the normal move handler
-      handleMoveInternal(premove.from, premove.to, premove.promotion);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onlineGame.fen]);
-
   /** Raw move handler — executes the move without clearing premoves. */
   const handleMoveInternal = useCallback(
     (from: string, to: string, promotion?: string) => {
@@ -293,6 +267,30 @@ const OnlinePlayPage: React.FC = () => {
     },
     [dispatch, onlineGame.gameId, onlineGame.fen, onlineGame.yourColor, sendMove],
   );
+
+  /* --- Premove: process queue when turn arrives -------------------- */
+  const prevFenRef = useRef(onlineGame.fen);
+  useEffect(() => {
+    // Only trigger on FEN changes (opponent moved or server sync)
+    if (prevFenRef.current === onlineGame.fen) return;
+    prevFenRef.current = onlineGame.fen;
+
+    if (onlineGame.status !== 'active' || !onlineGame.gameId) return;
+    if (premoveQueue.length === 0) return;
+
+    const game = new Chess(onlineGame.fen);
+    const isMyTurn =
+      (onlineGame.yourColor === 'white' && game.turn() === 'w') ||
+      (onlineGame.yourColor === 'black' && game.turn() === 'b');
+    if (!isMyTurn) return;
+
+    const premove = processNextPremove(onlineGame.fen);
+    if (premove) {
+      // Execute the premove through the normal move handler
+      handleMoveInternal(premove.from, premove.to, premove.promotion);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onlineGame.fen]);
 
   /** Board-facing move handler — clears premoves when user makes a manual move. */
   const handleMove = useCallback(

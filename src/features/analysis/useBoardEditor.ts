@@ -96,6 +96,7 @@ export function useBoardEditor() {
     if (savedFen && savedFen !== DEFAULT_FEN) {
       const parsed = parseFenToPosition(savedFen);
       if (parsed) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setPosition({ ...parsed.position });
         setSideToMove(parsed.sideToMove);
         setCastling({ ...parsed.castling });
@@ -115,7 +116,6 @@ export function useBoardEditor() {
         }
       } catch { /* ignore */ }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fenValidationError = useMemo(() => {

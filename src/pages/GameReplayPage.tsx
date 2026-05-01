@@ -95,7 +95,6 @@ const GameReplayPage: React.FC = () => {
     if (currentGame) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setMoveIndex(-1);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsPlaying(false);
     }
   }, [currentGame?._id]);

@@ -64,7 +64,6 @@ const PlayVsComputerPage: React.FC = () => {
   // Show curtain when transitioning to 'playing'
   useEffect(() => {
     if (prevStatusRef.current !== 'playing' && gameState.status === 'playing') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional status-driven transition
       setShowCurtain(true);
       gameStartedAtRef.current = new Date().toISOString();
       autoSavedRef.current = false;

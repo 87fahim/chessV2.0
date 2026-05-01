@@ -54,6 +54,7 @@ const AnalysisPage: React.FC = () => {
 
   useEffect(() => {
     if (!isAuthenticated) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSavedPositions([]);
       return;
     }
@@ -98,6 +99,7 @@ const AnalysisPage: React.FC = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFenInput(editor.fen);
     setFenError('');
   }, [editor.fen]);
