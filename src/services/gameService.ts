@@ -1,4 +1,5 @@
 import api from './api';
+import { getClientSessionId } from '../utils/clientSession';
 
 export interface CreateGameInput {
   mode: string;
@@ -28,11 +29,20 @@ export interface SaveCompletedGameInput {
 
 export const gameApi = {
   list: (status?: string) => api.get('/games', { params: status ? { status } : {} }),
-  create: (data: CreateGameInput) => api.post('/games', data),
+  create: (data: CreateGameInput) =>
+    api.post('/games', { ...data, clientSessionId: getClientSessionId() }),
   saveCompleted: (data: SaveCompletedGameInput) => api.post('/games/save-completed', data),
   get: (id: string) => api.get(`/games/${id}`),
   update: (id: string, data: Record<string, unknown>) => api.put(`/games/${id}`, data),
   delete: (id: string) => api.delete(`/games/${id}`),
+  /** Check if there's an active game for this browser session */
+  getActiveSession: (guestId?: string | null) =>
+    api.get('/games/active-session', {
+      params: {
+        clientSessionId: getClientSessionId(),
+        ...(guestId ? { guestId } : {}),
+      },
+    }),
 };
 
 export const historyApi = {

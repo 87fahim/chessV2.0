@@ -2,6 +2,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import { AuthenticatedSocket } from '../middleware/socketAuth.js';
 import { SocketEvents } from '../constants/socketEvents.js';
 import * as matchmakingService from '../services/matchmakingService.js';
+import * as gameService from '../services/gameService.js';
 import { logger } from '../utils/logger.js';
 
 export function registerMatchmakingHandlers(io: SocketIOServer, socket: AuthenticatedSocket): void {
@@ -17,6 +18,13 @@ export function registerMatchmakingHandlers(io: SocketIOServer, socket: Authenti
       timeControl: { initialMs: number; incrementMs: number };
     }) => {
       try {
+        // AC2: if the user already has an active game, resume it instead of queuing
+        const activeGame = await gameService.findActiveOnlineGame(userId);
+        if (activeGame) {
+          socket.emit(SocketEvents.GAME_RESUMABLE, { gameId: activeGame._id.toString() });
+          return;
+        }
+
         await matchmakingService.joinQueue({
           userId,
           username,

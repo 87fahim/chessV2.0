@@ -16,6 +16,7 @@ export interface CreateGameInput {
   mode: string;
   ownerUserId?: string;
   guestSessionId?: string;
+  clientSessionId?: string;
   whitePlayer: CreatePlayerInput;
   blackPlayer: CreatePlayerInput;
   fen?: string;
@@ -70,6 +71,7 @@ export async function createGame(input: CreateGameInput): Promise<IGame> {
     status: input.mode === 'online' ? GameStatus.WAITING_FOR_OPPONENT : GameStatus.ACTIVE,
     ownerUserId: input.ownerUserId,
     guestSessionId: input.guestSessionId,
+    clientSessionId: input.clientSessionId,
     whitePlayer: input.whitePlayer,
     blackPlayer: input.blackPlayer,
     fen: input.fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
@@ -398,6 +400,39 @@ export async function abandonGame(gameId: string, disconnectedUserId: string): P
   await game.save();
   await recordGameCompletion(game);
   return game;
+}
+
+/** Find an active game for a browser session (clientSessionId + optional userId/guestId) */
+export async function getActiveGameBySession(
+  clientSessionId: string,
+  userId?: string,
+  guestId?: string,
+): Promise<IGame | null> {
+  const playerConditions: Record<string, unknown>[] = [];
+  if (userId) {
+    playerConditions.push(
+      { 'whitePlayer.userId': userId },
+      { 'blackPlayer.userId': userId },
+      { ownerUserId: userId },
+    );
+  }
+  if (guestId) {
+    playerConditions.push(
+      { 'whitePlayer.guestId': guestId },
+      { 'blackPlayer.guestId': guestId },
+    );
+  }
+
+  const filter: Record<string, unknown> = {
+    clientSessionId,
+    status: { $in: [GameStatus.ACTIVE, GameStatus.WAITING_FOR_OPPONENT] },
+  };
+
+  if (playerConditions.length > 0) {
+    filter.$or = playerConditions;
+  }
+
+  return Game.findOne(filter).sort({ updatedAt: -1 });
 }
 
 /** Find an active online game for a user (to support reconnection) */

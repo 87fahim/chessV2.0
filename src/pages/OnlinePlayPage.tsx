@@ -27,6 +27,7 @@ import { useBoardZoom } from '../hooks/useBoardZoom';
 import { useSocket } from '../hooks/useSocket';
 import { usePremoveQueue } from '../hooks/usePremoveQueue';
 import { useAppSelector, useAppDispatch } from '../hooks/useStore';
+import { useActiveGameSession } from '../hooks/useActiveGameSession';
 import { setFen, moveMade, gameOver, setStatus, resetGame, setFlipped, setLastMove } from '../features/game/gameSlice';
 import type { PieceColor, PieceType } from '../types/chess';
 
@@ -86,6 +87,9 @@ const OnlinePlayPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { isAuthenticated, user } = useAppSelector((s) => s.auth);
+
+  // AC1/AC2/AC7/AC8: check for an active game on this browser session before socket connects
+  const { isChecking: isCheckingSession } = useActiveGameSession();
 
   const {
     isConnected,
@@ -336,6 +340,14 @@ const OnlinePlayPage: React.FC = () => {
           )}
           {error && <Alert severity="error" sx={{ mb: 2 }} onClose={clearError}>{error}</Alert>}
 
+          {/* AC1/AC7/AC8: while checking for an existing active session, show a subtle indicator */}
+          {isCheckingSession && !isInQueue && (
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 2 }}>
+              <CircularProgress size={16} />
+              <Typography variant="caption" color="text.secondary">Checking for active game…</Typography>
+            </Box>
+          )}
+
           {isInQueue ? (
             <Box>
               <CircularProgress sx={{ mb: 2 }} />
@@ -378,7 +390,7 @@ const OnlinePlayPage: React.FC = () => {
                 variant="contained"
                 size="large"
                 fullWidth
-                disabled={!isConnected}
+                disabled={!isConnected || isCheckingSession}
                 onClick={() => joinQueue(selectedTC, preferredColor)}
               >
                 Find Match

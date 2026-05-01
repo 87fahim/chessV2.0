@@ -80,12 +80,37 @@ const saveCompletedGameSchema = z.object({
   endedAt: z.string().datetime().optional(),
 });
 
+export const getActiveSessionGame = asyncHandler(async (req: Request, res: Response) => {
+  const clientSessionId = req.query.clientSessionId as string | undefined;
+  const guestId = req.query.guestId as string | undefined;
+
+  if (!clientSessionId) {
+    res.status(400).json({ success: false, error: 'clientSessionId is required' });
+    return;
+  }
+
+  const userId = req.user?.userId;
+  const game = await gameService.getActiveGameBySession(clientSessionId, userId, guestId);
+  res.json({ success: true, data: { game: game ?? null } });
+});
+
 export const createGame = asyncHandler(async (req: Request, res: Response) => {
   const input = createGameSchema.parse(req.body);
+  const clientSessionId = (req.body as Record<string, unknown>).clientSessionId as string | undefined;
+
+  // Return existing active game for this session if one exists (prevents duplicates)
+  if (clientSessionId) {
+    const existing = await gameService.getActiveGameBySession(clientSessionId, req.user!.userId);
+    if (existing) {
+      res.status(200).json({ success: true, data: { game: existing, resumed: true } });
+      return;
+    }
+  }
 
   const game = await gameService.createGame({
     ...input,
     ownerUserId: req.user!.userId,
+    clientSessionId,
   });
 
   res.status(201).json({ success: true, data: { game } });

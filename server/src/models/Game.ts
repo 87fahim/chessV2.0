@@ -35,6 +35,7 @@ export interface IGame extends Document {
   label?: string;
   ownerUserId?: Types.ObjectId;
   guestSessionId?: Types.ObjectId;
+  clientSessionId?: string;
   whitePlayer: IPlayerInfo;
   blackPlayer: IPlayerInfo;
   fen: string;
@@ -89,6 +90,7 @@ const gameSchema = new Schema<IGame>(
     label: { type: String },
     ownerUserId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
     guestSessionId: { type: Schema.Types.ObjectId, ref: 'GuestSession' },
+    clientSessionId: { type: String, index: true },
     whitePlayer: { type: playerInfoSchema, required: true },
     blackPlayer: { type: playerInfoSchema, required: true },
     fen: {
@@ -135,6 +137,7 @@ const gameSchema = new Schema<IGame>(
   }
 );
 
+gameSchema.index({ clientSessionId: 1, status: 1 });
 gameSchema.index({ ownerUserId: 1, status: 1 });
 gameSchema.index({ 'whitePlayer.userId': 1, status: 1 });
 gameSchema.index({ 'blackPlayer.userId': 1, status: 1 });

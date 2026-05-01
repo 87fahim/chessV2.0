@@ -1,8 +1,12 @@
 import { Router } from 'express';
 import * as gameController from '../controllers/gameController.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
+import { optionalAuthMiddleware } from '../middleware/optionalAuthMiddleware.js';
 
 const router = Router();
+
+// Active session lookup — works for both authenticated users and guests
+router.get('/active-session', optionalAuthMiddleware, gameController.getActiveSessionGame);
 
 router.use(authMiddleware);
 
