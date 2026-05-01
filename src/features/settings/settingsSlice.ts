@@ -8,7 +8,8 @@ interface SettingsState {
 }
 
 const defaultSettings: UserSettingsData = {
-  boardTheme: 'classic',
+  boardTheme: 'wood2',
+  moveColorTheme: 'classic',
   pieceTheme: 'default',
   boardOrientation: 'auto',
   soundEnabled: true,

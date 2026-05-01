@@ -1,5 +1,6 @@
 export interface UserSettingsData {
   boardTheme: string;
+  moveColorTheme: string;
   pieceTheme: string;
   soundEnabled: boolean;
   animationEnabled: boolean;

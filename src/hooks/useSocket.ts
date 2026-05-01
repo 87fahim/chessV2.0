@@ -11,6 +11,7 @@ import type {
   AbortWarningPayload,
   GameResumablePayload,
 } from '../../shared/types/socket';
+import { useGameSounds } from './useGameSounds';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL;
 const DISCONNECT_FORFEIT_MS = 60_000;
@@ -79,6 +80,7 @@ const INITIAL_ONLINE: OnlineGameState = {
 const CLOCK_TICK_MS = 100;
 
 export function useSocket() {
+  const { playGameStart, playGameEnd, playIllegalMove, playMoveOutcome } = useGameSounds();
   const socketRef = useRef<Socket | null>(null);
   const disconnectFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -186,6 +188,7 @@ export function useSocket() {
 
     // Matchmaking
     socket.on('match:found', (data: MatchFoundPayload) => {
+      playGameStart();
       clearDisconnectFallback();
       setIsInQueue(false);
       setOnlineGame((prev) => ({
@@ -244,6 +247,14 @@ export function useSocket() {
     });
 
     socket.on('game:moveAccepted', (data: MoveAcceptedPayload) => {
+      playMoveOutcome({
+        san: data.move.san,
+        captured: data.move.san.includes('x'),
+        promotion: data.move.san.includes('=') ? 'p' : undefined,
+        isCheck: data.move.san.includes('+') || data.move.san.includes('#'),
+        isCheckmate: data.move.san.includes('#'),
+      });
+
       setOnlineGame((prev) => {
         // Update server clocks ref
         if (data.clocks) {
@@ -268,10 +279,15 @@ export function useSocket() {
     });
 
     socket.on('game:moveRejected', (data: MoveRejectedPayload) => {
+      playIllegalMove();
       setError(`Move rejected: ${data.reason}`);
     });
 
     socket.on('game:ended', (data: GameEndedPayload) => {
+      if (data.reason !== 'checkmate') {
+        playGameEnd();
+      }
+
       clearDisconnectFallback();
       setOnlineGame((prev) => ({
         ...prev,
@@ -352,6 +368,7 @@ export function useSocket() {
       blackPlayer: { type: string; name: string; userId?: string };
       timeControl?: { initialMs: number; incrementMs: number };
     }) => {
+      playGameStart();
       setRematchPending(false);
       setRematchOffered(false);
       setRematchDeclined(false);
@@ -394,7 +411,14 @@ export function useSocket() {
       socketRef.current = null;
       serverClocksRef.current = null;
     };
-  }, [clearDisconnectFallback, scheduleDisconnectFallback]);
+  }, [
+    clearDisconnectFallback,
+    scheduleDisconnectFallback,
+    playGameStart,
+    playGameEnd,
+    playIllegalMove,
+    playMoveOutcome,
+  ]);
 
   // Client-side clock interpolation (NFR-3): smooth visual countdown
   useEffect(() => {

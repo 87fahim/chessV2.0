@@ -2,6 +2,7 @@ import api from './api';
 
 export interface UserSettingsData {
   boardTheme?: string;
+  moveColorTheme?: string;
   pieceTheme?: string;
   boardOrientation?: 'white_bottom' | 'black_bottom' | 'auto';
   soundEnabled?: boolean;

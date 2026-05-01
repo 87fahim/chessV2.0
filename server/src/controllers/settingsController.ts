@@ -5,6 +5,7 @@ import * as settingsService from '../services/settingsService.js';
 
 const updateSettingsSchema = z.object({
   boardTheme: z.string().optional(),
+  moveColorTheme: z.string().optional(),
   pieceTheme: z.string().optional(),
   boardOrientation: z.enum(['white_bottom', 'black_bottom', 'auto']).optional(),
   soundEnabled: z.boolean().optional(),

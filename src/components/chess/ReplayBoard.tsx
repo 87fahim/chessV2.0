@@ -2,8 +2,9 @@ import React from 'react';
 import { Box } from '@mui/material';
 import { Chess } from 'chess.js';
 import Piece from './Piece';
-import { BOARD_THEME } from '../../lib/chess/boardTheme';
+import { BOARD_THEME, getBoardSquareBackground, getMoveColorTheme } from '../../lib/chess/boardTheme';
 import { getBoardSquares, getSquareColor, FILES } from '../../lib/chess/boardUtils';
+import { useAppSelector } from '../../hooks/useStore';
 import type { PieceColor, PieceType } from '../../types/chess';
 
 interface ReplayBoardProps {
@@ -13,6 +14,9 @@ interface ReplayBoardProps {
 }
 
 const ReplayBoard: React.FC<ReplayBoardProps> = ({ fen, lastMove, isFlipped = false }) => {
+  const boardTheme = useAppSelector((state) => state.settings.data.boardTheme);
+  const moveColorTheme = useAppSelector((state) => state.settings.data.moveColorTheme);
+  const moveTheme = getMoveColorTheme(moveColorTheme);
   const game = new Chess(fen);
   const board = game.board();
   const boardSquares = getBoardSquares(isFlipped);
@@ -29,11 +33,12 @@ const ReplayBoard: React.FC<ReplayBoardProps> = ({ fen, lastMove, isFlipped = fa
     return null;
   })();
 
-  const getSquareBg = (square: string, isLight: boolean) => {
-    if (square === kingSq) return isLight ? BOARD_THEME.checkLight : BOARD_THEME.checkDark;
-    if (lastMove && (square === lastMove.from || square === lastMove.to))
-      return isLight ? BOARD_THEME.lastMoveLight : BOARD_THEME.lastMoveDark;
-    return isLight ? BOARD_THEME.light : BOARD_THEME.dark;
+  const getSquareOverlay = (square: string, isLight: boolean) => {
+    if (square === kingSq) return isLight ? moveTheme.checkLight : moveTheme.checkDark;
+    if (lastMove && (square === lastMove.from || square === lastMove.to)) {
+      return isLight ? moveTheme.lastMoveLight : moveTheme.lastMoveDark;
+    }
+    return undefined;
   };
 
   return (
@@ -65,6 +70,11 @@ const ReplayBoard: React.FC<ReplayBoardProps> = ({ fen, lastMove, isFlipped = fa
         const fileLabel = isLastRow ? square[0] : undefined;
 
         const labelColor = isLight ? BOARD_THEME.labelOnLight : BOARD_THEME.labelOnDark;
+        const backgroundStyles = getBoardSquareBackground(
+          boardTheme,
+          isLight,
+          getSquareOverlay(square, isLight),
+        );
 
         return (
           <Box
@@ -76,9 +86,9 @@ const ReplayBoard: React.FC<ReplayBoardProps> = ({ fen, lastMove, isFlipped = fa
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: getSquareBg(square, isLight),
+              ...backgroundStyles,
               position: 'relative',
-              transition: 'background-color 0.12s ease',
+              transition: 'background-image 0.12s ease, background-color 0.12s ease',
             }}
           >
             {rankLabel && (

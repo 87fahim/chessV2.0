@@ -1,10 +1,12 @@
 import React from 'react';
 import { Box } from '@mui/material';
 import Piece from './Piece';
-import { BOARD_THEME } from '../../lib/chess/boardTheme';
+import { BOARD_THEME, getBoardSquareBackground, getMoveColorTheme } from '../../lib/chess/boardTheme';
 import type { PieceColor, PieceType } from '../../types/chess';
 
 interface SquareProps {
+  boardTheme?: string;
+  moveColorTheme?: string;
   square: string;
   piece: { type: PieceType; color: PieceColor } | null;
   isLight: boolean;
@@ -23,6 +25,8 @@ interface SquareProps {
 }
 
 const Square: React.FC<SquareProps> = ({
+  boardTheme,
+  moveColorTheme,
   square,
   piece,
   isLight,
@@ -37,16 +41,18 @@ const Square: React.FC<SquareProps> = ({
   fileLabel,
   onPointerDown,
 }) => {
-  const getBgColor = () => {
-    if (isCheck) return isLight ? BOARD_THEME.checkLight : BOARD_THEME.checkDark;
-    if (isSelected) return isLight ? BOARD_THEME.selectedLight : BOARD_THEME.selectedDark;
-    if (isPremove) return isLight ? BOARD_THEME.premoveLight : BOARD_THEME.premoveDark;
-    if (isDragOver && isLegalMove) return isLight ? BOARD_THEME.dragOverLight : BOARD_THEME.dragOverDark;
-    if (isLastMove) return isLight ? BOARD_THEME.lastMoveLight : BOARD_THEME.lastMoveDark;
-    return isLight ? BOARD_THEME.light : BOARD_THEME.dark;
-  };
+  const moveTheme = getMoveColorTheme(moveColorTheme);
+  const overlayColor = (() => {
+    if (isCheck) return isLight ? moveTheme.checkLight : moveTheme.checkDark;
+    if (isSelected) return isLight ? moveTheme.selectedLight : moveTheme.selectedDark;
+    if (isPremove) return isLight ? moveTheme.premoveLight : moveTheme.premoveDark;
+    if (isDragOver && isLegalMove) return isLight ? moveTheme.dragOverLight : moveTheme.dragOverDark;
+    if (isLastMove) return isLight ? moveTheme.lastMoveLight : moveTheme.lastMoveDark;
+    return undefined;
+  })();
 
   const labelColor = isLight ? BOARD_THEME.labelOnLight : BOARD_THEME.labelOnDark;
+  const backgroundStyles = getBoardSquareBackground(boardTheme, isLight, overlayColor);
 
   return (
     <Box
@@ -58,10 +64,10 @@ const Square: React.FC<SquareProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: getBgColor(),
+        ...backgroundStyles,
         position: 'relative',
         cursor: piece ? 'grab' : isLegalMove ? 'pointer' : 'default',
-        transition: 'background-color 0.12s ease',
+        transition: 'background-image 0.12s ease, background-color 0.12s ease',
         touchAction: 'none',
       }}
     >
@@ -107,7 +113,7 @@ const Square: React.FC<SquareProps> = ({
             width: '28%',
             height: '28%',
             borderRadius: '50%',
-            backgroundColor: 'rgba(0,0,0,0.15)',
+            backgroundColor: moveTheme.legalMoveDot,
             position: 'absolute',
           }}
         />
@@ -119,7 +125,7 @@ const Square: React.FC<SquareProps> = ({
             width: '100%',
             height: '100%',
             borderRadius: '50%',
-            border: '5px solid rgba(0,0,0,0.15)',
+            border: `5px solid ${moveTheme.captureIndicator}`,
             position: 'absolute',
             boxSizing: 'border-box',
           }}

@@ -31,6 +31,8 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
   const dispatch = useAppDispatch();
   const { fen, selectedSquare, legalMoves, lastMove, isFlipped, promotionPending, status } =
     useAppSelector((s) => s.game);
+  const boardTheme = useAppSelector((s) => s.settings.data.boardTheme);
+  const moveColorTheme = useAppSelector((s) => s.settings.data.moveColorTheme);
 
   /* --- Drag state --------------------------------------------------- */
   const boardRef = useRef<HTMLDivElement>(null);
@@ -450,6 +452,8 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
             return (
               <SquareComponent
                 key={square}
+                boardTheme={boardTheme}
+                moveColorTheme={moveColorTheme}
                 square={square}
                 piece={piece ? { type: piece.type as PieceType, color: piece.color as PieceColor } : null}
                 isLight={isLight}

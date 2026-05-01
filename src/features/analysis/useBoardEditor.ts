@@ -14,6 +14,7 @@ import { buildFen, parseFenToPosition } from './fenBuilder';
 import { validatePosition, canAddPiece, canMovePiece, normalizeCastlingRights } from './positionValidation';
 import { getStockfishService, parseUciMove } from './stockfishService';
 import type { AnalysisResult } from './stockfishService';
+import { useGameSounds } from '../../hooks/useGameSounds';
 
 const DEFAULT_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const DEFAULT_CASTLING: CastlingRights = { K: true, Q: true, k: true, q: true };
@@ -47,6 +48,7 @@ function takeSnapshot(state: {
 }
 
 export function useBoardEditor() {
+  const { playMoveOutcome } = useGameSounds();
   const startParsed = parseFenToPosition(DEFAULT_FEN);
   const [position, setPosition] = useState<BoardPosition>({ ...startParsed.position });
   const [sideToMove, setSideToMove] = useState<PieceColor>('w');
@@ -519,7 +521,17 @@ export function useBoardEditor() {
       // Use chess.js for correct handling of castling, en passant, etc.
       const game = new Chess(fen);
       const { from, to, promotion } = parseUciMove(analysisResult.bestMove);
-      game.move({ from, to, promotion });
+      const move = game.move({ from, to, promotion });
+      if (!move) return;
+
+      playMoveOutcome({
+        san: move.san,
+        captured: !!move.captured,
+        promotion: move.promotion,
+        isCheck: game.isCheck(),
+        isCheckmate: game.isCheckmate(),
+      });
+
       const parsed = parseFenToPosition(game.fen());
       pushUndo();
       setPosition(parsed.position);
@@ -543,7 +555,7 @@ export function useBoardEditor() {
       setSideToMove((prev) => (prev === 'w' ? 'b' : 'w'));
     }
     clearAnalysis();
-  }, [analysisResult, fen, position, pushUndo, clearAnalysis]);
+  }, [analysisResult, fen, position, pushUndo, clearAnalysis, playMoveOutcome]);
 
   return {
     position,

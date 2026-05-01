@@ -11,10 +11,13 @@ import guestRoutes from './routes/guestRoutes.js';
 import engineRoutes from './routes/engineRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import maintenanceRoutes from './routes/maintenanceRoutes.js';
+import helmet from "helmet";
 
 const app = express();
 
 // Global middleware
+app.use(helmet());
+app.disable("x-powered-by");
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
 

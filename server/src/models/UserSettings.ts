@@ -3,6 +3,7 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 export interface IUserSettings extends Document {
   userId: Types.ObjectId;
   boardTheme: string;
+  moveColorTheme: string;
   pieceTheme: string;
   boardOrientation: string;
   soundEnabled: boolean;
@@ -61,7 +62,11 @@ const userSettingsSchema = new Schema<IUserSettings>(
     },
     boardTheme: {
       type: String,
-      default: 'default',
+      default: 'wood2',
+    },
+    moveColorTheme: {
+      type: String,
+      default: 'classic',
     },
     pieceTheme: {
       type: String,

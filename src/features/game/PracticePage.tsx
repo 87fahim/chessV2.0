@@ -14,6 +14,7 @@ import { DEFAULT_FEN, isValidFen } from '../../lib/chess/fen';
 import { makeMove } from '../../lib/chess/moveUtils';
 import type { PieceColor } from '../../types/chess';
 import { userApi } from '../../services/userService';
+import { useGameSounds } from '../../hooks/useGameSounds';
 
 const PracticePage: React.FC = () => {
   const zoom = useBoardZoom();
@@ -22,6 +23,7 @@ const PracticePage: React.FC = () => {
   const { isAuthenticated } = useAppSelector((s) => s.auth);
   const [fenInput, setFenInput] = useState(fen);
   const [fenError, setFenError] = useState('');
+  const { playIllegalMove, playMoveOutcome } = useGameSounds();
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -59,7 +61,19 @@ const PracticePage: React.FC = () => {
     (from: string, to: string, promotion?: string) => {
       const game = new Chess(fen);
       const result = makeMove(game, from, to, promotion);
-      if (!result || !result.san) return;
+      if (!result || !result.san) {
+        playIllegalMove();
+        return;
+      }
+
+      playMoveOutcome({
+        san: result.san,
+        captured: !!result.captured,
+        promotion: result.promotion,
+        isCheck: game.isCheck(),
+        isCheckmate: game.isCheckmate(),
+      });
+
       dispatch(
         moveMade({
           fen: game.fen(),
@@ -72,7 +86,7 @@ const PracticePage: React.FC = () => {
       );
       setFenInput(game.fen());
     },
-    [fen, dispatch],
+    [fen, dispatch, playIllegalMove, playMoveOutcome],
   );
 
   return (

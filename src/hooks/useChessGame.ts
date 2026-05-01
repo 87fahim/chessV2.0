@@ -14,10 +14,12 @@ import { DEFAULT_FEN } from '../lib/chess/fen';
 import { getStockfishService, parseUciMove } from '../features/analysis/stockfishService';
 import type { GameMode, Difficulty } from '../types/game';
 import type { PieceColor, PieceType } from '../types/chess';
+import { useGameSounds } from './useGameSounds';
 
 export function useChessGame() {
   const dispatch = useAppDispatch();
   const gameState = useAppSelector((s) => s.game);
+  const { playGameStart, playGameEnd, playIllegalMove, playMoveOutcome } = useGameSounds();
   const computerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [engineError, setEngineError] = useState<string | null>(null);
   const [isComputerThinking, setIsComputerThinking] = useState(false);
@@ -30,24 +32,28 @@ export function useChessGame() {
         return true;
       }
       if (game.isStalemate()) {
+        playGameEnd();
         dispatch(gameOver({ result: '1/2-1/2', reason: 'stalemate' }));
         return true;
       }
       if (game.isThreefoldRepetition()) {
+        playGameEnd();
         dispatch(gameOver({ result: '1/2-1/2', reason: 'repetition' }));
         return true;
       }
       if (game.isInsufficientMaterial()) {
+        playGameEnd();
         dispatch(gameOver({ result: '1/2-1/2', reason: 'insufficient_material' }));
         return true;
       }
       if (game.isDraw()) {
+        playGameEnd();
         dispatch(gameOver({ result: '1/2-1/2', reason: 'draw' }));
         return true;
       }
       return false;
     },
-    [dispatch],
+    [dispatch, playGameEnd],
   );
 
   const handleComputerMove = useCallback(
@@ -103,6 +109,15 @@ export function useChessGame() {
               color: move.color as PieceColor,
             }),
           );
+
+          playMoveOutcome({
+            san: move.san,
+            captured: !!move.captured,
+            promotion: move.promotion,
+            isCheck: computerGame.isCheck(),
+            isCheckmate: computerGame.isCheckmate(),
+          });
+
           checkGameEnd(computerGame);
         } catch (error) {
           const reason = error instanceof Error ? error.message : 'Unknown engine error';
@@ -112,7 +127,7 @@ export function useChessGame() {
         }
       }, delay);
     },
-    [dispatch, gameState.difficulty, checkGameEnd],
+    [dispatch, gameState.difficulty, checkGameEnd, playMoveOutcome],
   );
 
   const startNewGame = useCallback(
@@ -121,19 +136,23 @@ export function useChessGame() {
       setEngineError(null);
       setIsComputerThinking(false);
       dispatch(newGame({ mode, playerColor, difficulty }));
+      playGameStart();
 
       if (mode === 'vs-computer' && playerColor === 'b') {
         handleComputerMove(DEFAULT_FEN, difficulty);
       }
     },
-    [dispatch, handleComputerMove],
+    [dispatch, handleComputerMove, playGameStart],
   );
 
   const handleMove = useCallback(
     (from: string, to: string, promotion?: string) => {
       const game = new Chess(gameState.fen);
       const result = makeMove(game, from, to, promotion);
-      if (!result || !result.san) return;
+      if (!result || !result.san) {
+        playIllegalMove();
+        return;
+      }
 
       setEngineError(null);
 
@@ -148,6 +167,14 @@ export function useChessGame() {
         }),
       );
 
+      playMoveOutcome({
+        san: result.san,
+        captured: !!result.captured,
+        promotion: result.promotion,
+        isCheck: game.isCheck(),
+        isCheckmate: game.isCheckmate(),
+      });
+
       if (checkGameEnd(game)) return;
 
       // Computer responds in vs-computer mode
@@ -155,7 +182,7 @@ export function useChessGame() {
         handleComputerMove(game.fen());
       }
     },
-    [dispatch, gameState.fen, gameState.mode, checkGameEnd, handleComputerMove],
+    [dispatch, gameState.fen, gameState.mode, checkGameEnd, handleComputerMove, playIllegalMove, playMoveOutcome],
   );
 
   const handleUndo = useCallback(() => {
@@ -169,8 +196,9 @@ export function useChessGame() {
 
   const handleResign = useCallback(() => {
     const result = gameState.playerColor === 'w' ? '0-1' : '1-0';
+    playGameEnd();
     dispatch(gameOver({ result, reason: 'resignation' }));
-  }, [dispatch, gameState.playerColor]);
+  }, [dispatch, gameState.playerColor, playGameEnd]);
 
   const handleReset = useCallback(() => {
     if (computerTimeoutRef.current) clearTimeout(computerTimeoutRef.current);

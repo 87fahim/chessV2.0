@@ -3,6 +3,7 @@ import { createError } from '../middleware/errorMiddleware.js';
 
 export interface SettingsUpdate {
   boardTheme?: string;
+  moveColorTheme?: string;
   pieceTheme?: string;
   boardOrientation?: 'white_bottom' | 'black_bottom' | 'auto';
   soundEnabled?: boolean;

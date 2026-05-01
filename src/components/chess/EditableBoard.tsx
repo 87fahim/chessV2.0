@@ -1,8 +1,9 @@
 import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { Box } from '@mui/material';
 import Piece from './Piece';
-import { BOARD_THEME } from '../../lib/chess/boardTheme';
+import { BOARD_THEME, getBoardSquareBackground, getMoveColorTheme } from '../../lib/chess/boardTheme';
 import { getBoardSquares, getSquareColor, getPieceImage, FILES, RANKS } from '../../lib/chess/boardUtils';
+import { useAppSelector } from '../../hooks/useStore';
 import type { PieceColor, PieceType } from '../../types/chess';
 import type { BoardPosition, DragSource, PieceOnBoard } from '../../features/analysis/boardEditorTypes';
 
@@ -22,6 +23,9 @@ const EditableBoard: React.FC<EditableBoardProps> = ({
   highlightSquares,
   onDrop,
 }) => {
+  const boardTheme = useAppSelector((state) => state.settings.data.boardTheme);
+  const moveColorTheme = useAppSelector((state) => state.settings.data.moveColorTheme);
+  const moveTheme = getMoveColorTheme(moveColorTheme);
   const containerRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   const [activeDrag, setActiveDrag] = useState<DragSource | null>(null);
@@ -225,14 +229,14 @@ const EditableBoard: React.FC<EditableBoardProps> = ({
 
             const labelColor = isLight ? BOARD_THEME.labelOnLight : BOARD_THEME.labelOnDark;
 
-            let bgColor: string;
+            let overlayColor: string | undefined;
             if (isHighlightFrom || isHighlightTo) {
-              bgColor = isLight ? BOARD_THEME.highlightLight : BOARD_THEME.highlightDark;
+              overlayColor = isLight ? moveTheme.highlightLight : moveTheme.highlightDark;
             } else if (isDragOver) {
-              bgColor = isLight ? BOARD_THEME.dragOverLight : BOARD_THEME.dragOverDark;
-            } else {
-              bgColor = isLight ? BOARD_THEME.light : BOARD_THEME.dark;
+              overlayColor = isLight ? moveTheme.dragOverLight : moveTheme.dragOverDark;
             }
+
+            const backgroundStyles = getBoardSquareBackground(boardTheme, isLight, overlayColor);
 
             return (
               <Box
@@ -245,10 +249,10 @@ const EditableBoard: React.FC<EditableBoardProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: bgColor,
+                  ...backgroundStyles,
                   position: 'relative',
                   cursor: piece ? 'grab' : 'default',
-                  transition: 'background-color 0.12s ease',
+                  transition: 'background-image 0.12s ease, background-color 0.12s ease',
                   touchAction: 'none',
                 }}
               >
