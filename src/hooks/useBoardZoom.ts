@@ -4,8 +4,15 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 const ZOOM_STEP = 60;
 /** Minimum board size in px */
 const MIN_BOARD_SIZE = 240;
+/** Horizontal padding reserved so the zoomed board stays inside the viewport */
+const MOBILE_HORIZONTAL_PADDING = 16;
+const DESKTOP_HORIZONTAL_PADDING = 60;
 /** Viewport chrome to reserve vertically (mobile app bar + padding) */
 const TOP_CHROME_HEIGHT = 60;
+
+function getHorizontalPadding(viewportWidth: number) {
+  return viewportWidth < 600 ? MOBILE_HORIZONTAL_PADDING : DESKTOP_HORIZONTAL_PADDING;
+}
 
 export interface UseBoardZoomReturn {
   /** Attach this ref to the board column wrapper element in BoardLayout */
@@ -40,7 +47,7 @@ export function useBoardZoom(): UseBoardZoomReturn {
       setWinH(newH);
       const nw = naturalWidthRef.current;
       if (nw !== null) {
-        const newMax = Math.min(newW - 60, newH - TOP_CHROME_HEIGHT);
+        const newMax = Math.min(newW - getHorizontalPadding(newW), newH - TOP_CHROME_HEIGHT);
         setZoomSteps((prev) => {
           const maxSteps = Math.floor((newMax - nw) / ZOOM_STEP);
           return prev > maxSteps ? Math.max(0, maxSteps) : prev;
@@ -69,7 +76,7 @@ export function useBoardZoom(): UseBoardZoomReturn {
     return () => ro.disconnect();
   }, []);
 
-  const maxBoardSize = Math.min(winW - 60, winH - TOP_CHROME_HEIGHT);
+  const maxBoardSize = Math.min(winW - getHorizontalPadding(winW), winH - TOP_CHROME_HEIGHT);
 
   const boardWidth =
     naturalWidth !== null && zoomSteps !== 0

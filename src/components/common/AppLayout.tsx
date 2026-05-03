@@ -35,6 +35,8 @@ import { logout } from '../../features/auth/authSlice';
 
 const DRAWER_WIDTH = 260;
 const PERMANENT_DRAWER_MIN_WIDTH = 1536;
+const ENV_BANNER_HEIGHT = __APP_LABEL__ ? 20 : 0;
+const MOBILE_APP_BAR_HEIGHT = 48;
 
 const APP_TITLE = __APP_LABEL__ ? `♟ Chess V2.0 : ${__APP_LABEL__}` : '♟ Chess V2.0';
 
@@ -65,6 +67,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { user, isAuthenticated, isGuest } = useAppSelector((s) => s.auth);
 
   const visibleNav = NAV_ITEMS.filter((item) => !item.authOnly || isAuthenticated);
+  const contentTopOffset = useTemporaryDrawer
+    ? MOBILE_APP_BAR_HEIGHT + ENV_BANNER_HEIGHT
+    : ENV_BANNER_HEIGHT;
 
   useEffect(() => {
     document.title = __APP_LABEL__ ? `Chess V2.0 : ${__APP_LABEL__}` : 'Chess V2.0';
@@ -169,7 +174,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   );
 
   return (
-    <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        width: '100%',
+        maxWidth: '100vw',
+        minHeight: '100dvh',
+        height: '100dvh',
+        overflow: 'hidden',
+      }}
+    >
       {/* Non-production environment banner */}
       {__APP_LABEL__ && (
         <Box
@@ -196,7 +210,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       {useTemporaryDrawer && (
         <AppBar
           position="fixed"
-          sx={{ zIndex: theme.zIndex.drawer + 1 }}
+          sx={{
+            zIndex: theme.zIndex.drawer + 1,
+            top: `${ENV_BANNER_HEIGHT}px`,
+          }}
           elevation={1}
         >
           <Toolbar variant="dense">
@@ -223,7 +240,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           onClose={() => setMobileOpen(false)}
           ModalProps={{ keepMounted: true }}
           sx={{
-            '& .MuiDrawer-paper': { width: DRAWER_WIDTH },
+            '& .MuiDrawer-paper': {
+              width: DRAWER_WIDTH,
+              maxWidth: '86vw',
+              boxSizing: 'border-box',
+              ...(ENV_BANNER_HEIGHT
+                ? {
+                    top: `${ENV_BANNER_HEIGHT}px`,
+                    height: `calc(100% - ${ENV_BANNER_HEIGHT}px)`,
+                  }
+                : {}),
+            },
           }}
         >
           {drawer}
@@ -239,6 +266,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               boxSizing: 'border-box',
               borderRight: '1px solid',
               borderColor: 'divider',
+              ...(ENV_BANNER_HEIGHT
+                ? {
+                    top: `${ENV_BANNER_HEIGHT}px`,
+                    height: `calc(100% - ${ENV_BANNER_HEIGHT}px)`,
+                  }
+                : {}),
             },
           }}
         >
@@ -251,14 +284,15 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         component="main"
         sx={{
           flex: 1,
-          height: '100vh',
+          minWidth: 0,
+          minHeight: 0,
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          ...(useTemporaryDrawer && { pt: '48px' }),
+          pt: contentTopOffset ? `${contentTopOffset}px` : 0,
         }}
       >
-        <Box sx={{ flex: 1, overflow: 'auto' }}>{children}</Box>
+        <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', overflowX: 'hidden' }}>{children}</Box>
       </Box>
     </Box>
   );

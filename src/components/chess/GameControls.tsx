@@ -26,7 +26,17 @@ const GameControls: React.FC<GameControlsProps> = ({
   zoomControls,
 }) => {
   return (
-    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', alignItems: 'center', width: '100%', overflowX: 'auto' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        gap: 0.5,
+        rowGap: 0.5,
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        width: '100%',
+        overflowX: 'visible',
+      }}
+    >
       <Tooltip title="Undo">
         <span>
           <IconButton onClick={onUndo} disabled={!canUndo} size="small" sx={{ p: 0.4 }}>

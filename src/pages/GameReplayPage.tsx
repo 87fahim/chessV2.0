@@ -287,7 +287,7 @@ const GameReplayPage: React.FC = () => {
             Controls
           </Typography>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexWrap: 'nowrap', overflowX: 'auto' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, rowGap: 0.5, flexWrap: 'wrap', overflowX: 'visible' }}>
             <Tooltip title="Back to History">
               <IconButton size="small" onClick={() => navigate('/history')} sx={{ p: 0.4 }}>
                 <ArrowBackIcon fontSize="small" />

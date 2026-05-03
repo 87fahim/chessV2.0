@@ -92,10 +92,12 @@ const HomePage: React.FC = () => {
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        p: 3,
+        alignItems: 'stretch',
+        justifyContent: 'flex-start',
+        width: '100%',
+        minHeight: '100%',
+        p: { xs: 1.5, sm: 2.5, lg: 3 },
+        boxSizing: 'border-box',
       }}
     >
       <Typography variant="h3" sx={{ fontWeight: 700, fontSize: { xs: '2.1rem', lg: '3.6rem' } }} gutterBottom>
@@ -107,27 +109,29 @@ const HomePage: React.FC = () => {
         </Typography>
       </Box>
       {isAuthenticated && user ? (
-        <Chip label={`Welcome back, ${user.username}!`} color="primary" variant="outlined" sx={{ mb: 3 }} />
+        <Chip label={`Welcome back, ${user.username}!`} color="primary" variant="outlined" sx={{ mb: { xs: 2, sm: 3 }, alignSelf: 'center' }} />
       ) : isGuest ? (
         <Chip
           label="Playing as Guest — Sign in to unlock all features"
           variant="outlined"
-          sx={{ mb: 3, cursor: 'pointer' }}
+          sx={{ mb: { xs: 2, sm: 3 }, cursor: 'pointer', alignSelf: 'center' }}
           onClick={() => navigate('/login')}
         />
       ) : (
-        <Box sx={{ mb: 3 }} />
+        <Box sx={{ mb: { xs: 2, sm: 3 } }} />
       )}
 
-      <Grid container spacing={3} sx={{ maxWidth: 900 }}>
+      <Grid container spacing={{ xs: 1.5, sm: 2.5, lg: 3 }} sx={{ width: '100%', maxWidth: 960 }}>
         {visibleCards.map((card) => (
           <Grid size={{ xs: 12, sm: 6, md: 4 }} key={card.to}>
             <Paper
               elevation={3}
               onClick={() => navigate(card.to)}
               sx={{
-                p: 3,
+                p: { xs: 2, sm: 3 },
                 cursor: 'pointer',
+                width: '100%',
+                height: '100%',
                 textAlign: 'center',
                 transition: 'all 0.2s',
                 '&:hover': {

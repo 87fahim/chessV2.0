@@ -141,6 +141,7 @@ const EditableBoard: React.FC<EditableBoardProps> = ({
         display: 'flex',
         gap: 0.5,
         justifyContent: 'center',
+        flexWrap: 'wrap',
         py: 0.5,
         minHeight: sparePieceSize + 8,
       }}
@@ -186,15 +187,13 @@ const EditableBoard: React.FC<EditableBoardProps> = ({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       sx={{
-        margin: '20px auto',
+        my: { xs: 1, sm: 1.5, md: 2 },
         position: 'relative',
-        width: '80%',
-        maxWidth: '100%',
+        width: '100%',
+        maxWidth: { xs: '100%', sm: 'min(560px, 100%)', lg: '800px' },
         mx: 'auto',
         userSelect: 'none',
-        '@media (min-width:1024px)': {
-          maxWidth: 800,
-        },
+        boxSizing: 'border-box',
       }}
     >
       {/* Top spare pieces */}
@@ -263,7 +262,7 @@ const EditableBoard: React.FC<EditableBoardProps> = ({
                       position: 'absolute',
                       top: 2,
                       left: 3,
-                      fontSize: '1rem',
+                      fontSize: { xs: '0.68rem', sm: '0.82rem', md: '1rem' },
                       fontWeight: 700,
                       lineHeight: 1,
                       color: labelColor,
@@ -280,7 +279,7 @@ const EditableBoard: React.FC<EditableBoardProps> = ({
                       position: 'absolute',
                       bottom: 1,
                       right: 3,
-                      fontSize: '1rem',
+                      fontSize: { xs: '0.68rem', sm: '0.82rem', md: '1rem' },
                       fontWeight: 700,
                       lineHeight: 1,
                       color: labelColor,

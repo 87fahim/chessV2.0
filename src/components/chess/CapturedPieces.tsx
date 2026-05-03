@@ -23,14 +23,22 @@ const CapturedPieces: React.FC<CapturedPiecesProps> = ({ pieces }) => {
     const diff = materialDiff(color);
 
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, minHeight: 28 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.25,
+          flexWrap: 'wrap',
+          minHeight: { xs: 24, sm: 28 },
+        }}
+      >
         {sorted.map((piece, i) => (
           <Box
             key={i}
             component="img"
             src={getPieceImage(capturedBy, piece)}
             alt={`${capturedBy}${piece}`}
-            sx={{ width: 20, height: 20, objectFit: 'contain', opacity: 0.8 }}
+            sx={{ width: { xs: 18, sm: 20 }, height: { xs: 18, sm: 20 }, objectFit: 'contain', opacity: 0.8 }}
           />
         ))}
         {diff > 0 && (
@@ -43,7 +51,7 @@ const CapturedPieces: React.FC<CapturedPiecesProps> = ({ pieces }) => {
   };
 
   return (
-    <Box>
+    <Box sx={{ width: '100%' }}>
       {renderCaptures('w')}
       {renderCaptures('b')}
     </Box>

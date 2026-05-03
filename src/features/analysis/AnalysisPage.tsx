@@ -131,7 +131,7 @@ const AnalysisPage: React.FC = () => {
           <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
             Next Best Move
           </Typography>
-          <Box sx={{ display: 'flex', gap: 0.75, mb: 1 }}>
+          <Box sx={{ display: 'flex', gap: 0.75, mb: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
             <Button
               variant="contained"
               color="secondary"
@@ -149,7 +149,7 @@ const AnalysisPage: React.FC = () => {
                 color="error"
                 onClick={editor.cancelAnalysis}
                 startIcon={<CancelIcon />}
-                sx={{ minHeight: 30, fontSize: '0.74rem', px: 1.1, whiteSpace: 'nowrap' }}
+                sx={{ minHeight: 30, fontSize: '0.74rem', px: 1.1, whiteSpace: 'nowrap', flex: { xs: '1 1 100%', sm: '0 0 auto' } }}
               >
                 Cancel
               </Button>
@@ -224,7 +224,7 @@ const AnalysisPage: React.FC = () => {
           <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, fontSize: '0.86rem', mb: 0.75 }}>
             Controls
           </Typography>
-          <Box sx={{ display: 'flex', gap: 0.25, alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto' }}>
+          <Box sx={{ display: 'flex', gap: 0.25, rowGap: 0.5, alignItems: 'center', flexWrap: 'wrap', overflowX: 'visible' }}>
             <Tooltip title="Flip Board">
               <IconButton onClick={editor.flipBoard} size="small" sx={{ p: 0.4 }}>
                 <SwapVertIcon sx={{ fontSize: 18 }} />
@@ -274,7 +274,7 @@ const AnalysisPage: React.FC = () => {
             <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
               Positions
             </Typography>
-            <Box sx={{ display: 'flex', gap: 0.75 }}>
+            <Box sx={{ display: 'flex', gap: 0.75, flexDirection: { xs: 'column', sm: 'row' } }}>
               <Button
                 variant="contained"
                 size="small"
@@ -305,7 +305,7 @@ const AnalysisPage: React.FC = () => {
           <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
             FEN Position
           </Typography>
-          <Box sx={{ display: 'flex', gap: 0.75, mb: 0.75 }}>
+          <Box sx={{ display: 'flex', gap: 0.75, mb: 0.75, flexWrap: { xs: 'wrap', sm: 'nowrap' }, alignItems: 'flex-start' }}>
             <TextField
               size="small"
               fullWidth
@@ -331,7 +331,7 @@ const AnalysisPage: React.FC = () => {
               }}
             />
             <Tooltip title="Copy Current FEN">
-              <IconButton onClick={handleCopyFen} size="small" sx={{ width: 30, height: 30 }}>
+              <IconButton onClick={handleCopyFen} size="small" sx={{ width: 36, height: 36, flex: '0 0 auto' }}>
                 <ContentCopyIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -367,13 +367,14 @@ const AnalysisPage: React.FC = () => {
           <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, mb: 0.4, color: 'text.secondary' }}>
             Search Budget
           </Typography>
-          <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'flex-start' }}>
+          <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'flex-start', flexDirection: { xs: 'column', sm: 'row' } }}>
             <ToggleButtonGroup
               value={editor.analysisSettings.searchMode}
               exclusive
               onChange={(_, val) => val && editor.updateSearchMode(val)}
               size="small"
               sx={{
+                width: { xs: '100%', sm: 'auto' },
                 flex: '0 0 auto',
                 '& .MuiToggleButton-root': {
                   py: 0.55,
@@ -466,14 +467,14 @@ const AnalysisPage: React.FC = () => {
           <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, mb: 0.4, color: 'text.secondary' }}>
             Position Metadata
           </Typography>
-          <Box sx={{ display: 'flex', gap: 0.75, mb: 0.75 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))' }, gap: 0.75, mb: 0.75 }}>
             <TextField
               size="small"
               label="EP"
               value={editor.enPassant}
               onChange={(e) => editor.updateEnPassant(e.target.value)}
               placeholder="-"
-              sx={{ flex: 1 }}
+              sx={{ width: '100%' }}
               slotProps={{
                 inputLabel: { sx: { fontSize: '0.74rem' } },
                 htmlInput: { sx: { fontFamily: 'monospace', fontSize: '0.74rem', py: 0.85 } },
@@ -485,7 +486,7 @@ const AnalysisPage: React.FC = () => {
               type="number"
               value={editor.halfMoveClock}
               onChange={(e) => editor.updateHalfMoveClock(parseInt(e.target.value, 10) || 0)}
-              sx={{ flex: 1 }}
+              sx={{ width: '100%' }}
               slotProps={{
                 inputLabel: { sx: { fontSize: '0.74rem' } },
                 htmlInput: { min: 0, sx: { fontSize: '0.74rem', py: 0.85 } },
@@ -497,7 +498,7 @@ const AnalysisPage: React.FC = () => {
               type="number"
               value={editor.fullMoveNumber}
               onChange={(e) => editor.updateFullMoveNumber(parseInt(e.target.value, 10) || 1)}
-              sx={{ flex: 1 }}
+              sx={{ width: '100%' }}
               slotProps={{
                 inputLabel: { sx: { fontSize: '0.74rem' } },
                 htmlInput: { min: 1, sx: { fontSize: '0.74rem', py: 0.85 } },
@@ -529,9 +530,22 @@ const AnalysisPage: React.FC = () => {
     />
 
     {/* Save Position Dialog */}
-    <Dialog open={saveDialogOpen} onClose={() => setSaveDialogOpen(false)} maxWidth="xs" fullWidth>
-      <DialogTitle sx={{ fontSize: '1rem', pb: 1 }}>Save Position</DialogTitle>
-      <DialogContent>
+    <Dialog
+      open={saveDialogOpen}
+      onClose={() => setSaveDialogOpen(false)}
+      maxWidth="xs"
+      fullWidth
+      slotProps={{
+        paper: {
+          sx: {
+            width: { xs: 'calc(100% - 16px)', sm: '100%' },
+            m: { xs: 1, sm: 2 },
+          },
+        },
+      }}
+    >
+      <DialogTitle sx={{ fontSize: '1rem', pb: 1, px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 3 } }}>Save Position</DialogTitle>
+      <DialogContent sx={{ px: { xs: 2, sm: 3 }, overflowX: 'hidden' }}>
         <TextField
           autoFocus
           size="small"
@@ -546,8 +560,8 @@ const AnalysisPage: React.FC = () => {
           FEN: {editor.fen}
         </Typography>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={() => setSaveDialogOpen(false)} size="small">Cancel</Button>
+      <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 3 }, pt: 1.5, gap: 1, flexDirection: { xs: 'column-reverse', sm: 'row' }, '& > :not(style)': { ml: 0 } }}>
+        <Button onClick={() => setSaveDialogOpen(false)} size="small" sx={{ width: { xs: '100%', sm: 'auto' } }}>Cancel</Button>
         <Button
           variant="contained"
           size="small"
@@ -556,6 +570,7 @@ const AnalysisPage: React.FC = () => {
             setSaveDialogOpen(false);
           }}
           disabled={isSavingPosition || !editor.canAnalyze}
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
         >
           {isSavingPosition ? 'Saving...' : 'Save'}
         </Button>
@@ -563,9 +578,22 @@ const AnalysisPage: React.FC = () => {
     </Dialog>
 
     {/* Load Position Dialog */}
-    <Dialog open={loadDialogOpen} onClose={() => setLoadDialogOpen(false)} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontSize: '1rem', pb: 1 }}>Load Saved Position</DialogTitle>
-      <DialogContent>
+    <Dialog
+      open={loadDialogOpen}
+      onClose={() => setLoadDialogOpen(false)}
+      maxWidth="sm"
+      fullWidth
+      slotProps={{
+        paper: {
+          sx: {
+            width: { xs: 'calc(100% - 16px)', sm: '100%' },
+            m: { xs: 1, sm: 2 },
+          },
+        },
+      }}
+    >
+      <DialogTitle sx={{ fontSize: '1rem', pb: 1, px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 3 } }}>Load Saved Position</DialogTitle>
+      <DialogContent sx={{ px: { xs: 2, sm: 3 }, overflowX: 'hidden' }}>
         {savedPositions.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
             No saved positions yet.
@@ -579,7 +607,7 @@ const AnalysisPage: React.FC = () => {
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', wordBreak: 'break-all', mb: 0.75 }}>
                 {position.fen}
               </Typography>
-              <Box sx={{ display: 'flex', gap: 0.75 }}>
+              <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
                 <Button size="small" variant="outlined" onClick={() => {
                   setFenInput(position.fen);
                   const err = editor.loadFen(position.fen);
@@ -602,8 +630,8 @@ const AnalysisPage: React.FC = () => {
           ))
         )}
       </DialogContent>
-      <DialogActions>
-        <Button onClick={() => setLoadDialogOpen(false)} size="small">Close</Button>
+      <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 3 }, pt: 1.5, gap: 1, flexDirection: { xs: 'column-reverse', sm: 'row' }, '& > :not(style)': { ml: 0 } }}>
+        <Button onClick={() => setLoadDialogOpen(false)} size="small" sx={{ width: { xs: '100%', sm: 'auto' } }}>Close</Button>
       </DialogActions>
     </Dialog>
   </>
