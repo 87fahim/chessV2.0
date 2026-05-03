@@ -23,8 +23,11 @@ const EditableBoard: React.FC<EditableBoardProps> = ({
   highlightSquares,
   onDrop,
 }) => {
-  const boardTheme = useAppSelector((state) => state.settings.data.boardTheme);
-  const moveColorTheme = useAppSelector((state) => state.settings.data.moveColorTheme);
+  const settings = useAppSelector((state) => state.settings.data);
+  const boardTheme = settings.boardTheme;
+  const moveColorTheme = settings.moveColorTheme;
+  const showCoordinates = settings.showCoordinates === true;
+  const animationsEnabled = settings.animationEnabled !== false;
   const moveTheme = getMoveColorTheme(moveColorTheme);
   const containerRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -251,12 +254,12 @@ const EditableBoard: React.FC<EditableBoardProps> = ({
                   ...backgroundStyles,
                   position: 'relative',
                   cursor: piece ? 'grab' : 'default',
-                  transition: 'background-image 0.12s ease, background-color 0.12s ease',
+                  transition: animationsEnabled ? 'background-image 0.12s ease, background-color 0.12s ease' : 'none',
                   touchAction: 'none',
                 }}
               >
                 {/* Rank label */}
-                {colIdx === 0 && (
+                {showCoordinates && colIdx === 0 && (
                   <Box
                     sx={{
                       position: 'absolute',
@@ -273,7 +276,7 @@ const EditableBoard: React.FC<EditableBoardProps> = ({
                   </Box>
                 )}
                 {/* File label */}
-                {rowIdx === 7 && (
+                {showCoordinates && rowIdx === 7 && (
                   <Box
                     sx={{
                       position: 'absolute',

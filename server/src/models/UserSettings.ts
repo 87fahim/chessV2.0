@@ -159,7 +159,7 @@ const userSettingsSchema = new Schema<IUserSettings>(
     },
     autoPromotion: {
       type: Boolean,
-      default: true,
+      default: false,
     },
     moveConfirmation: {
       type: Boolean,

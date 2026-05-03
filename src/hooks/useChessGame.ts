@@ -19,6 +19,7 @@ import { useGameSounds } from './useGameSounds';
 export function useChessGame() {
   const dispatch = useAppDispatch();
   const gameState = useAppSelector((s) => s.game);
+  const defaultBoardFlipped = useAppSelector((s) => s.settings.data.boardFlipped === true);
   const { playGameStart, playGameEnd, playIllegalMove, playMoveOutcome } = useGameSounds();
   const computerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [engineError, setEngineError] = useState<string | null>(null);
@@ -135,14 +136,19 @@ export function useChessGame() {
       if (computerTimeoutRef.current) clearTimeout(computerTimeoutRef.current);
       setEngineError(null);
       setIsComputerThinking(false);
-      dispatch(newGame({ mode, playerColor, difficulty }));
+      dispatch(newGame({
+        mode,
+        playerColor,
+        difficulty,
+        isFlipped: defaultBoardFlipped ? playerColor === 'w' : playerColor === 'b',
+      }));
       playGameStart();
 
       if (mode === 'vs-computer' && playerColor === 'b') {
         handleComputerMove(DEFAULT_FEN, difficulty);
       }
     },
-    [dispatch, handleComputerMove, playGameStart],
+    [defaultBoardFlipped, dispatch, handleComputerMove, playGameStart],
   );
 
   const handleMove = useCallback(

@@ -7,6 +7,9 @@ import type { PieceColor, PieceType } from '../../types/chess';
 interface SquareProps {
   boardTheme?: string;
   moveColorTheme?: string;
+  showCoordinates?: boolean;
+  showLegalMoves?: boolean;
+  animationsEnabled?: boolean;
   square: string;
   piece: { type: PieceType; color: PieceColor } | null;
   isLight: boolean;
@@ -27,6 +30,9 @@ interface SquareProps {
 const Square: React.FC<SquareProps> = ({
   boardTheme,
   moveColorTheme,
+  showCoordinates,
+  showLegalMoves,
+  animationsEnabled,
   square,
   piece,
   isLight,
@@ -67,12 +73,12 @@ const Square: React.FC<SquareProps> = ({
         ...backgroundStyles,
         position: 'relative',
         cursor: piece ? 'grab' : isLegalMove ? 'pointer' : 'default',
-        transition: 'background-image 0.12s ease, background-color 0.12s ease',
+        transition: animationsEnabled === false ? 'none' : 'background-image 0.12s ease, background-color 0.12s ease',
         touchAction: 'none',
       }}
     >
       {/* Rank label — top-left corner */}
-      {rankLabel != null && (
+      {showCoordinates !== false && rankLabel != null && (
         <Box
           sx={{
             position: 'absolute',
@@ -89,7 +95,7 @@ const Square: React.FC<SquareProps> = ({
         </Box>
       )}
       {/* File label — bottom-right corner */}
-      {fileLabel && (
+      {showCoordinates !== false && fileLabel && (
         <Box
           sx={{
             position: 'absolute',
@@ -107,7 +113,7 @@ const Square: React.FC<SquareProps> = ({
       )}
 
       {/* Legal move indicator */}
-      {isLegalMove && !piece && (
+      {showLegalMoves !== false && isLegalMove && !piece && (
         <Box
           sx={{
             width: '28%',
@@ -119,7 +125,7 @@ const Square: React.FC<SquareProps> = ({
         />
       )}
       {/* Capture indicator */}
-      {isLegalMove && piece && (
+      {showLegalMoves !== false && isLegalMove && piece && (
         <Box
           sx={{
             width: '100%',

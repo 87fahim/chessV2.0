@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useRef, useEffect, useMemo } from 'react';
-import { Box } from '@mui/material';
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
 import { Chess } from 'chess.js';
 import type { Square as ChessSquare } from 'chess.js';
 import SquareComponent from './Square';
@@ -31,8 +31,16 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
   const dispatch = useAppDispatch();
   const { fen, selectedSquare, legalMoves, lastMove, isFlipped, promotionPending, status } =
     useAppSelector((s) => s.game);
-  const boardTheme = useAppSelector((s) => s.settings.data.boardTheme);
-  const moveColorTheme = useAppSelector((s) => s.settings.data.moveColorTheme);
+  const settings = useAppSelector((s) => s.settings.data);
+  const boardTheme = settings.boardTheme;
+  const moveColorTheme = settings.moveColorTheme;
+  const showCoordinates = settings.showCoordinates === true;
+  const showLegalMoves = settings.showLegalMoves !== false;
+  const highlightLastMove = settings.highlightLastMove !== false;
+  const highlightCheck = settings.highlightCheck !== false;
+  const animationsEnabled = settings.animationEnabled !== false;
+  const autoPromotion = settings.autoPromotion !== false;
+  const moveConfirmationEnabled = settings.moveConfirmation === true;
 
   /* --- Drag state --------------------------------------------------- */
   const boardRef = useRef<HTMLDivElement>(null);
@@ -42,6 +50,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
   const [dragOverSquare, setDragOverSquare] = useState<string | null>(null);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const [squareSize, setSquareSize] = useState(0);
+  const [pendingMoveConfirmation, setPendingMoveConfirmation] = useState<{ from: string; to: string; promotion?: string } | null>(null);
 
   /* Track whether pointer moved enough to be a drag */
   const pointerOrigin = useRef<{ x: number; y: number } | null>(null);
@@ -118,6 +127,12 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
     }
   }, [inPremoveMode]);
 
+  useEffect(() => {
+    if (status !== 'playing') {
+      setPendingMoveConfirmation(null);
+    }
+  }, [status]);
+
   /* Compute square size whenever the board element resizes */
   useEffect(() => {
     const el = boardRef.current;
@@ -142,6 +157,19 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
       return boardSquares[row]?.[col] ?? null;
     },
     [boardSquares, squareSize],
+  );
+
+  const requestMove = useCallback(
+    (from: string, to: string, promotion?: string) => {
+      if (moveConfirmationEnabled) {
+        setPendingMoveConfirmation({ from, to, promotion });
+        dispatch(clearSelection());
+        return;
+      }
+
+      onMove(from, to, promotion);
+    },
+    [dispatch, moveConfirmationEnabled, onMove],
   );
 
   /* ---- Click handler (used when pointer released without drag) ----- */
@@ -174,6 +202,12 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
           if (srcType === 'p') {
             const promoRank = playerColor === 'w' ? '8' : '1';
             if (square[1] === promoRank) {
+              if (autoPromotion) {
+                onPremove!(premoveFrom, square, 'q');
+                setPremoveFrom(square);
+                dispatch(setSelectedSquare({ square, legalMoves: [] }));
+                return;
+              }
               setPremovePromotionPending({ from: premoveFrom, to: square });
               return;
             }
@@ -201,9 +235,13 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
       /* ---------- Normal click mode ---------- */
       if (selectedSquare && legalMoves.includes(square)) {
         if (isPromotion(game, selectedSquare, square)) {
-          dispatch(setPromotionPending({ from: selectedSquare, to: square }));
+          if (autoPromotion) {
+            requestMove(selectedSquare, square, 'q');
+          } else {
+            dispatch(setPromotionPending({ from: selectedSquare, to: square }));
+          }
         } else {
-          onMove(selectedSquare, square);
+          requestMove(selectedSquare, square);
         }
         return;
       }
@@ -217,7 +255,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
 
       dispatch(clearSelection());
     },
-    [selectedSquare, legalMoves, fen, status, promotionPending, premovePromotionPending, currentTurn, inPremoveMode, premoveFrom, playerColor, dispatch, onMove, onPremove, game, virtualOwnPieces],
+    [selectedSquare, legalMoves, fen, status, promotionPending, premovePromotionPending, currentTurn, inPremoveMode, premoveFrom, playerColor, dispatch, onMove, onPremove, game, virtualOwnPieces, autoPromotion, requestMove],
   );
 
   /* ---- Pointer handlers -------------------------------------------- */
@@ -301,6 +339,20 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
             if (srcPiece?.type === 'p') {
               const promoRank = playerColor === 'w' ? '8' : '1';
               if (toSquare[1] === promoRank) {
+                if (autoPromotion) {
+                  onPremove?.(dragSource, toSquare, 'q');
+                  setPremoveFrom(toSquare);
+                  dispatch(setSelectedSquare({ square: toSquare, legalMoves: [] }));
+                  setDragSource(null);
+                  setDragPiece(null);
+                  setDragLegalMoves([]);
+                  setDragOverSquare(null);
+                  setCursorPos(null);
+                  pointerOrigin.current = null;
+                  isDragging.current = false;
+                  pendingClickSquare.current = null;
+                  return;
+                }
                 setPremovePromotionPending({ from: dragSource, to: toSquare });
                 setPremoveFrom(null);
                 dispatch(clearSelection());
@@ -328,9 +380,13 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
           // Normal drag drop
           if (toSquare && dragLegalMoves.includes(toSquare)) {
             if (isPromotion(game, dragSource, toSquare)) {
-              dispatch(setPromotionPending({ from: dragSource, to: toSquare }));
+              if (autoPromotion) {
+                requestMove(dragSource, toSquare, 'q');
+              } else {
+                dispatch(setPromotionPending({ from: dragSource, to: toSquare }));
+              }
             } else {
-              onMove(dragSource, toSquare);
+              requestMove(dragSource, toSquare);
             }
           } else {
             dispatch(clearSelection());
@@ -351,7 +407,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
       isDragging.current = false;
       pendingClickSquare.current = null;
     },
-    [dragSource, dragLegalMoves, game, dispatch, onMove, onPremove, squareAtPoint, handleClick, inPremoveMode, playerColor],
+    [dragSource, dragLegalMoves, game, dispatch, onMove, onPremove, squareAtPoint, handleClick, inPremoveMode, playerColor, autoPromotion, requestMove],
   );
 
   /* ---- end pointer handlers --------------------------------------- */
@@ -359,11 +415,11 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
   const handlePromotion = useCallback(
     (piece: string) => {
       if (promotionPending) {
-        onMove(promotionPending.from, promotionPending.to, piece);
+        requestMove(promotionPending.from, promotionPending.to, piece);
         dispatch(setPromotionPending(null));
       }
     },
-    [promotionPending, onMove, dispatch],
+    [promotionPending, requestMove, dispatch],
   );
 
   const handlePromotionCancel = useCallback(() => {
@@ -388,6 +444,24 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
   const handlePremovePromotionCancel = useCallback(() => {
     setPremovePromotionPending(null);
   }, []);
+
+  const handleConfirmPendingMove = useCallback(() => {
+    if (!pendingMoveConfirmation) {
+      return;
+    }
+
+    onMove(
+      pendingMoveConfirmation.from,
+      pendingMoveConfirmation.to,
+      pendingMoveConfirmation.promotion,
+    );
+    setPendingMoveConfirmation(null);
+  }, [onMove, pendingMoveConfirmation]);
+
+  const handleCancelPendingMove = useCallback(() => {
+    setPendingMoveConfirmation(null);
+    dispatch(clearSelection());
+  }, [dispatch]);
 
   /* ---- Right-click clears premoves -------------------------------- */
   const handleContextMenu = useCallback(
@@ -455,18 +529,21 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
                 key={square}
                 boardTheme={boardTheme}
                 moveColorTheme={moveColorTheme}
+                showCoordinates={showCoordinates}
+                showLegalMoves={showLegalMoves}
+                animationsEnabled={animationsEnabled}
                 square={square}
                 piece={piece ? { type: piece.type as PieceType, color: piece.color as PieceColor } : null}
                 isLight={isLight}
                 isSelected={selectedSquare === square}
-                isLegalMove={legalMoves.includes(square) || dragLegalMoves.includes(square)}
-                isLastMove={lastMove?.from === square || lastMove?.to === square}
-                isCheck={kingSquare === square}
+                isLegalMove={showLegalMoves && (legalMoves.includes(square) || dragLegalMoves.includes(square))}
+                isLastMove={highlightLastMove && (lastMove?.from === square || lastMove?.to === square)}
+                isCheck={highlightCheck && kingSquare === square}
                 isPremove={premoveSquares?.has(square) ?? false}
                 isDragSource={dragSource === square && isDragging.current}
                 isDragOver={dragOverSquare === square}
-                rankLabel={colIdx === 0 ? ranks[rowIdx] : undefined}
-                fileLabel={rowIdx === 7 ? files[colIdx] : undefined}
+                rankLabel={showCoordinates && colIdx === 0 ? ranks[rowIdx] : undefined}
+                fileLabel={showCoordinates && rowIdx === 7 ? files[colIdx] : undefined}
                 onPointerDown={handlePointerDown}
               />
             );
@@ -490,6 +567,22 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
           onSelect={handlePremovePromotion}
           onCancel={handlePremovePromotionCancel}
         />
+      )}
+
+      {pendingMoveConfirmation && (
+        <Dialog open onClose={handleCancelPendingMove} fullWidth maxWidth="xs">
+          <DialogTitle>Confirm Move</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2">
+              Play {pendingMoveConfirmation.from} to {pendingMoveConfirmation.to}
+              {pendingMoveConfirmation.promotion ? ` and promote to ${pendingMoveConfirmation.promotion.toUpperCase()}` : ''}?
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCancelPendingMove}>Cancel</Button>
+            <Button onClick={handleConfirmPendingMove} variant="contained">Confirm</Button>
+          </DialogActions>
+        </Dialog>
       )}
 
       {/* Floating drag piece – centered on cursor */}

@@ -74,12 +74,13 @@ const GameReplayPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { currentGame, isLoading, error } = useAppSelector((s) => s.savedGames);
+  const defaultBoardFlipped = useAppSelector((s) => s.settings.data.boardFlipped === true);
 
   // Replay state
   const [moveIndex, setMoveIndex] = useState(-1); // -1 = starting position
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState<ReplaySpeed>(1);
-  const [isFlipped, setIsFlipped] = useState(false);
+  const [isFlipped, setIsFlipped] = useState(defaultBoardFlipped);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -96,8 +97,9 @@ const GameReplayPage: React.FC = () => {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setMoveIndex(-1);
       setIsPlaying(false);
+      setIsFlipped(defaultBoardFlipped);
     }
-  }, [currentGame?._id]);
+  }, [currentGame?._id, defaultBoardFlipped]);
 
   const moves = currentGame?.moves ?? [];
   const totalMoves = moves.length;

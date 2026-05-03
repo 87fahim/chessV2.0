@@ -14,8 +14,13 @@ interface ReplayBoardProps {
 }
 
 const ReplayBoard: React.FC<ReplayBoardProps> = ({ fen, lastMove, isFlipped = false }) => {
-  const boardTheme = useAppSelector((state) => state.settings.data.boardTheme);
-  const moveColorTheme = useAppSelector((state) => state.settings.data.moveColorTheme);
+  const settings = useAppSelector((state) => state.settings.data);
+  const boardTheme = settings.boardTheme;
+  const moveColorTheme = settings.moveColorTheme;
+  const showCoordinates = settings.showCoordinates === true;
+  const highlightLastMove = settings.highlightLastMove !== false;
+  const highlightCheck = settings.highlightCheck !== false;
+  const animationsEnabled = settings.animationEnabled !== false;
   const moveTheme = getMoveColorTheme(moveColorTheme);
   const game = new Chess(fen);
   const board = game.board();
@@ -34,8 +39,8 @@ const ReplayBoard: React.FC<ReplayBoardProps> = ({ fen, lastMove, isFlipped = fa
   })();
 
   const getSquareOverlay = (square: string, isLight: boolean) => {
-    if (square === kingSq) return isLight ? moveTheme.checkLight : moveTheme.checkDark;
-    if (lastMove && (square === lastMove.from || square === lastMove.to)) {
+    if (highlightCheck && square === kingSq) return isLight ? moveTheme.checkLight : moveTheme.checkDark;
+    if (highlightLastMove && lastMove && (square === lastMove.from || square === lastMove.to)) {
       return isLight ? moveTheme.lastMoveLight : moveTheme.lastMoveDark;
     }
     return undefined;
@@ -88,10 +93,10 @@ const ReplayBoard: React.FC<ReplayBoardProps> = ({ fen, lastMove, isFlipped = fa
               justifyContent: 'center',
               ...backgroundStyles,
               position: 'relative',
-              transition: 'background-image 0.12s ease, background-color 0.12s ease',
+              transition: animationsEnabled ? 'background-image 0.12s ease, background-color 0.12s ease' : 'none',
             }}
           >
-            {rankLabel && (
+            {showCoordinates && rankLabel && (
               <Box
                 sx={{
                   position: 'absolute',
@@ -107,7 +112,7 @@ const ReplayBoard: React.FC<ReplayBoardProps> = ({ fen, lastMove, isFlipped = fa
                 {rankLabel}
               </Box>
             )}
-            {fileLabel && (
+            {showCoordinates && fileLabel && (
               <Box
                 sx={{
                   position: 'absolute',
