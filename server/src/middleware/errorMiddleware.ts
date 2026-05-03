@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { ZodError } from 'zod';
 import { logger } from '../utils/logger.js';
 import { env } from '../config/env.js';
 
@@ -8,6 +9,22 @@ export interface AppError extends Error {
 }
 
 export function errorMiddleware(err: AppError, _req: Request, res: Response, _next: NextFunction): void {
+  if (err instanceof ZodError) {
+    const details = err.errors.map((issue) => ({
+      field: issue.path.join('.'),
+      message: issue.message,
+    }));
+
+    logger.warn('[400] Validation failed', details);
+
+    res.status(400).json({
+      error: 'Validation failed',
+      details,
+      ...(env.NODE_ENV === 'development' && { stack: err.stack }),
+    });
+    return;
+  }
+
   const statusCode = err.statusCode || 500;
   const message = err.isOperational ? err.message : 'Internal server error';
 

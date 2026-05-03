@@ -1,8 +1,10 @@
+import { type ClientSession } from 'mongoose';
 import { User, IUser } from '../models/User.js';
 import { hashPassword, comparePassword } from '../utils/password.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken, TokenPayload } from '../utils/jwt.js';
 import { createError } from '../middleware/errorMiddleware.js';
 import { ensureUserDomainRecords, recordActivity } from './userService.js';
+import { logger } from '../utils/logger.js';
 
 export interface RegisterInput {
   username: string;
@@ -25,60 +27,103 @@ export interface AuthResult {
   tokens: AuthTokens;
 }
 
-export async function registerUser(input: RegisterInput): Promise<AuthResult> {
-  const { username, email, password } = input;
-  const normalizedEmail = email.toLowerCase();
-  const session = await User.startSession();
-  let user: IUser | null = null;
-
-  try {
-    await session.withTransaction(async () => {
-      const existingUser = await User.findOne({
-        $or: [{ email: normalizedEmail }, { username }],
-      }).session(session);
-
-      if (existingUser) {
-        if (existingUser.email === normalizedEmail) {
-          throw createError(409, 'Email already registered');
-        }
-        throw createError(409, 'Username already taken');
-      }
-
-      const passwordHash = await hashPassword(password);
-      const [createdUser] = await User.create(
-        [{
-          username,
-          email: normalizedEmail,
-          passwordHash,
-          status: 'active',
-          authProvider: 'local',
-        }],
-        { session },
-      );
-
-      await ensureUserDomainRecords(createdUser._id.toString(), createdUser.username, session);
-      user = createdUser;
-    });
-  } finally {
-    await session.endSession();
+function isTransactionUnavailableError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
   }
 
-  if (!user) {
-    throw createError(500, 'Registration failed');
+  const code = typeof error === 'object' && error !== null && 'code' in error
+    ? (error as { code?: number }).code
+    : undefined;
+  const message = error.message.toLowerCase();
+
+  return (
+    code === 20 ||
+    message.includes('transaction numbers are only allowed on a replica set member or mongos') ||
+    message.includes('transactions are not supported') ||
+    message.includes('standalone servers do not support transactions') ||
+    message.includes('current topology does not support sessions') ||
+    message.includes('current topology does not support retryable writes') ||
+    message.includes('does not support sessions')
+  );
+}
+
+async function createRegisteredUser(input: RegisterInput, session?: ClientSession): Promise<IUser> {
+  const normalizedEmail = input.email.toLowerCase();
+  const existingUserQuery = User.findOne({
+    $or: [{ email: normalizedEmail }, { username: input.username }],
+  });
+
+  if (session) {
+    existingUserQuery.session(session);
   }
 
+  const existingUser = await existingUserQuery;
+
+  if (existingUser) {
+    if (existingUser.email === normalizedEmail) {
+      throw createError(409, 'Email already registered');
+    }
+    throw createError(409, 'Username already taken');
+  }
+
+  const passwordHash = await hashPassword(input.password);
+  const userPayload = {
+    username: input.username,
+    email: normalizedEmail,
+    passwordHash,
+    status: 'active' as const,
+    authProvider: 'local' as const,
+  };
+  const createdUser = session
+    ? (await User.create([userPayload], { session }))[0]
+    : await User.create(userPayload);
+
+  await ensureUserDomainRecords(createdUser._id.toString(), createdUser.username, session);
+
+  return createdUser;
+}
+
+function buildAuthTokens(user: IUser): AuthTokens {
   const payload: TokenPayload = {
     userId: user._id.toString(),
     username: user.username,
     role: user.role,
   };
 
-  const tokens: AuthTokens = {
+  return {
     accessToken: signAccessToken(payload),
     refreshToken: signRefreshToken(payload),
   };
+}
 
-  return { user, tokens };
+export async function registerUser(input: RegisterInput): Promise<AuthResult> {
+  let session: ClientSession | null = null;
+  let user: IUser | null = null;
+
+  try {
+    session = await User.startSession();
+    await session.withTransaction(async () => {
+      user = await createRegisteredUser(input, session ?? undefined);
+    });
+  } catch (error) {
+    if (!isTransactionUnavailableError(error)) {
+      throw error;
+    }
+
+    logger.warn('Mongo transactions unavailable during registration; using non-transactional fallback');
+    user = await createRegisteredUser(input);
+  } finally {
+    if (session) {
+      await session.endSession();
+    }
+  }
+
+  if (!user) {
+    throw createError(500, 'Registration failed');
+  }
+
+  return { user, tokens: buildAuthTokens(user) };
 }
 
 export async function loginUser(input: LoginInput): Promise<AuthResult> {
