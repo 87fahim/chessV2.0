@@ -9,17 +9,22 @@
 	<img alt="Socket.IO" src="https://img.shields.io/badge/Socket.IO-Online%20Play-010101?logo=socketdotio&logoColor=white" />
 </p>
 
-Chess V2.0 is a full-stack chess platform for playing against the computer, practicing custom positions, analyzing moves with Stockfish, and competing online in real time. It combines a React + Vite frontend with an Express + MongoDB + Socket.IO backend and includes production-focused deployment, smoke-check, rollback, and monitoring workflows.
+<p><strong>Play against the computer, study custom positions, analyze with Stockfish, and queue live online matches from one full-stack TypeScript chess app.</strong></p>
 
-## Highlights
+Chess V2.0 combines a React + Vite frontend with an Express + MongoDB + Socket.IO backend. It covers both player-facing features and production-facing concerns, including realtime matchmaking, hardened auth sessions, integration tests, staged deploys, smoke checks, rollback, and monitoring.
 
-- live online matches with matchmaking, clocks, reconnect, resumable sessions, draw offers, and rematches
-- local chess workflows for VS Computer play, practice-board editing, engine analysis, and replayable history
-- persistent account features including guest mode, httpOnly refresh sessions, settings, stats, activity, profile, and social controls
-- production-oriented operations with CI, integration tests, staged deploys, smoke checks, rollback, structured logs, and health monitoring
+## At A Glance
+
+- one app for VS Computer, Practice, Analysis, Replay, and live Online Play
+- guest mode plus authenticated profile, settings, stats, activity, saved games, history, and social controls
+- realtime multiplayer with matchmaking, clocks, reconnect/resume, draw offers, rematches, and disconnect handling
+- operational tooling with CI, integration tests, deploy smoke checks, rollback, structured logs, health checks, and optional Sentry
 
 ## Quick Links
 
+- [Overview](#overview)
+- [Feature Set](#feature-set)
+- [Tech Stack](#tech-stack)
 - [Getting Started](#getting-started)
 - [Available Commands](#available-commands)
 - [Testing And Quality](#testing-and-quality)
@@ -32,23 +37,6 @@ Chess V2.0 is a full-stack chess platform for playing against the computer, prac
 | Home | VS Computer | Analysis |
 | --- | --- | --- |
 | ![Home page](docs/images/home.png) | ![VS Computer dialog](docs/images/vs-computer.png) | ![Analysis workspace](docs/images/analysis.png) |
-
-## Contents
-
-- [Overview](#overview)
-- [Feature Set](#feature-set)
-- [Tech Stack](#tech-stack)
-- [Repository Layout](#repository-layout)
-- [Backend Surface](#backend-surface)
-- [Getting Started](#getting-started)
-- [Environment Files](#environment-files)
-- [Available Commands](#available-commands)
-- [Testing And Quality](#testing-and-quality)
-- [Deployment And Environments](#deployment-and-environments)
-- [Monitoring And Operations](#monitoring-and-operations)
-- [Migration Note](#migration-note)
-- [Troubleshooting](#troubleshooting)
-- [Additional Docs](#additional-docs)
 
 ## Overview
 
