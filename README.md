@@ -1,4 +1,4 @@
-# Chess V2.0
+# ChessV2
 
 <p>
 	<img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black" />
@@ -11,7 +11,7 @@
 
 <p><strong>Play against the computer, study custom positions, analyze with Stockfish, and queue live online matches from one full-stack TypeScript chess app.</strong></p>
 
-Chess V2.0 combines a React + Vite frontend with an Express + MongoDB + Socket.IO backend. It covers both player-facing features and production-facing concerns, including realtime matchmaking, hardened auth sessions, integration tests, staged deploys, smoke checks, rollback, and monitoring.
+ChessV2 combines a React + Vite frontend with an Express + MongoDB + Socket.IO backend. It covers both player-facing features and production-facing concerns, including realtime matchmaking, hardened auth sessions, integration tests, staged deploys, smoke checks, rollback, and monitoring.
 
 ## At A Glance
 

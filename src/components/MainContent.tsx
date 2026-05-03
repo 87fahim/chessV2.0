@@ -134,7 +134,7 @@ export const MainContent: React.FC<MainContentProps> = ({
       default:
         return (
           <div className="content-section">
-            <h2>Welcome to Chess V2.0</h2>
+            <h2>Welcome to ChessV2</h2>
             <p>Select an item from the menu to get started.</p>
           </div>
         );

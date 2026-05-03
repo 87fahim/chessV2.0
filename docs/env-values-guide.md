@@ -47,9 +47,9 @@ Auto-detected from the git branch at build/dev time (no env var needed):
 
 | Branch | Title shown |
 |--------|-------------|
-| `main` | ♟ Chess V2.0 |
-| `staging` | ♟ Chess V2.0 : Staging |
-| `features/endGame` | ♟ Chess V2.0 : endGame |
+| `main` | ChessV2 |
+| `staging` | ChessV2:Staging |
+| `features/endGame` | ChessV2:endGame |
 
 Override with `VITE_APP_LABEL=MyLabel` in the relevant `.env.*` file if needed.
 

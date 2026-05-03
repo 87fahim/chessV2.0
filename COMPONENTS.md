@@ -1,4 +1,4 @@
-# Chess V2.0 - Reusable React Components
+# ChessV2 - Reusable React Components
 
 ## Overview
 This project contains reusable React components for a Chess application with a left navigation bar and dynamic main content area.

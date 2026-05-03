@@ -35,10 +35,9 @@ import { logout } from '../../features/auth/authSlice';
 
 const DRAWER_WIDTH = 260;
 const PERMANENT_DRAWER_MIN_WIDTH = 1536;
-const ENV_BANNER_HEIGHT = __APP_LABEL__ ? 20 : 0;
 const MOBILE_APP_BAR_HEIGHT = 48;
 
-const APP_TITLE = __APP_LABEL__ ? `♟ Chess V2.0 : ${__APP_LABEL__}` : '♟ Chess V2.0';
+const APP_TITLE = __APP_LABEL__ ? `ChessV2:${__APP_LABEL__}` : 'ChessV2';
 
 const NAV_ITEMS = [
   { label: 'Home', icon: <HomeIcon />, path: '/' },
@@ -67,12 +66,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { user, isAuthenticated, isGuest } = useAppSelector((s) => s.auth);
 
   const visibleNav = NAV_ITEMS.filter((item) => !item.authOnly || isAuthenticated);
-  const contentTopOffset = useTemporaryDrawer
-    ? MOBILE_APP_BAR_HEIGHT + ENV_BANNER_HEIGHT
-    : ENV_BANNER_HEIGHT;
+  const contentTopOffset = useTemporaryDrawer ? MOBILE_APP_BAR_HEIGHT : 0;
 
   useEffect(() => {
-    document.title = __APP_LABEL__ ? `Chess V2.0 : ${__APP_LABEL__}` : 'Chess V2.0';
+    document.title = APP_TITLE;
   }, []);
 
   const handleNav = (path: string) => {
@@ -184,35 +181,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         overflow: 'hidden',
       }}
     >
-      {/* Non-production environment banner */}
-      {__APP_LABEL__ && (
-        <Box
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: (t) => t.zIndex.tooltip + 1,
-            bgcolor: __APP_LABEL__ === 'Staging' ? 'warning.main' : 'info.main',
-            color: '#fff',
-            textAlign: 'center',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            lineHeight: '20px',
-            pointerEvents: 'none',
-          }}
-        >
-          {__APP_LABEL__.toUpperCase()}
-        </Box>
-      )}
-
       {/* App Bar - mobile only */}
       {useTemporaryDrawer && (
         <AppBar
           position="fixed"
           sx={{
             zIndex: theme.zIndex.drawer + 1,
-            top: `${ENV_BANNER_HEIGHT}px`,
           }}
           elevation={1}
         >
@@ -244,12 +218,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               width: DRAWER_WIDTH,
               maxWidth: '86vw',
               boxSizing: 'border-box',
-              ...(ENV_BANNER_HEIGHT
-                ? {
-                    top: `${ENV_BANNER_HEIGHT}px`,
-                    height: `calc(100% - ${ENV_BANNER_HEIGHT}px)`,
-                  }
-                : {}),
             },
           }}
         >
@@ -266,12 +234,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               boxSizing: 'border-box',
               borderRight: '1px solid',
               borderColor: 'divider',
-              ...(ENV_BANNER_HEIGHT
-                ? {
-                    top: `${ENV_BANNER_HEIGHT}px`,
-                    height: `calc(100% - ${ENV_BANNER_HEIGHT}px)`,
-                  }
-                : {}),
             },
           }}
         >

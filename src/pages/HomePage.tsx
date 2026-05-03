@@ -101,7 +101,7 @@ const HomePage: React.FC = () => {
       }}
     >
       <Typography variant="h3" sx={{ fontWeight: 700, fontSize: { xs: '2.1rem', lg: '3.6rem' } }} gutterBottom>
-        Chess V2.0
+        ChessV2
       </Typography>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
         <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center', fontSize: { xs: '1rem', lg: '1.15rem' } }}>
