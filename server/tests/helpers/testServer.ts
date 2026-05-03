@@ -2,7 +2,11 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import request, { type SuperTest, type Test } from 'supertest';
+import request, {
+  type SuperAgentTest,
+  type SuperTest,
+  type Test,
+} from 'supertest';
 import { Server as SocketIOServer } from 'socket.io';
 import { io as createSocketClient, type Socket } from 'socket.io-client';
 import app from '../../src/app.js';
@@ -11,6 +15,7 @@ import { connectedUsers, initializeSocketIO, shutdownSocketIO } from '../../src/
 export interface IntegrationTestServer {
   baseUrl: string;
   request: SuperTest<Test>;
+  createAgent: () => SuperAgentTest;
   createSocket: (token: string) => Socket;
   resetDatabase: () => Promise<void>;
   stop: () => Promise<void>;
@@ -42,6 +47,7 @@ export async function createIntegrationTestServer(): Promise<IntegrationTestServ
   return {
     baseUrl,
     request: request(baseUrl),
+    createAgent: () => request.agent(baseUrl),
     createSocket: (token: string) =>
       createSocketClient(baseUrl, {
         auth: { token },

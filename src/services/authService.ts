@@ -16,7 +16,7 @@ export const authApi = {
   login: (data: LoginInput) => api.post('/auth/login', data),
   logout: () => api.post('/auth/logout'),
   getMe: () => api.get('/auth/me'),
-  refresh: (refreshToken: string) => api.post('/auth/refresh', { refreshToken }),
+  refresh: () => api.post('/auth/refresh'),
 };
 
 export const guestApi = {

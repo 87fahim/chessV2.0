@@ -1,6 +1,27 @@
 import { randomUUID } from 'node:crypto';
 import { expect } from 'vitest';
-import type { SuperTest, Test } from 'supertest';
+
+interface RequestClient {
+  post: (path: string) => {
+    send: (body?: unknown) => Promise<{
+      status: number;
+      body: {
+        success?: boolean;
+        data: {
+          user: {
+            _id: string;
+            username: string;
+            email: string;
+          };
+          tokens: {
+            accessToken: string;
+          };
+        };
+      };
+      headers: Record<string, string | string[] | undefined>;
+    }>;
+  };
+}
 
 export interface RegisteredTestUser {
   credentials: {
@@ -15,12 +36,12 @@ export interface RegisteredTestUser {
   };
   tokens: {
     accessToken: string;
-    refreshToken: string;
   };
+  setCookieHeader: string[];
 }
 
 export async function registerTestUser(
-  request: SuperTest<Test>,
+  request: RequestClient,
   overrides: Partial<{ username: string; email: string; password: string }> = {},
 ): Promise<RegisteredTestUser> {
   const unique = randomUUID().replace(/-/g, '').slice(0, 12);
@@ -39,5 +60,6 @@ export async function registerTestUser(
     credentials,
     user: response.body.data.user,
     tokens: response.body.data.tokens,
+    setCookieHeader: (response.headers['set-cookie'] as string[] | undefined) ?? [],
   };
 }

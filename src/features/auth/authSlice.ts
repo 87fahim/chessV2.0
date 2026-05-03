@@ -32,7 +32,6 @@ export const register = createAsyncThunk('auth/register', async (input: Register
     const { data } = await authApi.register(input);
     const { user, tokens } = data.data;
     localStorage.setItem('accessToken', tokens.accessToken);
-    localStorage.setItem('refreshToken', tokens.refreshToken);
     localStorage.removeItem('guestId');
     return user;
   } catch (err: unknown) {
@@ -47,7 +46,6 @@ export const login = createAsyncThunk('auth/login', async (input: LoginInput, { 
     const { data } = await authApi.login(input);
     const { user, tokens } = data.data;
     localStorage.setItem('accessToken', tokens.accessToken);
-    localStorage.setItem('refreshToken', tokens.refreshToken);
     localStorage.removeItem('guestId');
     return user;
   } catch (err: unknown) {
@@ -62,7 +60,6 @@ export const fetchMe = createAsyncThunk('auth/fetchMe', async (_, { rejectWithVa
     return data.data.user;
   } catch {
     localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
     return rejectWithValue('Session expired');
   }
 });
@@ -72,7 +69,6 @@ export const logout = createAsyncThunk('auth/logout', async () => {
     await authApi.logout();
   } finally {
     localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
   }
 });
 
@@ -148,6 +144,7 @@ const authSlice = createSlice({
     builder.addCase(fetchMe.rejected, (state) => {
       state.user = null;
       state.isAuthenticated = false;
+      state.isGuest = false;
     });
 
     // Logout

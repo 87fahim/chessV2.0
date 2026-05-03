@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { corsOptions } from './config/cors.js';
 import { errorMiddleware } from './middleware/errorMiddleware.js';
 import authRoutes from './routes/authRoutes.js';
@@ -19,6 +20,7 @@ const app = express();
 app.use(helmet());
 app.disable("x-powered-by");
 app.use(cors(corsOptions));
+app.use(cookieParser());
 app.use(express.json({ limit: '1mb' }));
 
 // Health check
