@@ -51,6 +51,9 @@ jobs:
           cache: npm
           cache-dependency-path: server/package-lock.json
 
+      - name: Update npm
+        run: npm install -g npm@11
+
       - name: Install dependencies
         run: npm ci
 
@@ -129,7 +132,7 @@ jobs:
               npm run build:prod
 
               cd server || exit $status
-              npm ci
+              npx --yes npm@11 ci
               npm run build
 
               APP_RELEASE=$(git rev-parse HEAD) APP_ENV=production NODE_ENV=production pm2 restart "${PM2_APP}" --update-env
@@ -169,7 +172,7 @@ jobs:
             echo "Server install/build..."
             cd server
             pwd
-            npm ci
+            npx --yes npm@11 ci
             npm run build
 
             echo "Restarting PM2..."

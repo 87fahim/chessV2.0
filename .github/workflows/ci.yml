@@ -46,6 +46,9 @@ jobs:
           cache: npm
           cache-dependency-path: server/package-lock.json
 
+      - name: Update npm
+        run: npm install -g npm@11
+
       - name: Install dependencies
         run: npm ci
 
