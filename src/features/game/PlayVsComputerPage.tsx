@@ -208,10 +208,6 @@ const PlayVsComputerPage: React.FC = () => {
   };
 
   const handleCloseNewGameDialog = () => {
-    if (gameState.status === 'idle') {
-      return;
-    }
-
     resetNewGameOptions();
     setShowNewGameDialog(false);
   };
