@@ -59,6 +59,7 @@ cd server
 npm run dev
 npm run dev:staging
 npm run build
+npm run backfill:user-domains
 npm run start:staging
 npm run start:prod
 ```
@@ -67,6 +68,7 @@ Notes:
 
 - The root `npm run dev` now starts both Vite and the backend API together.
 - In development, the backend stays up even if Stockfish is unavailable. Only engine analysis endpoints are affected in that case.
+- The user-domain backfill no longer runs during server startup. Run `cd server && npm run build && npm run backfill:user-domains` once when upgrading an existing environment that may have legacy users missing profile/settings/stats/social records.
 
 ## Deployment Mapping
 

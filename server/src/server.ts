@@ -4,7 +4,6 @@ import { env, validateEnv } from './config/env.js';
 import { connectDB } from './config/db.js';
 import { initializeSocketIO, shutdownSocketIO } from './sockets/index.js';
 import { initializeStockfish, shutdownStockfish } from './services/stockfishService.js';
-import { backfillUserDomainRecords } from './services/userBackfillService.js';
 import { logger } from './utils/logger.js';
 import app from './app.js';
 
@@ -28,9 +27,6 @@ async function main(): Promise<void> {
 
   // Connect to MongoDB Atlas
   await connectDB();
-
-  // Proactively create profile/settings/stats/social records for existing users
-  await backfillUserDomainRecords();
 
   // Start Stockfish engine
   await initializeEngineServices();
