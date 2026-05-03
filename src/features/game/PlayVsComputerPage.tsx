@@ -31,6 +31,32 @@ import { saveCurrentGame, autoSaveGame } from '../savedGames/savedGamesSlice';
 import type { PieceColor } from '../../types/chess';
 import type { Difficulty } from '../../types/game';
 
+type ComputerColorChoice = PieceColor | 'random';
+
+function resolveComputerColorChoice(value?: string): ComputerColorChoice {
+  if (value === 'black') {
+    return 'b';
+  }
+  if (value === 'random') {
+    return 'random';
+  }
+  return 'w';
+}
+
+function resolveComputerDifficulty(value?: string): Difficulty {
+  if (value === 'easy' || value === 'hard') {
+    return value;
+  }
+  return 'medium';
+}
+
+function resolveComputerPlayerColor(choice: ComputerColorChoice): PieceColor {
+  if (choice === 'random') {
+    return Math.random() < 0.5 ? 'w' : 'b';
+  }
+  return choice;
+}
+
 const PlayVsComputerPage: React.FC = () => {
   const zoom = useBoardZoom();
   const {
@@ -47,10 +73,11 @@ const PlayVsComputerPage: React.FC = () => {
   } = useChessGame();
   const dispatch = useAppDispatch();
   const { isAuthenticated, user } = useAppSelector((s) => s.auth);
+  const settings = useAppSelector((s) => s.settings.data);
 
   const [showNewGameDialog, setShowNewGameDialog] = useState(gameState.status === 'idle');
-  const [selectedColor, setSelectedColor] = useState<PieceColor>('w');
-  const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>('medium');
+  const [selectedColor, setSelectedColor] = useState<ComputerColorChoice>(() => resolveComputerColorChoice(settings.preferredColor));
+  const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>(() => resolveComputerDifficulty(settings.defaultDifficulty));
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [showCurtain, setShowCurtain] = useState(false);
   const [showEndDialog, setShowEndDialog] = useState(false);
@@ -60,6 +87,13 @@ const PlayVsComputerPage: React.FC = () => {
 
   /* --- Premove queue ----------------------------------------------- */
   const { queue: premoveQueue, premoveSquares, addPremove, clearPremoves, processNextPremove } = usePremoveQueue();
+
+  useEffect(() => {
+    if (showNewGameDialog || gameState.status === 'idle') {
+      setSelectedColor(resolveComputerColorChoice(settings.preferredColor));
+      setSelectedDifficulty(resolveComputerDifficulty(settings.defaultDifficulty));
+    }
+  }, [gameState.status, settings.defaultDifficulty, settings.preferredColor, showNewGameDialog]);
 
   // Show curtain when transitioning to 'playing'
   useEffect(() => {
@@ -158,7 +192,7 @@ const PlayVsComputerPage: React.FC = () => {
   );
 
   const handleStartGame = () => {
-    startNewGame('vs-computer', selectedColor, selectedDifficulty);
+    startNewGame('vs-computer', resolveComputerPlayerColor(selectedColor), selectedDifficulty);
     setShowNewGameDialog(false);
     setShowEndDialog(false);
   };
@@ -353,6 +387,7 @@ const PlayVsComputerPage: React.FC = () => {
                 },
               }}
             >
+              <ToggleButton value="random">Random</ToggleButton>
               <ToggleButton value="w">♔ White</ToggleButton>
               <ToggleButton value="b">♚ Black</ToggleButton>
             </ToggleButtonGroup>

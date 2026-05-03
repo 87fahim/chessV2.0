@@ -48,6 +48,23 @@ const TIME_CONTROLS = [
 
 const COMPACT_PLAYER_STRIP_QUERY = '@media (max-height: 760px)';
 
+function resolveDefaultTimeControl(defaultTimeControl?: string) {
+  const match = TIME_CONTROLS.find((timeControl) => {
+    const baseMinutes = Math.round(timeControl.value.initialMs / 60000);
+    const incrementSeconds = Math.round(timeControl.value.incrementMs / 1000);
+    return `${baseMinutes}+${incrementSeconds}` === defaultTimeControl;
+  });
+
+  return match?.value ?? TIME_CONTROLS[3].value;
+}
+
+function resolvePreferredColor(value?: string): 'random' | 'white' | 'black' {
+  if (value === 'white' || value === 'black') {
+    return value;
+  }
+  return 'random';
+}
+
 function formatTime(ms: number) {
   const totalSec = Math.max(0, Math.floor(ms / 1000));
   const m = Math.floor(totalSec / 60);
@@ -89,6 +106,8 @@ const OnlinePlayPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { isAuthenticated, user } = useAppSelector((s) => s.auth);
+  const settings = useAppSelector((s) => s.settings.data);
+  const defaultBoardFlipped = settings.boardFlipped === true;
 
   // AC1/AC2/AC7/AC8: check for an active game on this browser session before socket connects
   const { isChecking: isCheckingSession } = useActiveGameSession();
@@ -117,8 +136,8 @@ const OnlinePlayPage: React.FC = () => {
     clearError,
   } = useSocket();
 
-  const [selectedTC, setSelectedTC] = useState(TIME_CONTROLS[2].value);
-  const [preferredColor, setPreferredColor] = useState<'random' | 'white' | 'black'>('random');
+  const [selectedTC, setSelectedTC] = useState(() => resolveDefaultTimeControl(settings.defaultTimeControl));
+  const [preferredColor, setPreferredColor] = useState<'random' | 'white' | 'black'>(() => resolvePreferredColor(settings.preferredColor));
   const [showResignDialog, setShowResignDialog] = useState(false);
   const [showCurtain, setShowCurtain] = useState(false);
   const [showEndDialog, setShowEndDialog] = useState(false);
@@ -127,6 +146,13 @@ const OnlinePlayPage: React.FC = () => {
 
   /* --- Premove queue ----------------------------------------------- */
   const { queue: premoveQueue, premoveSquares, addPremove, clearPremoves, processNextPremove } = usePremoveQueue();
+
+  useEffect(() => {
+    if (!isInQueue && !onlineGame.gameId) {
+      setSelectedTC(resolveDefaultTimeControl(settings.defaultTimeControl));
+      setPreferredColor(resolvePreferredColor(settings.preferredColor));
+    }
+  }, [isInQueue, onlineGame.gameId, settings.defaultTimeControl, settings.preferredColor]);
 
   // Derive player color as PieceColor for ChessBoard
   const myPieceColor: PieceColor | undefined = onlineGame.yourColor === 'white' ? 'w' : onlineGame.yourColor === 'black' ? 'b' : undefined;
@@ -215,9 +241,9 @@ const OnlinePlayPage: React.FC = () => {
   // Set board orientation based on assigned color (not a toggle)
   useEffect(() => {
     if (onlineGame.yourColor) {
-      dispatch(setFlipped(onlineGame.yourColor === 'black'));
+      dispatch(setFlipped(defaultBoardFlipped ? onlineGame.yourColor === 'white' : onlineGame.yourColor === 'black'));
     }
-  }, [dispatch, onlineGame.yourColor]);
+  }, [defaultBoardFlipped, dispatch, onlineGame.yourColor]);
 
   // Game ended
   useEffect(() => {

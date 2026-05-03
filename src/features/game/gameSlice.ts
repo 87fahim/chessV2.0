@@ -46,8 +46,8 @@ const gameSlice = createSlice({
   name: 'game',
   initialState,
   reducers: {
-    newGame(state, action: PayloadAction<{ mode: GameMode; playerColor: PieceColor; difficulty: Difficulty }>) {
-      const { mode, playerColor, difficulty } = action.payload;
+    newGame(state, action: PayloadAction<{ mode: GameMode; playerColor: PieceColor; difficulty: Difficulty; isFlipped?: boolean }>) {
+      const { mode, playerColor, difficulty, isFlipped } = action.payload;
       state.fen = DEFAULT_FEN;
       state.moves = [];
       state.history = [DEFAULT_FEN];
@@ -62,7 +62,7 @@ const gameSlice = createSlice({
       state.legalMoves = [];
       state.lastMove = null;
       state.capturedPieces = { w: [], b: [] };
-      state.isFlipped = playerColor === 'b';
+      state.isFlipped = isFlipped ?? playerColor === 'b';
       state.promotionPending = null;
     },
 
