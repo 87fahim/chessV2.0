@@ -315,9 +315,24 @@ const PlayVsComputerPage: React.FC = () => {
       />
 
       {/* New Game Dialog */}
-      <Dialog open={showNewGameDialog} onClose={() => gameState.status !== 'idle' && setShowNewGameDialog(false)}>
-        <DialogTitle sx={{ fontSize: { xs: '1.25rem', lg: '1.6rem' }, fontWeight: 700 }}>New Game vs Computer</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1, minWidth: 300 }}>
+      <Dialog
+        open={showNewGameDialog}
+        onClose={() => gameState.status !== 'idle' && setShowNewGameDialog(false)}
+        fullWidth
+        maxWidth="xs"
+        slotProps={{
+          paper: {
+            sx: {
+              width: { xs: 'calc(100% - 16px)', sm: '100%' },
+              m: { xs: 1, sm: 2 },
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontSize: { xs: '1.2rem', lg: '1.6rem' }, fontWeight: 700, px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 3 } }}>
+          New Game vs Computer
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, sm: 3 }, pt: 1, minWidth: 0, width: '100%', px: { xs: 2, sm: 3 }, overflowX: 'hidden' }}>
           <Box>
             <Typography variant="subtitle2" gutterBottom sx={{ fontSize: { xs: '0.95rem', lg: '1.12rem' }, fontWeight: 600 }}>
               Play as
@@ -327,6 +342,16 @@ const PlayVsComputerPage: React.FC = () => {
               exclusive
               onChange={(_, v) => v && setSelectedColor(v)}
               fullWidth
+              sx={{
+                '& .MuiToggleButton-root': {
+                  flex: 1,
+                  minWidth: 0,
+                  px: { xs: 0.75, sm: 1.25 },
+                  py: { xs: 0.85, sm: 1 },
+                  whiteSpace: 'nowrap',
+                  fontSize: { xs: '0.8rem', sm: '0.9rem' },
+                },
+              }}
             >
               <ToggleButton value="w">♔ White</ToggleButton>
               <ToggleButton value="b">♚ Black</ToggleButton>
@@ -341,6 +366,16 @@ const PlayVsComputerPage: React.FC = () => {
               exclusive
               onChange={(_, v) => v && setSelectedDifficulty(v)}
               fullWidth
+              sx={{
+                '& .MuiToggleButton-root': {
+                  flex: 1,
+                  minWidth: 0,
+                  px: { xs: 0.5, sm: 1 },
+                  py: { xs: 0.85, sm: 1 },
+                  whiteSpace: 'nowrap',
+                  fontSize: { xs: '0.76rem', sm: '0.9rem' },
+                },
+              }}
             >
               <ToggleButton value="easy">Easy</ToggleButton>
               <ToggleButton value="medium">Medium</ToggleButton>
@@ -348,9 +383,11 @@ const PlayVsComputerPage: React.FC = () => {
             </ToggleButtonGroup>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowNewGameDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleStartGame}>
+        <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 3 }, pt: 1.5, gap: 1, flexDirection: { xs: 'column-reverse', sm: 'row' }, '& > :not(style)': { ml: 0 } }}>
+          <Button onClick={() => setShowNewGameDialog(false)} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={handleStartGame} sx={{ width: { xs: '100%', sm: 'auto' } }}>
             Start Game
           </Button>
         </DialogActions>

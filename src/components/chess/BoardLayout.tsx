@@ -69,6 +69,14 @@ const BoardLayout: React.FC<BoardLayoutProps> = ({
         height: '100%',
         flexDirection: useColumn ? 'column' : 'row',
         alignItems: useColumn ? 'stretch' : 'flex-start',
+        ...(useColumn
+          ? {
+              '@media (max-height: 760px)': {
+                gap: 0.5,
+                p: 0.5,
+              },
+            }
+          : {}),
       }}
     >
       {/* ── Panel ── */}
@@ -98,16 +106,15 @@ const BoardLayout: React.FC<BoardLayoutProps> = ({
             ? { flex: `0 0 ${boardWidth}px`, width: boardWidth, maxWidth: boardWidth }
             : {
                 flex: '1 1 auto',
-                maxWidth: isLargeScreen ? 'min(700px, calc(100vh - 180px))' : '100%',
+                width: '100%',
+                maxWidth: isLargeScreen ? 'min(700px, calc(100vh - 180px))' : 'min(100%, 560px)',
+                mx: useColumn ? 'auto' : 0,
               }),
           minWidth: 0,
           display: 'flex',
           flexDirection: 'column',
           gap: 1,
-          // Narrow-screen horizontal padding only when not explicitly zoomed
-          ...(!boardWidth && !isLargeScreen
-            ? { px: '80px', boxSizing: 'border-box' }
-            : {}),
+          boxSizing: 'border-box',
         }}
       >
         {board}

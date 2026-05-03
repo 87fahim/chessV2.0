@@ -18,7 +18,15 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
   canZoomOut,
   zoomPercent,
 }) => (
-  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, ml: 'auto', flex: '0 0 auto' }}>
+  <Box
+    sx={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 0.25,
+      ml: { xs: 0, sm: 'auto' },
+      flex: '0 0 auto',
+    }}
+  >
     <Tooltip title="Zoom out">
       {/* span needed so Tooltip works on a disabled button */}
       <span>

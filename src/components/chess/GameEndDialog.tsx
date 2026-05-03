@@ -93,13 +93,20 @@ const GameEndDialog: React.FC<GameEndDialogProps> = ({
       maxWidth="xs"
       fullWidth
       slotProps={{
-        paper: { sx: { borderRadius: 3, overflow: 'visible' } },
+        paper: {
+          sx: {
+            borderRadius: 3,
+            overflow: 'visible',
+            width: { xs: 'calc(100% - 16px)', sm: '100%' },
+            m: { xs: 1, sm: 2 },
+          },
+        },
       }}
     >
-      <DialogTitle sx={{ textAlign: 'center', pb: 0, pt: 3 }}>
+      <DialogTitle sx={{ textAlign: 'center', pb: 0, pt: { xs: 2, sm: 3 }, px: { xs: 2, sm: 3 } }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ color: `${cfg.color}.main` }}>{cfg.icon}</Box>
-          <Typography variant="h5" sx={{ fontWeight: 800 }}>
+          <Box sx={{ color: `${cfg.color}.main`, '& .MuiSvgIcon-root': { fontSize: { xs: 40, sm: 48 } } }}>{cfg.icon}</Box>
+          <Typography variant="h5" sx={{ fontWeight: 800, fontSize: { xs: '1.4rem', sm: '1.8rem' } }}>
             {cfg.label}
           </Typography>
           {reasonLabel && (
@@ -108,7 +115,7 @@ const GameEndDialog: React.FC<GameEndDialogProps> = ({
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ textAlign: 'center', pt: 2, pb: 1 }}>
+      <DialogContent sx={{ textAlign: 'center', pt: 2, pb: 1, px: { xs: 2, sm: 3 }, overflowX: 'hidden' }}>
         <Typography variant="body1" color="text.secondary">
           {result === '1-0' ? 'White wins' : result === '0-1' ? 'Black wins' : 'Game drawn'}
         </Typography>
@@ -122,18 +129,28 @@ const GameEndDialog: React.FC<GameEndDialogProps> = ({
 
       <Divider sx={{ mx: 2 }} />
 
-      <DialogActions sx={{ justifyContent: 'center', gap: 1, p: 2, flexWrap: 'wrap' }}>
+      <DialogActions
+        sx={{
+          justifyContent: 'center',
+          gap: 1,
+          p: { xs: 2, sm: 2 },
+          flexWrap: 'wrap',
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          '& > :not(style)': { ml: 0 },
+        }}
+      >
         <Button
           variant="contained"
           onClick={onRematch}
           disabled={rematchPending || rematchDeclined}
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
         >
           {rematchPending ? 'Waiting for opponent...' : rematchDeclined ? 'Rematch Unavailable' : 'Rematch'}
         </Button>
-        <Button variant="outlined" onClick={onNewGame}>
+        <Button variant="outlined" onClick={onNewGame} sx={{ width: { xs: '100%', sm: 'auto' } }}>
           New Game
         </Button>
-        <Button onClick={onClose} color="inherit">
+        <Button onClick={onClose} color="inherit" sx={{ width: { xs: '100%', sm: 'auto' } }}>
           Close
         </Button>
       </DialogActions>

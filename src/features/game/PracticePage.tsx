@@ -102,7 +102,7 @@ const PracticePage: React.FC = () => {
           <Typography variant="subtitle2" gutterBottom sx={{ fontSize: { xs: '0.95rem', lg: '1.2rem' }, fontWeight: 600 }}>
             FEN Position
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' }, alignItems: 'flex-start' }}>
             <TextField
               size="small"
               fullWidth
@@ -116,7 +116,7 @@ const PracticePage: React.FC = () => {
               placeholder="Enter FEN..."
             />
             <Tooltip title="Copy FEN">
-              <IconButton onClick={handleCopyFen} size="small">
+              <IconButton onClick={handleCopyFen} size="small" sx={{ width: 36, height: 36, flex: '0 0 auto' }}>
                 <ContentCopyIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -130,7 +130,7 @@ const PracticePage: React.FC = () => {
           <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: { xs: '0.95rem', lg: '1.15rem' }, fontWeight: 700, mb: 0.75 }}>
             Controls
           </Typography>
-          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto' }}>
+          <Box sx={{ display: 'flex', gap: 0.5, rowGap: 0.5, alignItems: 'center', flexWrap: 'wrap', overflowX: 'visible' }}>
             <Tooltip title="Flip Board">
               <IconButton onClick={() => dispatch(flipBoard())} size="small" sx={{ p: 0.4 }}>
                 <SwapVertIcon sx={{ fontSize: 18 }} />

@@ -46,6 +46,8 @@ const TIME_CONTROLS = [
   { label: '15+10', value: { initialMs: 900000, incrementMs: 10000 } },
 ];
 
+const COMPACT_PLAYER_STRIP_QUERY = '@media (max-height: 760px)';
+
 function formatTime(ms: number) {
   const totalSec = Math.max(0, Math.floor(ms / 1000));
   const m = Math.floor(totalSec / 60);
@@ -313,7 +315,7 @@ const OnlinePlayPage: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <Box sx={{ p: 3, textAlign: 'center' }}>
+      <Box sx={{ p: { xs: 1.5, sm: 3 }, textAlign: 'center' }}>
         <Typography variant="h6" color="text.secondary">
           Sign in to play online.
         </Typography>
@@ -327,8 +329,17 @@ const OnlinePlayPage: React.FC = () => {
   // Lobby view - no active game
   if (!onlineGame.gameId) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', p: 3 }}>
-        <Paper elevation={3} sx={{ p: 4, maxWidth: 450, width: '100%', textAlign: 'center' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: { xs: 'flex-start', sm: 'center' },
+          alignItems: { xs: 'stretch', sm: 'center' },
+          minHeight: '100%',
+          p: { xs: 1.5, sm: 3 },
+          boxSizing: 'border-box',
+        }}
+      >
+        <Paper elevation={3} sx={{ p: { xs: 2, sm: 4 }, maxWidth: 460, width: '100%', textAlign: 'center' }}>
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
             Play Online
           </Typography>
@@ -360,7 +371,24 @@ const OnlinePlayPage: React.FC = () => {
                   value={JSON.stringify(selectedTC)}
                   exclusive
                   onChange={(_, v) => v && setSelectedTC(JSON.parse(v))}
-                  sx={{ flexWrap: 'wrap', gap: 0.5 }}
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: 'repeat(3, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))' },
+                    gap: 0.5,
+                    width: '100%',
+                    '& .MuiToggleButtonGroup-grouped': {
+                      m: 0,
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    },
+                    '& .MuiToggleButton-root': {
+                      px: 1,
+                      py: 0.85,
+                      whiteSpace: 'nowrap',
+                      fontSize: { xs: '0.75rem', sm: '0.85rem' },
+                    },
+                  }}
                 >
                   {TIME_CONTROLS.map((tc) => (
                     <ToggleButton key={tc.label} value={JSON.stringify(tc.value)} size="small">
@@ -376,7 +404,24 @@ const OnlinePlayPage: React.FC = () => {
                   value={preferredColor}
                   exclusive
                   onChange={(_, v) => v && setPreferredColor(v)}
-                  fullWidth
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                    gap: 0.5,
+                    width: '100%',
+                    '& .MuiToggleButtonGroup-grouped': {
+                      m: 0,
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                    },
+                    '& .MuiToggleButton-root': {
+                      px: 1,
+                      py: 0.9,
+                      whiteSpace: 'nowrap',
+                      fontSize: { xs: '0.75rem', sm: '0.85rem' },
+                    },
+                  }}
                 >
                   <ToggleButton value="random">Random</ToggleButton>
                   <ToggleButton value="white">♔ White</ToggleButton>
@@ -448,22 +493,38 @@ const OnlinePlayPage: React.FC = () => {
     return (
       <Paper
         sx={{
-          width: '90%',
+          width: '100%',
+          maxWidth: '100%',
           mx: 'auto',
-          px: 1.5,
-          py: 1,
+          px: { xs: 1, sm: 1.5 },
+          py: { xs: 0.75, sm: 1 },
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 2,
+          gap: { xs: 1, sm: 2 },
           border: '1px solid',
           borderColor: active ? 'primary.main' : 'divider',
           boxShadow: active ? 3 : 1,
+          [COMPACT_PLAYER_STRIP_QUERY]: {
+            px: 0.5,
+            py: 0,
+            gap: 0.5,
+            minHeight: 24,
+          },
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
-          <Box sx={{ position: 'relative' }}>
-            <Avatar sx={{ width: 34, height: 34, bgcolor: isSelf ? 'primary.main' : 'grey.700', fontSize: '0.95rem' }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: { xs: 0.75, sm: 1.25 },
+            minWidth: 0,
+            flex: '1 1 auto',
+            [COMPACT_PLAYER_STRIP_QUERY]: { gap: 0.5 },
+          }}
+        >
+          <Box sx={{ position: 'relative', [COMPACT_PLAYER_STRIP_QUERY]: { display: 'none' } }}>
+            <Avatar sx={{ width: { xs: 30, sm: 34 }, height: { xs: 30, sm: 34 }, bgcolor: isSelf ? 'primary.main' : 'grey.700', fontSize: { xs: '0.82rem', sm: '0.95rem' } }}>
               {avatarSeed.charAt(0).toUpperCase()}
             </Avatar>
             {/* Online/offline indicator for opponent */}
@@ -484,15 +545,26 @@ const OnlinePlayPage: React.FC = () => {
             )}
           </Box>
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 700,
+                fontSize: { xs: '0.9rem', sm: '0.95rem' },
+                [COMPACT_PLAYER_STRIP_QUERY]: {
+                  fontSize: '0.78rem',
+                  lineHeight: 1.15,
+                },
+              }}
+              noWrap
+            >
               {name}
               {online === false && !gameEnded && (
-                <Typography component="span" variant="caption" color="error.main" sx={{ ml: 0.5 }}>
+                <Typography component="span" variant="caption" color="error.main" sx={{ ml: 0.5, [COMPACT_PLAYER_STRIP_QUERY]: { display: 'none' } }}>
                   {countdown != null ? `(disconnected ... ${countdown})` : '(disconnected)'}
                 </Typography>
               )}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.72rem', sm: '0.75rem' }, [COMPACT_PLAYER_STRIP_QUERY]: { display: 'none' } }}>
               Captured: {capturedCount}
             </Typography>
           </Box>
@@ -504,8 +576,12 @@ const OnlinePlayPage: React.FC = () => {
             sx={{
               fontFamily: 'monospace',
               fontWeight: 800,
+              fontSize: { xs: '0.98rem', sm: '1.25rem' },
               color: isLowTime ? 'error.main' : active ? 'primary.main' : 'text.primary',
               lineHeight: 1,
+              [COMPACT_PLAYER_STRIP_QUERY]: {
+                fontSize: '0.88rem',
+              },
             }}
           >
             {clockMs === null ? '--:--' : formatTime(clockMs)}
@@ -588,7 +664,7 @@ const OnlinePlayPage: React.FC = () => {
           {drawOffered && !gameEnded && (
             <Paper elevation={2} sx={{ p: 2 }}>
               <Typography variant="body2" sx={{ mb: 1 }}>Your opponent offers a draw</Typography>
-              <Box sx={{ display: 'flex', gap: 1 }}>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 <Button size="small" variant="contained" onClick={() => onlineGame.gameId && acceptDraw(onlineGame.gameId)}>
                   Accept
                 </Button>
@@ -603,14 +679,14 @@ const OnlinePlayPage: React.FC = () => {
             <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, mb: 0.75 }}>
               Controls
             </Typography>
-            <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto' }}>
+            <Box sx={{ display: 'flex', gap: 0.5, rowGap: 0.5, alignItems: 'center', flexWrap: 'wrap', overflowX: 'visible' }}>
               {!gameEnded && (
                 <>
                   <Button
                     variant="outlined"
                     size="small"
                     onClick={() => onlineGame.gameId && offerDraw(onlineGame.gameId)}
-                    sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem' }}
+                    sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem', flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
                   >
                     Draw
                   </Button>
@@ -619,14 +695,14 @@ const OnlinePlayPage: React.FC = () => {
                     color="error"
                     size="small"
                     onClick={() => setShowResignDialog(true)}
-                    sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem' }}
+                    sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem', flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
                   >
                     Resign
                   </Button>
                 </>
               )}
               {gameEnded && (
-                <Button variant="contained" onClick={handleNewGame} sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem' }}>
+                <Button variant="contained" onClick={handleNewGame} sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem', flex: { xs: '1 1 auto', sm: '0 0 auto' } }}>
                   New
                 </Button>
               )}
@@ -645,26 +721,52 @@ const OnlinePlayPage: React.FC = () => {
       />
 
       {/* Resign confirmation */}
-      <Dialog open={showResignDialog} onClose={() => setShowResignDialog(false)}>
+      <Dialog
+        open={showResignDialog}
+        onClose={() => setShowResignDialog(false)}
+        fullWidth
+        maxWidth="xs"
+        slotProps={{
+          paper: {
+            sx: {
+              width: { xs: 'calc(100% - 16px)', sm: '100%' },
+              m: { xs: 1, sm: 2 },
+            },
+          },
+        }}
+      >
         <DialogTitle>Resign?</DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ overflowX: 'hidden' }}>
           <Typography>Are you sure you want to resign this game?</Typography>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowResignDialog(false)}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={handleResign}>Resign</Button>
+        <DialogActions sx={{ gap: 1, flexDirection: { xs: 'column-reverse', sm: 'row' }, '& > :not(style)': { ml: 0 } }}>
+          <Button onClick={() => setShowResignDialog(false)} sx={{ width: { xs: '100%', sm: 'auto' } }}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={handleResign} sx={{ width: { xs: '100%', sm: 'auto' } }}>Resign</Button>
         </DialogActions>
       </Dialog>
 
       {/* Rematch offer from opponent */}
-      <Dialog open={rematchOffered} onClose={() => onlineGame.gameId && declineRematch(onlineGame.gameId)}>
+      <Dialog
+        open={rematchOffered}
+        onClose={() => onlineGame.gameId && declineRematch(onlineGame.gameId)}
+        fullWidth
+        maxWidth="xs"
+        slotProps={{
+          paper: {
+            sx: {
+              width: { xs: 'calc(100% - 16px)', sm: '100%' },
+              m: { xs: 1, sm: 2 },
+            },
+          },
+        }}
+      >
         <DialogTitle>Rematch Offer</DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ overflowX: 'hidden' }}>
           <Typography>Your opponent wants a rematch!</Typography>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => onlineGame.gameId && declineRematch(onlineGame.gameId)}>Decline</Button>
-          <Button variant="contained" onClick={() => onlineGame.gameId && acceptRematch(onlineGame.gameId)}>Accept</Button>
+        <DialogActions sx={{ gap: 1, flexDirection: { xs: 'column-reverse', sm: 'row' }, '& > :not(style)': { ml: 0 } }}>
+          <Button onClick={() => onlineGame.gameId && declineRematch(onlineGame.gameId)} sx={{ width: { xs: '100%', sm: 'auto' } }}>Decline</Button>
+          <Button variant="contained" onClick={() => onlineGame.gameId && acceptRematch(onlineGame.gameId)} sx={{ width: { xs: '100%', sm: 'auto' } }}>Accept</Button>
         </DialogActions>
       </Dialog>
 

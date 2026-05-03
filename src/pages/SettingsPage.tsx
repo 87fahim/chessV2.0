@@ -290,9 +290,10 @@ function ThemeGridSection({
   return (
     <Box
       sx={{
-        minWidth: `${metrics.sectionWidth + LIVE_PREVIEW_SIZE + 16}px`,
+        width: '100%',
+        minWidth: 0,
         maxWidth: '100%',
-        flex: '0 0 auto',
+        flex: '1 1 320px',
       }}
     >
       {title && (
@@ -308,9 +309,9 @@ function ThemeGridSection({
       <Box
         sx={{
           display: 'flex',
-          alignItems: 'flex-start',
+          flexDirection: { xs: 'column', md: 'row' },
+          alignItems: { xs: 'stretch', md: 'flex-start' },
           gap: 1.5,
-          flexWrap: { xs: 'wrap', md: 'nowrap' },
         }}
       >
         <ThemeGridViewport
@@ -323,7 +324,7 @@ function ThemeGridSection({
           {children}
         </ThemeGridViewport>
 
-        <Box sx={{ flex: '0 0 auto' }}>
+        <Box sx={{ flex: '0 0 auto', alignSelf: { xs: 'center', md: 'flex-start' } }}>
           <Typography variant="caption" sx={{ display: 'block', fontWeight: 700, mb: 0.75 }}>
             Live Preview
           </Typography>
@@ -354,8 +355,8 @@ function ThemeGridViewport({
   return (
       <Box
         sx={{
-          width: `${sectionWidth}px`,
-          minWidth: `${sectionWidth}px`,
+          width: '100%',
+          minWidth: 0,
           maxWidth: `${sectionWidth}px`,
           border: '1px solid',
           borderColor: 'divider',
@@ -435,7 +436,7 @@ const SettingsPage: React.FC = () => {
   );
 
   return (
-    <Box sx={{ p: 3, maxWidth: 760 }}>
+    <Box sx={{ p: { xs: 1.5, sm: 3 }, width: '100%', maxWidth: 960, boxSizing: 'border-box' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 600, fontSize: { xs: '1.5rem', lg: '2.1rem' }, flex: 1 }}>
           Settings
@@ -513,9 +514,10 @@ const SettingsPage: React.FC = () => {
         >
           <Box
             sx={{
-              minWidth: `${boardSectionWidth + LIVE_PREVIEW_SIZE + 16}px`,
+              width: '100%',
+              minWidth: 0,
               maxWidth: '100%',
-              flex: '0 0 auto',
+              flex: '1 1 320px',
             }}
           >
             <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.75 }}>
@@ -528,12 +530,12 @@ const SettingsPage: React.FC = () => {
             <Box
               sx={{
                 display: 'flex',
-                alignItems: 'flex-start',
+                flexDirection: { xs: 'column', md: 'row' },
+                alignItems: { xs: 'stretch', md: 'flex-start' },
                 gap: 1.5,
-                flexWrap: { xs: 'wrap', md: 'nowrap' },
               }}
             >
-              <Box sx={{ width: `${boardSectionWidth}px`, minWidth: `${boardSectionWidth}px` }}>
+              <Box sx={{ width: '100%', maxWidth: `${boardSectionWidth}px`, minWidth: 0 }}>
                 <Typography variant="caption" sx={{ display: 'block', fontWeight: 700, mb: 0.75 }}>
                   Texture
                 </Typography>
@@ -585,7 +587,7 @@ const SettingsPage: React.FC = () => {
                 </ThemeGridViewport>
               </Box>
 
-              <Box sx={{ flex: '0 0 auto' }}>
+              <Box sx={{ flex: '0 0 auto', alignSelf: { xs: 'center', md: 'flex-start' } }}>
                 <Typography variant="caption" sx={{ display: 'block', fontWeight: 700, mb: 0.75 }}>
                   Live Preview
                 </Typography>
@@ -652,7 +654,7 @@ const SettingsPage: React.FC = () => {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Profile identity, friends, blocks, invites, and privacy controls now live on dedicated pages.
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
           <Button variant="contained" onClick={() => navigate('/profile')} disabled={!isAuthenticated}>
             Open Profile
           </Button>
@@ -726,7 +728,7 @@ const SettingsPage: React.FC = () => {
             <Alert severity="info" sx={{ mb: 2 }}>
               You are playing as a guest. Sign up to save games and progress.
             </Alert>
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
               <Button variant="contained" onClick={() => navigate('/register')}>
                 Create Account
               </Button>
