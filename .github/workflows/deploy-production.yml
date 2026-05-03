@@ -36,9 +36,6 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Integration Tests
-        run: npm run test:integration
-
   lint-and-build-server:
     name: Lint & Build Server
     runs-on: ubuntu-latest
@@ -62,6 +59,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Integration Tests
+        run: npm run test:integration
 
   deploy:
     name: Deploy To Production Server
@@ -108,6 +108,40 @@ jobs:
           ssh -i ~/.ssh/deploy_key "${SERVER_USER}@${SERVER_HOST}" <<EOF
             set -euxo pipefail
 
+            PREVIOUS_COMMIT=""
+            DEPLOY_STARTED=0
+
+            rollback() {
+              status=$?
+              if [[ $status -eq 0 || $DEPLOY_STARTED -eq 0 || -z "$PREVIOUS_COMMIT" ]]; then
+                exit $status
+              fi
+
+              trap - EXIT
+              set +e
+
+              echo "Deployment failed. Rolling back to $PREVIOUS_COMMIT"
+              cd "${APP_DIR}" || exit $status
+              git checkout main
+              git reset --hard "$PREVIOUS_COMMIT"
+
+              npm ci
+              npm run build:prod
+
+              cd server || exit $status
+              npm ci
+              npm run build
+
+              APP_ENV=production NODE_ENV=production pm2 restart "${PM2_APP}" --update-env
+              sudo nginx -t
+              sudo systemctl reload nginx
+              curl -fsS http://127.0.0.1/api/health >/dev/null
+
+              exit $status
+            }
+
+            trap rollback EXIT
+
             echo "USER: \$(whoami)"
             echo "PWD before cd: \$(pwd)"
             echo "APP_DIR: ${APP_DIR}"
@@ -117,8 +151,10 @@ jobs:
             pwd
             ls -la
 
+            PREVIOUS_COMMIT=\$(git rev-parse HEAD)
             git fetch origin
             git checkout main
+            DEPLOY_STARTED=1
             git pull --ff-only origin main
 
             echo "Checking env files..."
@@ -142,4 +178,10 @@ jobs:
             echo "Testing nginx..."
             sudo nginx -t
             sudo systemctl reload nginx
+
+            echo "Running smoke checks..."
+            curl -fsS http://127.0.0.1/api/health >/dev/null
+            curl -fsSI http://127.0.0.1 >/dev/null
+
+            trap - EXIT
           EOF

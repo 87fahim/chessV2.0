@@ -31,9 +31,6 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Integration Tests
-        run: npm run test:integration
-
   lint-and-build-server:
     name: Lint & Build Server
     runs-on: ubuntu-latest
@@ -57,3 +54,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Integration Tests
+        run: npm run test:integration

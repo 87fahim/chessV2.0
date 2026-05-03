@@ -36,9 +36,6 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Integration Tests
-        run: npm run test:integration
-
   lint-and-build-server:
     name: Lint & Build Server
     runs-on: ubuntu-latest
@@ -62,6 +59,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Integration Tests
+        run: npm run test:integration
 
   deploy:
     name: Deploy To Staging Server
@@ -105,21 +105,67 @@ jobs:
       - name: Deploy via SSH
         if: steps.validate.outputs.ready == 'true'
         run: |
-          ssh -i ~/.ssh/deploy_key "${SERVER_USER}@${SERVER_HOST}" "
-            set -e
-            cd '${APP_DIR}'
+          ssh -i ~/.ssh/deploy_key "${SERVER_USER}@${SERVER_HOST}" <<EOF
+            set -euo pipefail
+
+            PREVIOUS_COMMIT=""
+            DEPLOY_STARTED=0
+
+            rollback() {
+              status=$?
+              if [[ $status -eq 0 || $DEPLOY_STARTED -eq 0 || -z "$PREVIOUS_COMMIT" ]]; then
+                exit $status
+              fi
+
+              trap - EXIT
+              set +e
+
+              echo "Deployment failed. Rolling back to $PREVIOUS_COMMIT"
+              cd "${APP_DIR}" || exit $status
+              git checkout staging
+              git reset --hard "$PREVIOUS_COMMIT"
+
+              npm ci
+              npm run build:staging
+
+              cd server || exit $status
+              npm ci
+              npm run build
+
+              APP_ENV=staging NODE_ENV=production pm2 restart "${PM2_APP}" --update-env
+              sudo nginx -t
+              sudo systemctl reload nginx
+              curl -fsS http://127.0.0.1/api/health >/dev/null
+
+              exit $status
+            }
+
+            trap rollback EXIT
+
+            cd "${APP_DIR}"
+            PREVIOUS_COMMIT=$(git rev-parse HEAD)
             git fetch origin
             git checkout staging
+            DEPLOY_STARTED=1
             git pull --ff-only origin staging
+
             test -f .env.staging
             test -f server/.env.staging
             grep -q '^APP_ENV=staging$' server/.env.staging
+
             npm ci
             npm run build:staging
+
             cd server
             npm ci
             npm run build
-            APP_ENV=staging NODE_ENV=production pm2 restart '${PM2_APP}' --update-env
+
+            APP_ENV=staging NODE_ENV=production pm2 restart "${PM2_APP}" --update-env
             sudo nginx -t
             sudo systemctl reload nginx
-          "
+
+            curl -fsS http://127.0.0.1/api/health >/dev/null
+            curl -fsSI http://127.0.0.1 >/dev/null
+
+            trap - EXIT
+          EOF
