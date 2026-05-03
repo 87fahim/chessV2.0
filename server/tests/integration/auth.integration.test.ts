@@ -26,6 +26,8 @@ describe('auth integration', () => {
 
     expect(healthResponse.status).toBe(200);
     expect(healthResponse.body.status).toBe('ok');
+    expect(healthResponse.body.database.ok).toBe(true);
+    expect(healthResponse.body.requestId).toBe(healthResponse.headers['x-request-id']);
 
     const registeredUser = await registerTestUser(server.request);
 

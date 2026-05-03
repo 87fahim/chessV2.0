@@ -17,6 +17,7 @@
     "test:integration": "vitest run tests/integration"
   },
   "dependencies": {
+    "@sentry/node": "^10.51.0",
     "@types/cookie-parser": "^1.4.10",
     "bcrypt": "^6.0.0",
     "chess.js": "^1.4.0",

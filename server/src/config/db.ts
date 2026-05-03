@@ -1,20 +1,24 @@
 import mongoose from 'mongoose';
 import { env } from './env.js';
+import { logger } from '../utils/logger.js';
 
 export async function connectDB(): Promise<void> {
   try {
     await mongoose.connect(env.MONGODB_URI);
-    console.log('✅ Connected to MongoDB Atlas');
+    logger.info('Connected to MongoDB', {
+      host: mongoose.connection.host,
+      database: mongoose.connection.name,
+    });
   } catch (error) {
-    console.error('❌ MongoDB connection error:', error);
+    logger.error('MongoDB connection error', error);
     process.exit(1);
   }
 
   mongoose.connection.on('error', (err) => {
-    console.error('MongoDB connection error:', err);
+    logger.error('MongoDB connection error', err);
   });
 
   mongoose.connection.on('disconnected', () => {
-    console.warn('MongoDB disconnected');
+    logger.warn('MongoDB disconnected');
   });
 }

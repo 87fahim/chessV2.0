@@ -6,6 +6,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 type AppEnv = 'development' | 'staging' | 'production';
 
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(value || '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseSampleRate(value: string | undefined): number {
+  const parsed = Number.parseFloat(value || '');
+  return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : 0;
+}
+
 function resolveAppEnv(): AppEnv {
   const rawAppEnv = process.env.APP_ENV?.trim().toLowerCase();
   if (rawAppEnv === 'staging' || rawAppEnv === 'production' || rawAppEnv === 'development') {
@@ -53,6 +63,10 @@ export const env = {
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '15m',
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
+  APP_RELEASE: process.env.APP_RELEASE?.trim() || '',
+  SENTRY_DSN: process.env.SENTRY_DSN?.trim() || '',
+  SENTRY_TRACES_SAMPLE_RATE: parseSampleRate(process.env.SENTRY_TRACES_SAMPLE_RATE),
+  SLOW_REQUEST_THRESHOLD_MS: parsePositiveInt(process.env.SLOW_REQUEST_THRESHOLD_MS, 1000),
   STOCKFISH_PATH:
     envFile?.parsed?.STOCKFISH_PATH ||
     process.env.STOCKFISH_PATH ||

@@ -21,11 +21,15 @@ Staging only:
 
 - STAGING_APP_DIR
 - STAGING_PM2_APP
+- MONITOR_HEALTH_URL
+- MONITOR_SLACK_WEBHOOK (optional)
 
 Production only:
 
 - PROD_APP_DIR
 - PROD_PM2_APP
+- MONITOR_HEALTH_URL
+- MONITOR_SLACK_WEBHOOK (optional)
 
 ## Server Env Files
 
@@ -44,6 +48,7 @@ Mandatory safety checks:
 - `server/.env.staging` must contain `APP_ENV=staging`
 - `server/.env.production` must contain `APP_ENV=production`
 - production values must not point to staging API endpoints
+- deploy workflows inject `APP_RELEASE` at restart time so health responses and error tracking report the active commit
 
 ## Daily Flow
 
@@ -53,6 +58,7 @@ Mandatory safety checks:
 4. Validate application in UAT.
 5. Merge staging into main via pull request.
 6. Confirm production deployment workflow succeeds.
+7. Confirm the scheduled `Monitor Health` workflow is green for both environments.
 
 ## Hotfix Flow
 

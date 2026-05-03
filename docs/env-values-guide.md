@@ -35,6 +35,10 @@ Then `npm run dev` — Vite proxies API + WebSocket calls to port 3001.
 | `NODE_ENV` | development | production | production |
 | `MONGODB_URI` | dev cluster/db | staging cluster/db | prod cluster/db |
 | `CLIENT_URL` | `http://localhost:5173` | `http://localhost:5173` | `http://129.212.199.25` |
+| `APP_RELEASE` | *(optional)* | injected by deploy workflow | injected by deploy workflow |
+| `SLOW_REQUEST_THRESHOLD_MS` | `1000` | `1000` | `1000` |
+| `SENTRY_DSN` | *(optional)* | *(optional)* | *(optional)* |
+| `SENTRY_TRACES_SAMPLE_RATE` | `0` | `0` unless tracing is enabled | `0` unless tracing is enabled |
 | `STOCKFISH_PATH` | Windows exe | Windows exe | `/usr/games/stockfish` |
 
 ## App Title
@@ -55,3 +59,5 @@ Override with `VITE_APP_LABEL=MyLabel` in the relevant `.env.*` file if needed.
 2. Use **different MongoDB databases** and **different JWT secrets** per environment.
 3. Production secrets are managed only on the production server.
 4. `server/.env.example` and `.env.example` are the single source of truth for variable names.
+5. `APP_RELEASE` should be injected by deploy automation so health checks and error tracking report the deployed commit.
+6. Leave `SENTRY_DSN` empty until you are ready to send backend exceptions to Sentry.
