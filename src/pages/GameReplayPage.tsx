@@ -83,6 +83,7 @@ const GameReplayPage: React.FC = () => {
   const [isFlipped, setIsFlipped] = useState(defaultBoardFlipped);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const currentGameId = currentGame?._id;
 
   useEffect(() => {
     if (id) dispatch(fetchHistoryGame(id));
@@ -93,13 +94,13 @@ const GameReplayPage: React.FC = () => {
 
   // Reset replay position when game loads
   useEffect(() => {
-    if (currentGame) {
+    if (currentGameId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setMoveIndex(-1);
       setIsPlaying(false);
       setIsFlipped(defaultBoardFlipped);
     }
-  }, [currentGame?._id, defaultBoardFlipped]);
+  }, [currentGameId, defaultBoardFlipped]);
 
   const moves = currentGame?.moves ?? [];
   const totalMoves = moves.length;

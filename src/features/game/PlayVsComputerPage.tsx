@@ -74,26 +74,28 @@ const PlayVsComputerPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const { isAuthenticated, user } = useAppSelector((s) => s.auth);
   const settings = useAppSelector((s) => s.settings.data);
+  const defaultSelectedColor = resolveComputerColorChoice(settings.preferredColor);
+  const defaultSelectedDifficulty = resolveComputerDifficulty(settings.defaultDifficulty);
 
   const [showNewGameDialog, setShowNewGameDialog] = useState(gameState.status === 'idle');
-  const [selectedColor, setSelectedColor] = useState<ComputerColorChoice>(() => resolveComputerColorChoice(settings.preferredColor));
-  const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>(() => resolveComputerDifficulty(settings.defaultDifficulty));
+  const [selectedColorOverride, setSelectedColorOverride] = useState<ComputerColorChoice | null>(null);
+  const [selectedDifficultyOverride, setSelectedDifficultyOverride] = useState<Difficulty | null>(null);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [showCurtain, setShowCurtain] = useState(false);
   const [showEndDialog, setShowEndDialog] = useState(false);
   const prevStatusRef = useRef(gameState.status);
   const autoSavedRef = useRef(false);
   const gameStartedAtRef = useRef<string | null>(null);
+  const selectedColor = selectedColorOverride ?? defaultSelectedColor;
+  const selectedDifficulty = selectedDifficultyOverride ?? defaultSelectedDifficulty;
 
   /* --- Premove queue ----------------------------------------------- */
   const { queue: premoveQueue, premoveSquares, addPremove, clearPremoves, processNextPremove } = usePremoveQueue();
 
-  useEffect(() => {
-    if (showNewGameDialog || gameState.status === 'idle') {
-      setSelectedColor(resolveComputerColorChoice(settings.preferredColor));
-      setSelectedDifficulty(resolveComputerDifficulty(settings.defaultDifficulty));
-    }
-  }, [gameState.status, settings.defaultDifficulty, settings.preferredColor, showNewGameDialog]);
+  const resetNewGameOptions = useCallback(() => {
+    setSelectedColorOverride(null);
+    setSelectedDifficultyOverride(null);
+  }, []);
 
   // Show curtain when transitioning to 'playing'
   useEffect(() => {
@@ -193,14 +195,25 @@ const PlayVsComputerPage: React.FC = () => {
 
   const handleStartGame = () => {
     startNewGame('vs-computer', resolveComputerPlayerColor(selectedColor), selectedDifficulty);
+    resetNewGameOptions();
     setShowNewGameDialog(false);
     setShowEndDialog(false);
   };
 
   const handleNewGame = () => {
     handleReset();
+    resetNewGameOptions();
     setShowEndDialog(false);
     setShowNewGameDialog(true);
+  };
+
+  const handleCloseNewGameDialog = () => {
+    if (gameState.status === 'idle') {
+      return;
+    }
+
+    resetNewGameOptions();
+    setShowNewGameDialog(false);
   };
 
   const handleRematch = () => {
@@ -351,7 +364,7 @@ const PlayVsComputerPage: React.FC = () => {
       {/* New Game Dialog */}
       <Dialog
         open={showNewGameDialog}
-        onClose={() => gameState.status !== 'idle' && setShowNewGameDialog(false)}
+        onClose={handleCloseNewGameDialog}
         fullWidth
         maxWidth="xs"
         slotProps={{
@@ -374,7 +387,7 @@ const PlayVsComputerPage: React.FC = () => {
             <ToggleButtonGroup
               value={selectedColor}
               exclusive
-              onChange={(_, v) => v && setSelectedColor(v)}
+              onChange={(_, v) => v && setSelectedColorOverride(v)}
               fullWidth
               sx={{
                 '& .MuiToggleButton-root': {
@@ -399,7 +412,7 @@ const PlayVsComputerPage: React.FC = () => {
             <ToggleButtonGroup
               value={selectedDifficulty}
               exclusive
-              onChange={(_, v) => v && setSelectedDifficulty(v)}
+              onChange={(_, v) => v && setSelectedDifficultyOverride(v)}
               fullWidth
               sx={{
                 '& .MuiToggleButton-root': {
@@ -419,7 +432,7 @@ const PlayVsComputerPage: React.FC = () => {
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 3 }, pt: 1.5, gap: 1, flexDirection: { xs: 'column-reverse', sm: 'row' }, '& > :not(style)': { ml: 0 } }}>
-          <Button onClick={() => setShowNewGameDialog(false)} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+          <Button onClick={handleCloseNewGameDialog} sx={{ width: { xs: '100%', sm: 'auto' } }}>
             Cancel
           </Button>
           <Button variant="contained" onClick={handleStartGame} sx={{ width: { xs: '100%', sm: 'auto' } }}>

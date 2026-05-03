@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Box, Typography, Paper, TextField, Button, IconButton, Tooltip } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
@@ -24,11 +24,19 @@ const PracticePage: React.FC = () => {
   const [fenInput, setFenInput] = useState(fen);
   const [fenError, setFenError] = useState('');
   const { playIllegalMove, playMoveOutcome } = useGameSounds();
+  const practiceActivityRecordedRef = useRef(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
+      practiceActivityRecordedRef.current = false;
       return;
     }
+
+    if (practiceActivityRecordedRef.current) {
+      return;
+    }
+
+    practiceActivityRecordedRef.current = true;
 
     userApi.recordActivity({
       activityType: 'practice_session',
@@ -36,7 +44,7 @@ const PracticePage: React.FC = () => {
       fen,
       metadata: { source: 'practice_page' },
     }).catch(() => undefined);
-  }, [isAuthenticated]);
+  }, [fen, isAuthenticated]);
 
   const handleLoadFen = () => {
     if (isValidFen(fenInput)) {

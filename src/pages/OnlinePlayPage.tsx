@@ -48,6 +48,8 @@ const TIME_CONTROLS = [
 
 const COMPACT_PLAYER_STRIP_QUERY = '@media (max-height: 760px)';
 
+type TimeControlValue = (typeof TIME_CONTROLS)[number]['value'];
+
 function resolveDefaultTimeControl(defaultTimeControl?: string) {
   const match = TIME_CONTROLS.find((timeControl) => {
     const baseMinutes = Math.round(timeControl.value.initialMs / 60000);
@@ -108,6 +110,8 @@ const OnlinePlayPage: React.FC = () => {
   const { isAuthenticated, user } = useAppSelector((s) => s.auth);
   const settings = useAppSelector((s) => s.settings.data);
   const defaultBoardFlipped = settings.boardFlipped === true;
+  const defaultSelectedTC = resolveDefaultTimeControl(settings.defaultTimeControl);
+  const defaultPreferredColor = resolvePreferredColor(settings.preferredColor);
 
   // AC1/AC2/AC7/AC8: check for an active game on this browser session before socket connects
   const { isChecking: isCheckingSession } = useActiveGameSession();
@@ -136,23 +140,23 @@ const OnlinePlayPage: React.FC = () => {
     clearError,
   } = useSocket();
 
-  const [selectedTC, setSelectedTC] = useState(() => resolveDefaultTimeControl(settings.defaultTimeControl));
-  const [preferredColor, setPreferredColor] = useState<'random' | 'white' | 'black'>(() => resolvePreferredColor(settings.preferredColor));
+  const [selectedTCOverride, setSelectedTCOverride] = useState<TimeControlValue | null>(null);
+  const [preferredColorOverride, setPreferredColorOverride] = useState<'random' | 'white' | 'black' | null>(null);
   const [showResignDialog, setShowResignDialog] = useState(false);
   const [showCurtain, setShowCurtain] = useState(false);
   const [showEndDialog, setShowEndDialog] = useState(false);
   const prevStatusRef = useRef(onlineGame.status);
   const [disconnectCountdown, setDisconnectCountdown] = useState<number | null>(null);
+  const selectedTC = selectedTCOverride ?? defaultSelectedTC;
+  const preferredColor = preferredColorOverride ?? defaultPreferredColor;
 
   /* --- Premove queue ----------------------------------------------- */
   const { queue: premoveQueue, premoveSquares, addPremove, clearPremoves, processNextPremove } = usePremoveQueue();
 
-  useEffect(() => {
-    if (!isInQueue && !onlineGame.gameId) {
-      setSelectedTC(resolveDefaultTimeControl(settings.defaultTimeControl));
-      setPreferredColor(resolvePreferredColor(settings.preferredColor));
-    }
-  }, [isInQueue, onlineGame.gameId, settings.defaultTimeControl, settings.preferredColor]);
+  const resetLobbySelections = useCallback(() => {
+    setSelectedTCOverride(null);
+    setPreferredColorOverride(null);
+  }, []);
 
   // Derive player color as PieceColor for ChessBoard
   const myPieceColor: PieceColor | undefined = onlineGame.yourColor === 'white' ? 'w' : onlineGame.yourColor === 'black' ? 'b' : undefined;
@@ -335,9 +339,19 @@ const OnlinePlayPage: React.FC = () => {
   };
 
   const handleNewGame = () => {
+    resetLobbySelections();
     dispatch(resetGame());
     resetOnlineGame();
   };
+
+  const handleLeaveQueue = useCallback(() => {
+    resetLobbySelections();
+    leaveQueue();
+  }, [leaveQueue, resetLobbySelections]);
+
+  const handleJoinQueue = useCallback(() => {
+    joinQueue(selectedTC, preferredColor);
+  }, [joinQueue, preferredColor, selectedTC]);
 
   if (!isAuthenticated) {
     return (
@@ -387,7 +401,7 @@ const OnlinePlayPage: React.FC = () => {
             <Box>
               <CircularProgress sx={{ mb: 2 }} />
               <Typography variant="body1" sx={{ mb: 2 }}>Searching for opponent...</Typography>
-              <Button variant="outlined" onClick={leaveQueue}>Cancel</Button>
+              <Button variant="outlined" onClick={handleLeaveQueue}>Cancel</Button>
             </Box>
           ) : (
             <>
@@ -396,7 +410,7 @@ const OnlinePlayPage: React.FC = () => {
                 <ToggleButtonGroup
                   value={JSON.stringify(selectedTC)}
                   exclusive
-                  onChange={(_, v) => v && setSelectedTC(JSON.parse(v))}
+                  onChange={(_, v) => v && setSelectedTCOverride(JSON.parse(v) as TimeControlValue)}
                   sx={{
                     display: 'grid',
                     gridTemplateColumns: { xs: 'repeat(3, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))' },
@@ -429,7 +443,7 @@ const OnlinePlayPage: React.FC = () => {
                 <ToggleButtonGroup
                   value={preferredColor}
                   exclusive
-                  onChange={(_, v) => v && setPreferredColor(v)}
+                  onChange={(_, v) => v && setPreferredColorOverride(v)}
                   sx={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
@@ -460,7 +474,7 @@ const OnlinePlayPage: React.FC = () => {
                 size="large"
                 fullWidth
                 disabled={!isConnected || isCheckingSession}
-                onClick={() => joinQueue(selectedTC, preferredColor)}
+                onClick={handleJoinQueue}
               >
                 Find Match
               </Button>

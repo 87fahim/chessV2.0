@@ -24,6 +24,13 @@ interface ChessBoardProps {
   playerColor?: PieceColor;
 }
 
+interface PendingMoveConfirmation {
+  from: string;
+  to: string;
+  promotion?: string;
+  fen: string;
+}
+
 /* Threshold in px before a pointerdown is considered a drag rather than a click */
 const DRAG_THRESHOLD = 4;
 
@@ -50,7 +57,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
   const [dragOverSquare, setDragOverSquare] = useState<string | null>(null);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const [squareSize, setSquareSize] = useState(0);
-  const [pendingMoveConfirmation, setPendingMoveConfirmation] = useState<{ from: string; to: string; promotion?: string } | null>(null);
+  const [pendingMoveConfirmation, setPendingMoveConfirmation] = useState<PendingMoveConfirmation | null>(null);
 
   /* Track whether pointer moved enough to be a drag */
   const pointerOrigin = useRef<{ x: number; y: number } | null>(null);
@@ -61,7 +68,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
   const [premoveFrom, setPremoveFrom] = useState<string | null>(null);
   const [premovePromotionPending, setPremovePromotionPending] = useState<{ from: string; to: string } | null>(null);
 
-  const game = new Chess(fen);
+  const game = useMemo(() => new Chess(fen), [fen]);
   const board = game.board();
   const boardSquares = getBoardSquares(isFlipped);
   const isInCheck = game.inCheck();
@@ -114,7 +121,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
       if (piece.color === playerColor) own.set(square, piece.type);
     }
     return own;
-  }, [fen, game, playerColor, premoveQueue]);
+  }, [game, playerColor, premoveQueue]);
 
   /** True when the player can queue premoves (opponent's turn, game active). */
   const inPremoveMode = !!(onPremove && playerColor && currentTurn !== playerColor && status === 'playing');
@@ -126,12 +133,6 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
       setPremoveFrom(null);
     }
   }, [inPremoveMode]);
-
-  useEffect(() => {
-    if (status !== 'playing') {
-      setPendingMoveConfirmation(null);
-    }
-  }, [status]);
 
   /* Compute square size whenever the board element resizes */
   useEffect(() => {
@@ -162,15 +163,20 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
   const requestMove = useCallback(
     (from: string, to: string, promotion?: string) => {
       if (moveConfirmationEnabled) {
-        setPendingMoveConfirmation({ from, to, promotion });
+        setPendingMoveConfirmation({ from, to, promotion, fen });
         dispatch(clearSelection());
         return;
       }
 
       onMove(from, to, promotion);
     },
-    [dispatch, moveConfirmationEnabled, onMove],
+    [dispatch, fen, moveConfirmationEnabled, onMove],
   );
+
+  const activePendingMoveConfirmation =
+    pendingMoveConfirmation && pendingMoveConfirmation.fen === fen && status === 'playing'
+      ? pendingMoveConfirmation
+      : null;
 
   /* ---- Click handler (used when pointer released without drag) ----- */
   const handleClick = useCallback(
@@ -255,7 +261,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
 
       dispatch(clearSelection());
     },
-    [selectedSquare, legalMoves, fen, status, promotionPending, premovePromotionPending, currentTurn, inPremoveMode, premoveFrom, playerColor, dispatch, onMove, onPremove, game, virtualOwnPieces, autoPromotion, requestMove],
+    [selectedSquare, legalMoves, status, promotionPending, premovePromotionPending, currentTurn, inPremoveMode, premoveFrom, playerColor, dispatch, onPremove, premoveSquares, game, virtualOwnPieces, autoPromotion, requestMove],
   );
 
   /* ---- Pointer handlers -------------------------------------------- */
@@ -302,7 +308,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
       }
     },
-    [fen, status, promotionPending, premovePromotionPending, currentTurn, inPremoveMode, playerColor, dispatch, game],
+    [status, promotionPending, premovePromotionPending, currentTurn, inPremoveMode, playerColor, dispatch, game, virtualOwnPieces],
   );
 
   const handlePointerMove = useCallback(
@@ -407,7 +413,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
       isDragging.current = false;
       pendingClickSquare.current = null;
     },
-    [dragSource, dragLegalMoves, game, dispatch, onMove, onPremove, squareAtPoint, handleClick, inPremoveMode, playerColor, autoPromotion, requestMove],
+    [dragSource, dragLegalMoves, game, dispatch, onPremove, squareAtPoint, handleClick, inPremoveMode, playerColor, autoPromotion, requestMove],
   );
 
   /* ---- end pointer handlers --------------------------------------- */
@@ -446,17 +452,17 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
   }, []);
 
   const handleConfirmPendingMove = useCallback(() => {
-    if (!pendingMoveConfirmation) {
+    if (!activePendingMoveConfirmation) {
       return;
     }
 
-    onMove(
-      pendingMoveConfirmation.from,
-      pendingMoveConfirmation.to,
-      pendingMoveConfirmation.promotion,
-    );
     setPendingMoveConfirmation(null);
-  }, [onMove, pendingMoveConfirmation]);
+    onMove(
+      activePendingMoveConfirmation.from,
+      activePendingMoveConfirmation.to,
+      activePendingMoveConfirmation.promotion,
+    );
+  }, [activePendingMoveConfirmation, onMove]);
 
   const handleCancelPendingMove = useCallback(() => {
     setPendingMoveConfirmation(null);
@@ -569,13 +575,13 @@ const ChessBoard: React.FC<ChessBoardProps> = ({ onMove, onPremove, onClearPremo
         />
       )}
 
-      {pendingMoveConfirmation && (
+      {activePendingMoveConfirmation && (
         <Dialog open onClose={handleCancelPendingMove} fullWidth maxWidth="xs">
           <DialogTitle>Confirm Move</DialogTitle>
           <DialogContent>
             <Typography variant="body2">
-              Play {pendingMoveConfirmation.from} to {pendingMoveConfirmation.to}
-              {pendingMoveConfirmation.promotion ? ` and promote to ${pendingMoveConfirmation.promotion.toUpperCase()}` : ''}?
+              Play {activePendingMoveConfirmation.from} to {activePendingMoveConfirmation.to}
+              {activePendingMoveConfirmation.promotion ? ` and promote to ${activePendingMoveConfirmation.promotion.toUpperCase()}` : ''}?
             </Typography>
           </DialogContent>
           <DialogActions>
