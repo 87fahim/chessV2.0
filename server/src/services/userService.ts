@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import { Types, type ClientSession } from 'mongoose';
 import { User } from '../models/User.js';
 import { UserProfile, IUserProfile } from '../models/UserProfile.js';
 import { UserSettings, IUserSettings } from '../models/UserSettings.js';
@@ -67,9 +67,17 @@ function randomFriendCode(): string {
 }
 
 async function generateUniqueFriendCode(): Promise<string> {
+  return generateUniqueFriendCodeWithSession();
+}
+
+async function generateUniqueFriendCodeWithSession(session?: ClientSession): Promise<string> {
   for (let i = 0; i < 10; i += 1) {
     const code = randomFriendCode();
-    const exists = await UserProfile.exists({ friendCode: code });
+    const existsQuery = UserProfile.exists({ friendCode: code });
+    if (session) {
+      existsQuery.session(session);
+    }
+    const exists = await existsQuery;
     if (!exists) {
       return code;
     }
@@ -77,50 +85,74 @@ async function generateUniqueFriendCode(): Promise<string> {
   throw createError(500, 'Unable to generate unique friend code');
 }
 
-export async function ensureUserDomainRecords(userId: string, username: string): Promise<void> {
-  const friendCode = await generateUniqueFriendCode();
+function isFriendCodeDuplicateError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: number }).code === 11000 &&
+    ('keyPattern' in error || 'keyValue' in error) &&
+    (((error as { keyPattern?: Record<string, unknown> }).keyPattern?.friendCode === 1) ||
+      ((error as { keyValue?: Record<string, unknown> }).keyValue?.friendCode !== undefined))
+  );
+}
 
-  await Promise.all([
-    UserProfile.findOneAndUpdate(
-      { userId },
-      {
-        $setOnInsert: {
-          userId,
-          displayName: username,
-          language: 'en',
-          friendCode,
-        },
-      },
-      { upsert: true, new: true }
-    ),
-    UserSettings.findOneAndUpdate(
-      { userId },
-      {
-        $setOnInsert: {
-          userId,
-        },
-      },
-      { upsert: true, new: true }
-    ),
-    UserStats.findOneAndUpdate(
-      { userId },
-      {
-        $setOnInsert: {
-          userId,
-        },
-      },
-      { upsert: true, new: true }
-    ),
-    UserSocial.findOneAndUpdate(
-      { userId },
-      {
-        $setOnInsert: {
-          userId,
-        },
-      },
-      { upsert: true, new: true }
-    ),
-  ]);
+export async function ensureUserDomainRecords(userId: string, username: string, session?: ClientSession): Promise<void> {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const friendCode = await generateUniqueFriendCodeWithSession(session);
+
+    try {
+      await Promise.all([
+        UserProfile.findOneAndUpdate(
+          { userId },
+          {
+            $setOnInsert: {
+              userId,
+              displayName: username,
+              language: 'en',
+              friendCode,
+            },
+          },
+          { upsert: true, new: true, setDefaultsOnInsert: true, session }
+        ),
+        UserSettings.findOneAndUpdate(
+          { userId },
+          {
+            $setOnInsert: {
+              userId,
+            },
+          },
+          { upsert: true, new: true, setDefaultsOnInsert: true, session }
+        ),
+        UserStats.findOneAndUpdate(
+          { userId },
+          {
+            $setOnInsert: {
+              userId,
+            },
+          },
+          { upsert: true, new: true, setDefaultsOnInsert: true, session }
+        ),
+        UserSocial.findOneAndUpdate(
+          { userId },
+          {
+            $setOnInsert: {
+              userId,
+            },
+          },
+          { upsert: true, new: true, setDefaultsOnInsert: true, session }
+        ),
+      ]);
+      return;
+    } catch (error) {
+      if (attempt < 4 && isFriendCodeDuplicateError(error)) {
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw createError(500, 'Unable to provision user records');
 }
 
 export async function getUserProfile(userId: string): Promise<IUserProfile> {

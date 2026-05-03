@@ -1,5 +1,4 @@
 import { User, IUser } from '../models/User.js';
-import { UserSettings } from '../models/UserSettings.js';
 import { hashPassword, comparePassword } from '../utils/password.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken, TokenPayload } from '../utils/jwt.js';
 import { createError } from '../middleware/errorMiddleware.js';
@@ -28,32 +27,45 @@ export interface AuthResult {
 
 export async function registerUser(input: RegisterInput): Promise<AuthResult> {
   const { username, email, password } = input;
+  const normalizedEmail = email.toLowerCase();
+  const session = await User.startSession();
+  let user: IUser | null = null;
 
-  // Check uniqueness
-  const existingUser = await User.findOne({
-    $or: [{ email: email.toLowerCase() }, { username }],
-  });
+  try {
+    await session.withTransaction(async () => {
+      const existingUser = await User.findOne({
+        $or: [{ email: normalizedEmail }, { username }],
+      }).session(session);
 
-  if (existingUser) {
-    if (existingUser.email === email.toLowerCase()) {
-      throw createError(409, 'Email already registered');
-    }
-    throw createError(409, 'Username already taken');
+      if (existingUser) {
+        if (existingUser.email === normalizedEmail) {
+          throw createError(409, 'Email already registered');
+        }
+        throw createError(409, 'Username already taken');
+      }
+
+      const passwordHash = await hashPassword(password);
+      const [createdUser] = await User.create(
+        [{
+          username,
+          email: normalizedEmail,
+          passwordHash,
+          status: 'active',
+          authProvider: 'local',
+        }],
+        { session },
+      );
+
+      await ensureUserDomainRecords(createdUser._id.toString(), createdUser.username, session);
+      user = createdUser;
+    });
+  } finally {
+    await session.endSession();
   }
 
-  const passwordHash = await hashPassword(password);
-
-  const user = await User.create({
-    username,
-    email: email.toLowerCase(),
-    passwordHash,
-    status: 'active',
-    authProvider: 'local',
-  });
-
-  // Create default settings for the new user
-  await UserSettings.create({ userId: user._id });
-  await ensureUserDomainRecords(user._id.toString(), user.username);
+  if (!user) {
+    throw createError(500, 'Registration failed');
+  }
 
   const payload: TokenPayload = {
     userId: user._id.toString(),
