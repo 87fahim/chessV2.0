@@ -117,6 +117,44 @@ jobs:
             PREVIOUS_COMMIT=""
             DEPLOY_STARTED=0
 
+            wait_for_health() {
+              local url="$1"
+              local label="$2"
+              local attempts="${3:-30}"
+              local delay_seconds="${4:-2}"
+              local response_file
+              local http_code
+
+              response_file=$(mktemp)
+
+              for ((attempt = 1; attempt <= attempts; attempt++)); do
+                http_code=$(curl -sS -o "$response_file" -w '%{http_code}' "$url" || echo "curl_failed")
+                if [[ "$http_code" == "200" ]]; then
+                  rm -f "$response_file"
+                  return 0
+                fi
+
+                echo "$label health attempt $attempt/$attempts returned ${http_code}"
+                cat "$response_file" || true
+                sleep "$delay_seconds"
+              done
+
+              rm -f "$response_file"
+              return 1
+            }
+
+            print_runtime_diagnostics() {
+              local phase="$1"
+
+              echo "=== Runtime diagnostics: $phase ==="
+              pm2 status || true
+              pm2 describe "${PM2_APP}" || true
+              pm2 logs "${PM2_APP}" --lines 100 --nostream || true
+              ss -ltnp | grep -E ':(80|3001)\b' || true
+              curl -sS -i "http://127.0.0.1:${BACKEND_PORT}/api/health" || true
+              curl -sS -i http://127.0.0.1/api/health || true
+            }
+
             rollback() {
               status=$?
               if [[ $status -eq 0 || $DEPLOY_STARTED -eq 0 || -z "$PREVIOUS_COMMIT" ]]; then
@@ -125,6 +163,8 @@ jobs:
 
               trap - EXIT
               set +e
+
+              print_runtime_diagnostics "before rollback"
 
               echo "Deployment failed. Rolling back to $PREVIOUS_COMMIT"
               cd "${APP_DIR}" || exit $status
@@ -141,7 +181,9 @@ jobs:
               APP_RELEASE=$(git rev-parse HEAD) APP_ENV=staging NODE_ENV=production pm2 restart "${PM2_APP}" --update-env
               sudo nginx -t
               sudo systemctl reload nginx
-              curl -fsS http://127.0.0.1/api/health >/dev/null
+
+              wait_for_health "http://127.0.0.1:${BACKEND_PORT}/api/health" "rollback backend"
+              wait_for_health http://127.0.0.1/api/health "rollback nginx"
 
               exit $status
             }
@@ -158,6 +200,9 @@ jobs:
             test -f .env.staging
             test -f server/.env.staging
             grep -q '^APP_ENV=staging$' server/.env.staging
+            BACKEND_PORT=$(awk -F= '/^PORT=/{print $2}' server/.env.staging | tail -n 1)
+            BACKEND_PORT=${BACKEND_PORT:-3001}
+            echo "BACKEND_PORT: ${BACKEND_PORT}"
 
             npm ci
             npm run build:staging
@@ -170,7 +215,8 @@ jobs:
             sudo nginx -t
             sudo systemctl reload nginx
 
-            curl -fsS http://127.0.0.1/api/health >/dev/null
+            wait_for_health "http://127.0.0.1:${BACKEND_PORT}/api/health" "backend"
+            wait_for_health http://127.0.0.1/api/health "nginx"
             curl -fsSI http://127.0.0.1 >/dev/null
 
             trap - EXIT
