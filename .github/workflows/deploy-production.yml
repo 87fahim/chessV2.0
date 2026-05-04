@@ -148,8 +148,8 @@ jobs:
 
             trap rollback EXIT
 
-            echo "USER: \$(whoami)"
-            echo "PWD before cd: \$(pwd)"
+            echo "USER: $(whoami)"
+            echo "PWD before cd: $(pwd)"
             echo "APP_DIR: ${APP_DIR}"
             echo "PM2_APP: ${PM2_APP}"
 
@@ -157,7 +157,7 @@ jobs:
             pwd
             ls -la
 
-            PREVIOUS_COMMIT=\$(git rev-parse HEAD)
+            PREVIOUS_COMMIT=$(git rev-parse HEAD)
             git fetch origin
             git checkout main
             DEPLOY_STARTED=1
