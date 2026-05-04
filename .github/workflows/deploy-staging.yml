@@ -108,7 +108,10 @@ jobs:
       - name: Deploy via SSH
         if: steps.validate.outputs.ready == 'true'
         run: |
-          ssh -i ~/.ssh/deploy_key "${SERVER_USER}@${SERVER_HOST}" <<EOF
+          app_dir=$(printf '%q' "$APP_DIR")
+          pm2_app=$(printf '%q' "$PM2_APP")
+
+          ssh -T -i ~/.ssh/deploy_key "${SERVER_USER}@${SERVER_HOST}" "APP_DIR=$app_dir PM2_APP=$pm2_app bash -s" <<'EOF'
             set -euo pipefail
 
             PREVIOUS_COMMIT=""
