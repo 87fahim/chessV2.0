@@ -206,16 +206,29 @@ const AnalysisPage: React.FC = () => {
                 </Typography>
               )}
 
-              <Button
-                variant="contained"
-                size="small"
-                onClick={editor.applyBestMove}
-                startIcon={<CheckIcon />}
-                fullWidth
-                sx={{ minHeight: 30, fontSize: '0.74rem', px: 1.1 }}
-              >
-                Apply Move
-              </Button>
+              <Box sx={{ display: 'flex', gap: 0.75, flexDirection: { xs: 'column', sm: 'row' } }}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={editor.applyBestMove}
+                  startIcon={<CheckIcon />}
+                  fullWidth
+                  sx={{ minHeight: 30, fontSize: '0.74rem', px: 1.1 }}
+                >
+                  Apply Move
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={editor.showSuggestedMoves}
+                  disabled={editor.isShowingMoves}
+                  startIcon={editor.isShowingMoves ? <CircularProgress size={16} /> : <PlayArrowIcon />}
+                  fullWidth
+                  sx={{ minHeight: 30, fontSize: '0.74rem', px: 1.1, whiteSpace: 'nowrap' }}
+                >
+                  {editor.isShowingMoves ? 'Showing...' : 'Show Moves'}
+                </Button>
+              </Box>
             </Paper>
           )}
         </Paper>
@@ -462,48 +475,6 @@ const AnalysisPage: React.FC = () => {
                 label={<Typography variant="body2" sx={{ fontSize: '0.74rem' }}>{label}</Typography>}
               />
             ))}
-          </Box>
-
-          <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, mb: 0.4, color: 'text.secondary' }}>
-            Position Metadata
-          </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))' }, gap: 0.75, mb: 0.75 }}>
-            <TextField
-              size="small"
-              label="EP"
-              value={editor.enPassant}
-              onChange={(e) => editor.updateEnPassant(e.target.value)}
-              placeholder="-"
-              sx={{ width: '100%' }}
-              slotProps={{
-                inputLabel: { sx: { fontSize: '0.74rem' } },
-                htmlInput: { sx: { fontFamily: 'monospace', fontSize: '0.74rem', py: 0.85 } },
-              }}
-            />
-            <TextField
-              size="small"
-              label="Half"
-              type="number"
-              value={editor.halfMoveClock}
-              onChange={(e) => editor.updateHalfMoveClock(parseInt(e.target.value, 10) || 0)}
-              sx={{ width: '100%' }}
-              slotProps={{
-                inputLabel: { sx: { fontSize: '0.74rem' } },
-                htmlInput: { min: 0, sx: { fontSize: '0.74rem', py: 0.85 } },
-              }}
-            />
-            <TextField
-              size="small"
-              label="Full"
-              type="number"
-              value={editor.fullMoveNumber}
-              onChange={(e) => editor.updateFullMoveNumber(parseInt(e.target.value, 10) || 1)}
-              sx={{ width: '100%' }}
-              slotProps={{
-                inputLabel: { sx: { fontSize: '0.74rem' } },
-                htmlInput: { min: 1, sx: { fontSize: '0.74rem', py: 0.85 } },
-              }}
-            />
           </Box>
         </Paper>
 

@@ -28,6 +28,12 @@ const DEFAULT_ANALYSIS_SETTINGS: AnalysisSettings = {
   highlightSuggestedMove: true,
   showPrincipalVariation: true,
 };
+const MOVE_PREVIEW_DELAY_MS = 650;
+
+type StoredAnalysisResult = AnalysisResult & {
+  san?: string;
+  analyzedFen?: string;
+};
 
 function takeSnapshot(state: {
   position: BoardPosition;
@@ -64,7 +70,7 @@ export function useBoardEditor() {
   const [redoStack, setRedoStack] = useState<PositionSnapshot[]>([]);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<(AnalysisResult & { san?: string }) | null>(() => {
+  const [analysisResult, setAnalysisResult] = useState<StoredAnalysisResult | null>(() => {
     try {
       const saved = sessionStorage.getItem('analysis_result');
       return saved ? JSON.parse(saved) : null;
@@ -72,7 +78,10 @@ export function useBoardEditor() {
   });
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [highlightSquares, setHighlightSquares] = useState<{ from: string; to: string } | null>(null);
+  const [isShowingMoves, setIsShowingMoves] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const showMovesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showMovesRunIdRef = useRef(0);
 
   const fen = useMemo(
     () => buildFen(position, sideToMove, castling, enPassant, halfMoveClock, fullMoveNumber),
@@ -148,10 +157,28 @@ export function useBoardEditor() {
     setRedoStack([]);
   }, [position, sideToMove, castling, enPassant, halfMoveClock, fullMoveNumber]);
 
+  const cancelShowMoves = useCallback(() => {
+    showMovesRunIdRef.current += 1;
+    if (showMovesTimerRef.current) {
+      clearTimeout(showMovesTimerRef.current);
+      showMovesTimerRef.current = null;
+    }
+    setIsShowingMoves(false);
+  }, []);
+
   const clearAnalysis = useCallback(() => {
+    cancelShowMoves();
     setAnalysisResult(null);
     setAnalysisError(null);
     setHighlightSquares(null);
+  }, [cancelShowMoves]);
+
+  useEffect(() => () => {
+    showMovesRunIdRef.current += 1;
+    if (showMovesTimerRef.current) {
+      clearTimeout(showMovesTimerRef.current);
+      showMovesTimerRef.current = null;
+    }
   }, []);
 
   const normalizeAnalysisError = useCallback((error: unknown) => {
@@ -471,6 +498,7 @@ export function useBoardEditor() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
+    cancelShowMoves();
     setIsAnalyzing(true);
     setAnalysisError(null);
     setAnalysisResult(null);
@@ -497,7 +525,7 @@ export function useBoardEditor() {
           san = move?.san;
         } catch { /* ignore - SAN conversion failed for non-standard position */ }
 
-        setAnalysisResult({ ...result, san });
+        setAnalysisResult({ ...result, san, analyzedFen: fen });
         const { from, to } = parseUciMove(result.bestMove);
         setHighlightSquares(analysisSettings.highlightSuggestedMove ? { from, to } : null);
       }
@@ -512,14 +540,16 @@ export function useBoardEditor() {
       setIsAnalyzing(false);
       abortControllerRef.current = null;
     }
-  }, [canAnalyze, isAnalyzing, fen, difficulty, analysisSettings, normalizeAnalysisError]);
+  }, [canAnalyze, isAnalyzing, fen, difficulty, analysisSettings, normalizeAnalysisError, cancelShowMoves]);
 
   const applyBestMove = useCallback(() => {
     if (!analysisResult?.bestMove) return;
 
+    cancelShowMoves();
+
     try {
       // Use chess.js for correct handling of castling, en passant, etc.
-      const game = new Chess(fen);
+      const game = new Chess(analysisResult.analyzedFen ?? fen);
       const { from, to, promotion } = parseUciMove(analysisResult.bestMove);
       const move = game.move({ from, to, promotion });
       if (!move) return;
@@ -543,11 +573,12 @@ export function useBoardEditor() {
     } catch {
       // Fallback: manually move the piece
       const { from, to, promotion } = parseUciMove(analysisResult.bestMove);
-      const piece = position[from];
+      const sourcePosition = parseFenToPosition(analysisResult.analyzedFen ?? fen).position;
+      const piece = sourcePosition[from];
       if (!piece) return;
       pushUndo();
-      setPosition((prev) => {
-        const next = { ...prev };
+      setPosition(() => {
+        const next = { ...sourcePosition };
         delete next[from];
         next[to] = promotion ? { color: piece.color, type: promotion as PieceType } : piece;
         return next;
@@ -555,7 +586,63 @@ export function useBoardEditor() {
       setSideToMove((prev) => (prev === 'w' ? 'b' : 'w'));
     }
     clearAnalysis();
-  }, [analysisResult, fen, position, pushUndo, clearAnalysis, playMoveOutcome]);
+  }, [analysisResult, fen, pushUndo, clearAnalysis, playMoveOutcome, cancelShowMoves]);
+
+  const showSuggestedMoves = useCallback(async () => {
+    if (!analysisResult?.bestMove || isShowingMoves) return;
+
+    const uciMoves = (analysisResult.pv?.trim().split(/\s+/).filter(Boolean) ?? []);
+    const movesToPreview = uciMoves.length > 0 ? uciMoves : [analysisResult.bestMove];
+    const startingFen = analysisResult.analyzedFen ?? fen;
+    const game = new Chess(startingFen);
+    const previewSteps: Array<{ fen: string; from: string; to: string }> = [];
+
+    for (const uci of movesToPreview) {
+      const { from, to, promotion } = parseUciMove(uci);
+      const move = game.move({ from, to, promotion });
+      if (!move) break;
+      previewSteps.push({ fen: game.fen(), from: move.from, to: move.to });
+    }
+
+    if (previewSteps.length === 0) return;
+
+    const startPosition = parseFenToPosition(startingFen);
+    const runId = showMovesRunIdRef.current + 1;
+    showMovesRunIdRef.current = runId;
+    pushUndo();
+    setIsShowingMoves(true);
+    setPosition(startPosition.position);
+    setSideToMove(startPosition.sideToMove);
+    setCastling(startPosition.castling);
+    setEnPassant(startPosition.enPassant);
+    setHalfMoveClock(startPosition.halfMoveClock);
+    setFullMoveNumber(startPosition.fullMoveNumber);
+    setHighlightSquares(null);
+
+    try {
+      for (const step of previewSteps) {
+        await new Promise<void>((resolve) => {
+          showMovesTimerRef.current = setTimeout(resolve, MOVE_PREVIEW_DELAY_MS);
+        });
+
+        if (showMovesRunIdRef.current !== runId) return;
+
+        const parsed = parseFenToPosition(step.fen);
+        setPosition(parsed.position);
+        setSideToMove(parsed.sideToMove);
+        setCastling(parsed.castling);
+        setEnPassant(parsed.enPassant);
+        setHalfMoveClock(parsed.halfMoveClock);
+        setFullMoveNumber(parsed.fullMoveNumber);
+        setHighlightSquares({ from: step.from, to: step.to });
+      }
+    } finally {
+      if (showMovesRunIdRef.current === runId) {
+        showMovesTimerRef.current = null;
+        setIsShowingMoves(false);
+      }
+    }
+  }, [analysisResult, fen, isShowingMoves, pushUndo]);
 
   return {
     position,
@@ -604,11 +691,13 @@ export function useBoardEditor() {
     canRedo: redoStack.length > 0,
 
     isAnalyzing,
+    isShowingMoves,
     analysisResult,
     analysisError,
     highlightSquares,
     findBestMove,
     cancelAnalysis,
     applyBestMove,
+    showSuggestedMoves,
   };
 }
