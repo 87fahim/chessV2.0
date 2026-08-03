@@ -13,34 +13,17 @@ import type {
 } from '../../shared/types/socket';
 import { SocketEvents } from '../../shared/constants/socketEvents.js';
 import { useGameSounds } from './useGameSounds';
+import { useAppSelector } from './useStore';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL;
 const DISCONNECT_FORFEIT_MS = 60_000;
 
-function getUserIdFromToken(): string | null {
-  try {
-    const token = localStorage.getItem('accessToken');
-    if (!token) return null;
-
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-    const decoded = JSON.parse(atob(padded)) as { userId?: string };
-
-    return decoded.userId ?? null;
-  } catch {
-    return null;
-  }
-}
-
 function resolveYourColor(
+  currentUserId: string | null,
   whitePlayer: { userId?: string } | null | undefined,
   blackPlayer: { userId?: string } | null | undefined,
   fallback: 'white' | 'black' | null,
 ): 'white' | 'black' | null {
-  const currentUserId = getUserIdFromToken();
   if (!currentUserId) return fallback;
   if (whitePlayer?.userId === currentUserId) return 'white';
   if (blackPlayer?.userId === currentUserId) return 'black';
@@ -82,6 +65,11 @@ const CLOCK_TICK_MS = 100;
 
 export function useSocket() {
   const { playGameStart, playGameEnd, playIllegalMove, playMoveOutcome } = useGameSounds();
+  // Identity comes from the server-verified auth state, not from decoding the
+  // JWT payload client-side.
+  const currentUserId = useAppSelector((s) => s.auth.user?._id ?? null);
+  const currentUserIdRef = useRef<string | null>(currentUserId);
+  currentUserIdRef.current = currentUserId;
   const socketRef = useRef<Socket | null>(null);
   const disconnectFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -215,7 +203,7 @@ export function useSocket() {
       }
 
       setOnlineGame((prev) => {
-        const yourColor = resolveYourColor(data.whitePlayer, data.blackPlayer, prev.yourColor);
+        const yourColor = resolveYourColor(currentUserIdRef.current, data.whitePlayer, data.blackPlayer, prev.yourColor);
 
         // Update server clocks ref
         if (data.clocks) {
@@ -377,7 +365,7 @@ export function useSocket() {
 
       // Determine our color in the new game
       setOnlineGame((prev) => {
-        const newColor = resolveYourColor(data.whitePlayer, data.blackPlayer, prev.yourColor);
+        const newColor = resolveYourColor(currentUserIdRef.current, data.whitePlayer, data.blackPlayer, prev.yourColor);
         return {
           ...INITIAL_ONLINE,
           gameId: data.newGameId,

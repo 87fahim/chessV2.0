@@ -17,13 +17,14 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 → try refresh
-api.interceptors.response.use(
-  (res) => res,
-  async (error) => {
-    const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
-      original._retry = true;
+// Single-flight refresh: when several requests 401 at the same time they must
+// share one refresh call. Parallel refreshes rotate the refresh-token cookie
+// multiple times and all but the winner get their session revoked.
+let refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
       try {
         const refreshUrl = API_BASE ? `${API_BASE}/api/auth/refresh` : '/api/auth/refresh';
         const { data } = await axios.post(
@@ -34,12 +35,31 @@ api.interceptors.response.use(
             headers: { 'Content-Type': 'application/json' },
           },
         );
-        const tokens = data.data.tokens;
-        localStorage.setItem('accessToken', tokens.accessToken);
-        original.headers.Authorization = `Bearer ${tokens.accessToken}`;
-        return api(original);
+        const accessToken = data.data.tokens.accessToken as string;
+        localStorage.setItem('accessToken', accessToken);
+        return accessToken;
       } catch {
         localStorage.removeItem('accessToken');
+        return null;
+      } finally {
+        refreshPromise = null;
+      }
+    })();
+  }
+  return refreshPromise;
+}
+
+// Handle 401 → try refresh once, sharing the in-flight refresh across requests
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const original = error.config;
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true;
+      const accessToken = await refreshAccessToken();
+      if (accessToken) {
+        original.headers.Authorization = `Bearer ${accessToken}`;
+        return api(original);
       }
     }
     return Promise.reject(error);
