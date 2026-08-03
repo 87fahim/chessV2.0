@@ -35,6 +35,8 @@ type StoredAnalysisResult = AnalysisResult & {
   analyzedFen?: string;
 };
 
+type MovePreviewStatus = 'idle' | 'playing' | 'paused' | 'finished';
+
 function takeSnapshot(state: {
   position: BoardPosition;
   sideToMove: PieceColor;
@@ -78,10 +80,15 @@ export function useBoardEditor() {
   });
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [highlightSquares, setHighlightSquares] = useState<{ from: string; to: string } | null>(null);
-  const [isShowingMoves, setIsShowingMoves] = useState(false);
+  const [movePreviewStatus, setMovePreviewStatusState] = useState<MovePreviewStatus>('idle');
   const abortControllerRef = useRef<AbortController | null>(null);
   const showMovesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showMovesRunIdRef = useRef(0);
+  const showMovesStatusRef = useRef<MovePreviewStatus>('idle');
+  const showMovesStartSnapshotRef = useRef<PositionSnapshot | null>(null);
+  const showMovesStepsRef = useRef<Array<{ fen: string; from: string; to: string }>>([]);
+  const showMovesStepIndexRef = useRef(0);
+  const playNextShowMoveStepRef = useRef<(runId: number) => void>(() => undefined);
 
   const fen = useMemo(
     () => buildFen(position, sideToMove, castling, enPassant, halfMoveClock, fullMoveNumber),
@@ -157,14 +164,31 @@ export function useBoardEditor() {
     setRedoStack([]);
   }, [position, sideToMove, castling, enPassant, halfMoveClock, fullMoveNumber]);
 
+  const setMovePreviewStatus = useCallback((status: MovePreviewStatus) => {
+    showMovesStatusRef.current = status;
+    setMovePreviewStatusState(status);
+  }, []);
+
+  const applySnapshot = useCallback((snapshot: PositionSnapshot) => {
+    setPosition(snapshot.position);
+    setSideToMove(snapshot.sideToMove);
+    setCastling(snapshot.castling);
+    setEnPassant(snapshot.enPassant);
+    setHalfMoveClock(snapshot.halfMoveClock);
+    setFullMoveNumber(snapshot.fullMoveNumber);
+  }, []);
+
   const cancelShowMoves = useCallback(() => {
     showMovesRunIdRef.current += 1;
     if (showMovesTimerRef.current) {
       clearTimeout(showMovesTimerRef.current);
       showMovesTimerRef.current = null;
     }
-    setIsShowingMoves(false);
-  }, []);
+    showMovesStepsRef.current = [];
+    showMovesStepIndexRef.current = 0;
+    showMovesStartSnapshotRef.current = null;
+    setMovePreviewStatus('idle');
+  }, [setMovePreviewStatus]);
 
   const clearAnalysis = useCallback(() => {
     cancelShowMoves();
@@ -180,6 +204,43 @@ export function useBoardEditor() {
       showMovesTimerRef.current = null;
     }
   }, []);
+
+  playNextShowMoveStepRef.current = (runId: number) => {
+    if (
+      showMovesRunIdRef.current !== runId ||
+      showMovesStatusRef.current !== 'playing'
+    ) {
+      return;
+    }
+
+    const step = showMovesStepsRef.current[showMovesStepIndexRef.current];
+    if (!step) {
+      setMovePreviewStatus('finished');
+      return;
+    }
+
+    showMovesTimerRef.current = setTimeout(() => {
+      showMovesTimerRef.current = null;
+
+      if (
+        showMovesRunIdRef.current !== runId ||
+        showMovesStatusRef.current !== 'playing'
+      ) {
+        return;
+      }
+
+      const parsed = parseFenToPosition(step.fen);
+      applySnapshot(parsed);
+      setHighlightSquares({ from: step.from, to: step.to });
+      showMovesStepIndexRef.current += 1;
+
+      if (showMovesStepIndexRef.current >= showMovesStepsRef.current.length) {
+        setMovePreviewStatus('finished');
+      } else {
+        playNextShowMoveStepRef.current(runId);
+      }
+    }, MOVE_PREVIEW_DELAY_MS);
+  };
 
   const normalizeAnalysisError = useCallback((error: unknown) => {
     const message = error instanceof Error ? error.message : 'Engine error';
@@ -588,8 +649,8 @@ export function useBoardEditor() {
     clearAnalysis();
   }, [analysisResult, fen, pushUndo, clearAnalysis, playMoveOutcome, cancelShowMoves]);
 
-  const showSuggestedMoves = useCallback(async () => {
-    if (!analysisResult?.bestMove || isShowingMoves) return;
+  const showSuggestedMoves = useCallback(() => {
+    if (!analysisResult?.bestMove || movePreviewStatus === 'playing') return;
 
     const uciMoves = (analysisResult.pv?.trim().split(/\s+/).filter(Boolean) ?? []);
     const movesToPreview = uciMoves[0] === analysisResult.bestMove
@@ -611,40 +672,75 @@ export function useBoardEditor() {
     const startPosition = parseFenToPosition(startingFen);
     const runId = showMovesRunIdRef.current + 1;
     showMovesRunIdRef.current = runId;
+    showMovesStartSnapshotRef.current = takeSnapshot({
+      position,
+      sideToMove,
+      castling,
+      enPassant,
+      halfMoveClock,
+      fullMoveNumber,
+    });
+    showMovesStepsRef.current = previewSteps;
+    showMovesStepIndexRef.current = 0;
     pushUndo();
-    setIsShowingMoves(true);
-    setPosition(startPosition.position);
-    setSideToMove(startPosition.sideToMove);
-    setCastling(startPosition.castling);
-    setEnPassant(startPosition.enPassant);
-    setHalfMoveClock(startPosition.halfMoveClock);
-    setFullMoveNumber(startPosition.fullMoveNumber);
+    applySnapshot(startPosition);
     setHighlightSquares(null);
+    setMovePreviewStatus('playing');
+    playNextShowMoveStepRef.current(runId);
+  }, [
+    analysisResult,
+    movePreviewStatus,
+    fen,
+    position,
+    sideToMove,
+    castling,
+    enPassant,
+    halfMoveClock,
+    fullMoveNumber,
+    pushUndo,
+    applySnapshot,
+    setMovePreviewStatus,
+  ]);
 
-    try {
-      for (const step of previewSteps) {
-        await new Promise<void>((resolve) => {
-          showMovesTimerRef.current = setTimeout(resolve, MOVE_PREVIEW_DELAY_MS);
-        });
+  const pauseSuggestedMoves = useCallback(() => {
+    if (movePreviewStatus !== 'playing') return;
 
-        if (showMovesRunIdRef.current !== runId) return;
-
-        const parsed = parseFenToPosition(step.fen);
-        setPosition(parsed.position);
-        setSideToMove(parsed.sideToMove);
-        setCastling(parsed.castling);
-        setEnPassant(parsed.enPassant);
-        setHalfMoveClock(parsed.halfMoveClock);
-        setFullMoveNumber(parsed.fullMoveNumber);
-        setHighlightSquares({ from: step.from, to: step.to });
-      }
-    } finally {
-      if (showMovesRunIdRef.current === runId) {
-        showMovesTimerRef.current = null;
-        setIsShowingMoves(false);
-      }
+    if (showMovesTimerRef.current) {
+      clearTimeout(showMovesTimerRef.current);
+      showMovesTimerRef.current = null;
     }
-  }, [analysisResult, fen, isShowingMoves, pushUndo]);
+    setMovePreviewStatus('paused');
+  }, [movePreviewStatus, setMovePreviewStatus]);
+
+  const resumeSuggestedMoves = useCallback(() => {
+    if (movePreviewStatus !== 'paused') return;
+
+    setMovePreviewStatus('playing');
+    playNextShowMoveStepRef.current(showMovesRunIdRef.current);
+  }, [movePreviewStatus, setMovePreviewStatus]);
+
+  const restoreSuggestedMoves = useCallback(() => {
+    const snapshot = showMovesStartSnapshotRef.current;
+    if (!snapshot) return;
+
+    showMovesRunIdRef.current += 1;
+    if (showMovesTimerRef.current) {
+      clearTimeout(showMovesTimerRef.current);
+      showMovesTimerRef.current = null;
+    }
+    applySnapshot(snapshot);
+    showMovesStepsRef.current = [];
+    showMovesStepIndexRef.current = 0;
+    showMovesStartSnapshotRef.current = null;
+    setMovePreviewStatus('idle');
+
+    if (analysisResult?.bestMove) {
+      const { from, to } = parseUciMove(analysisResult.bestMove);
+      setHighlightSquares(analysisSettings.highlightSuggestedMove ? { from, to } : null);
+    } else {
+      setHighlightSquares(null);
+    }
+  }, [analysisResult, analysisSettings.highlightSuggestedMove, applySnapshot, setMovePreviewStatus]);
 
   return {
     position,
@@ -693,7 +789,8 @@ export function useBoardEditor() {
     canRedo: redoStack.length > 0,
 
     isAnalyzing,
-    isShowingMoves,
+    movePreviewStatus,
+    isShowingMoves: movePreviewStatus === 'playing',
     analysisResult,
     analysisError,
     highlightSquares,
@@ -701,5 +798,8 @@ export function useBoardEditor() {
     cancelAnalysis,
     applyBestMove,
     showSuggestedMoves,
+    pauseSuggestedMoves,
+    resumeSuggestedMoves,
+    restoreSuggestedMoves,
   };
 }

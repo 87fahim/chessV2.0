@@ -28,6 +28,7 @@ import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PauseIcon from '@mui/icons-material/Pause';
 import CheckIcon from '@mui/icons-material/Check';
 import CancelIcon from '@mui/icons-material/Cancel';
 import EditableBoard from '../../components/chess/EditableBoard';
@@ -107,6 +108,34 @@ const AnalysisPage: React.FC = () => {
   const handleCopyFen = () => {
     navigator.clipboard.writeText(editor.fen);
   };
+
+  const handleMovePreviewButton = () => {
+    if (editor.movePreviewStatus === 'playing') {
+      editor.pauseSuggestedMoves();
+    } else if (editor.movePreviewStatus === 'paused') {
+      editor.resumeSuggestedMoves();
+    } else if (editor.movePreviewStatus === 'finished') {
+      editor.restoreSuggestedMoves();
+    } else {
+      editor.showSuggestedMoves();
+    }
+  };
+
+  const movePreviewButtonLabel =
+    editor.movePreviewStatus === 'playing'
+      ? 'Pause'
+      : editor.movePreviewStatus === 'paused'
+        ? 'Resume'
+        : editor.movePreviewStatus === 'finished'
+          ? 'Restore'
+          : 'Show Moves';
+
+  const movePreviewButtonIcon =
+    editor.movePreviewStatus === 'playing'
+      ? <PauseIcon />
+      : editor.movePreviewStatus === 'finished'
+        ? <RestartAltIcon />
+        : <PlayArrowIcon />;
 
   const errors = editor.validationErrors.filter((e) => e.severity === 'error');
   const warnings = editor.validationErrors.filter((e) => e.severity === 'warning');
@@ -220,13 +249,12 @@ const AnalysisPage: React.FC = () => {
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={editor.showSuggestedMoves}
-                  disabled={editor.isShowingMoves}
-                  startIcon={editor.isShowingMoves ? <CircularProgress size={16} /> : <PlayArrowIcon />}
+                  onClick={handleMovePreviewButton}
+                  startIcon={movePreviewButtonIcon}
                   fullWidth
                   sx={{ minHeight: 30, fontSize: '0.74rem', px: 1.1, whiteSpace: 'nowrap' }}
                 >
-                  {editor.isShowingMoves ? 'Showing...' : 'Show Moves'}
+                  {movePreviewButtonLabel}
                 </Button>
               </Box>
             </Paper>
