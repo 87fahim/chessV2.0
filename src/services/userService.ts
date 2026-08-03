@@ -38,10 +38,10 @@ export interface UserSocialData {
   showOnlineStatus: boolean;
   profileVisibility: 'public' | 'friends_only' | 'private';
   gameHistoryVisibility: 'public' | 'friends_only' | 'private';
-  friends: Array<{ _id: string; username: string; email: string }>;
-  blockedUsers: Array<{ _id: string; username: string; email: string }>;
-  incomingFriendRequests: Array<{ _id: string; username: string; email: string }>;
-  outgoingFriendRequests: Array<{ _id: string; username: string; email: string }>;
+  friends: Array<{ _id: string; username: string }>;
+  blockedUsers: Array<{ _id: string; username: string }>;
+  incomingFriendRequests: Array<{ _id: string; username: string }>;
+  outgoingFriendRequests: Array<{ _id: string; username: string }>;
 }
 
 export interface UserSummaryData {

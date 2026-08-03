@@ -202,18 +202,18 @@ export async function updateUserProfile(userId: string, update: ProfileUpdateInp
 
 export async function getUserSocial(userId: string): Promise<IUserSocial> {
   let social = await UserSocial.findOne({ userId })
-    .populate('friends', 'username email')
-    .populate('blockedUsers', 'username email')
-    .populate('incomingFriendRequests', 'username email')
-    .populate('outgoingFriendRequests', 'username email');
+    .populate('friends', 'username')
+    .populate('blockedUsers', 'username')
+    .populate('incomingFriendRequests', 'username')
+    .populate('outgoingFriendRequests', 'username');
 
   if (!social) {
     await UserSocial.create({ userId });
     social = await UserSocial.findOne({ userId })
-      .populate('friends', 'username email')
-      .populate('blockedUsers', 'username email')
-      .populate('incomingFriendRequests', 'username email')
-      .populate('outgoingFriendRequests', 'username email');
+      .populate('friends', 'username')
+      .populate('blockedUsers', 'username')
+      .populate('incomingFriendRequests', 'username')
+      .populate('outgoingFriendRequests', 'username');
   }
 
   if (!social) {
@@ -229,10 +229,10 @@ export async function updateUserSocial(userId: string, update: SocialUpdateInput
     { $set: update },
     { upsert: true, new: true, runValidators: true }
   )
-    .populate('friends', 'username email')
-    .populate('blockedUsers', 'username email')
-    .populate('incomingFriendRequests', 'username email')
-    .populate('outgoingFriendRequests', 'username email');
+    .populate('friends', 'username')
+    .populate('blockedUsers', 'username')
+    .populate('incomingFriendRequests', 'username')
+    .populate('outgoingFriendRequests', 'username');
 
   if (!social) {
     throw createError(500, 'Failed to update social settings');
@@ -249,6 +249,43 @@ export async function sendFriendRequest(userId: string, targetUserId: string): P
   const targetUser = await User.findById(targetUserId);
   if (!targetUser) {
     throw createError(404, 'Target user not found');
+  }
+
+  const [senderSocial, targetSocial] = await Promise.all([
+    UserSocial.findOne({ userId }),
+    UserSocial.findOne({ userId: targetUserId }),
+  ]);
+
+  // Blocks in either direction make the pair invisible to each other; keep
+  // the error generic so a block cannot be detected by probing.
+  const senderBlockedTarget = senderSocial?.blockedUsers.some((id) => id.toString() === targetUserId);
+  const targetBlockedSender = targetSocial?.blockedUsers.some((id) => id.toString() === userId);
+  if (senderBlockedTarget || targetBlockedSender) {
+    throw createError(403, 'Cannot send friend request to this user');
+  }
+
+  if (senderSocial?.friends.some((id) => id.toString() === targetUserId)) {
+    throw createError(400, 'You are already friends with this user');
+  }
+
+  if (senderSocial?.outgoingFriendRequests.some((id) => id.toString() === targetUserId)) {
+    throw createError(400, 'Friend request already sent');
+  }
+
+  if (senderSocial?.incomingFriendRequests.some((id) => id.toString() === targetUserId)) {
+    throw createError(400, 'This user already sent you a friend request');
+  }
+
+  const policy = targetSocial?.friendRequestPolicy ?? 'everyone';
+  if (policy === 'nobody') {
+    throw createError(403, 'Cannot send friend request to this user');
+  }
+  if (policy === 'friends_of_friends') {
+    const senderFriendIds = new Set((senderSocial?.friends ?? []).map((id) => id.toString()));
+    const hasMutualFriend = (targetSocial?.friends ?? []).some((id) => senderFriendIds.has(id.toString()));
+    if (!hasMutualFriend) {
+      throw createError(403, 'Cannot send friend request to this user');
+    }
   }
 
   await Promise.all([
@@ -279,22 +316,29 @@ export async function sendFriendRequest(userId: string, targetUserId: string): P
 export async function acceptFriendRequest(userId: string, requesterUserId: string): Promise<void> {
   const [userObjectId, requesterObjectId] = [new Types.ObjectId(userId), new Types.ObjectId(requesterUserId)];
 
+  // Only accept a request that is actually pending for this user.
+  const social = await UserSocial.findOne({
+    userId,
+    incomingFriendRequests: requesterObjectId,
+  });
+  if (!social) {
+    throw createError(400, 'No pending friend request from this user');
+  }
+
   await Promise.all([
     UserSocial.updateOne(
-      { userId },
+      { userId, incomingFriendRequests: requesterObjectId },
       {
         $pull: { incomingFriendRequests: requesterObjectId },
         $addToSet: { friends: requesterObjectId },
-      },
-      { upsert: true }
+      }
     ),
     UserSocial.updateOne(
-      { userId: requesterUserId },
+      { userId: requesterUserId, outgoingFriendRequests: userObjectId },
       {
         $pull: { outgoingFriendRequests: userObjectId },
         $addToSet: { friends: userObjectId },
-      },
-      { upsert: true }
+      }
     ),
     UserStats.updateOne({ userId: requesterUserId }, { $inc: { invitesAccepted: 1 } }, { upsert: true }),
   ]);
@@ -303,20 +347,26 @@ export async function acceptFriendRequest(userId: string, requesterUserId: strin
 export async function declineFriendRequest(userId: string, requesterUserId: string): Promise<void> {
   const [userObjectId, requesterObjectId] = [new Types.ObjectId(userId), new Types.ObjectId(requesterUserId)];
 
+  const social = await UserSocial.findOne({
+    userId,
+    incomingFriendRequests: requesterObjectId,
+  });
+  if (!social) {
+    throw createError(400, 'No pending friend request from this user');
+  }
+
   await Promise.all([
     UserSocial.updateOne(
-      { userId },
+      { userId, incomingFriendRequests: requesterObjectId },
       {
         $pull: { incomingFriendRequests: requesterObjectId },
-      },
-      { upsert: true }
+      }
     ),
     UserSocial.updateOne(
-      { userId: requesterUserId },
+      { userId: requesterUserId, outgoingFriendRequests: userObjectId },
       {
         $pull: { outgoingFriendRequests: userObjectId },
-      },
-      { upsert: true }
+      }
     ),
     UserStats.updateOne({ userId: requesterUserId }, { $inc: { invitesDeclined: 1 } }, { upsert: true }),
   ]);

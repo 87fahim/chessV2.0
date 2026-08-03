@@ -217,9 +217,6 @@ const SocialPage: React.FC = () => {
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
                 {person.username}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {person.email}
-              </Typography>
               <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
                 <Button size="small" variant="contained" onClick={() => handleAccept(person._id)}>
                   Accept
@@ -251,9 +248,6 @@ const SocialPage: React.FC = () => {
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
                 {friend.username}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {friend.email}
-              </Typography>
             </Paper>
           ))
         ) : (
@@ -271,11 +265,8 @@ const SocialPage: React.FC = () => {
         {social?.blockedUsers?.length ? (
           social.blockedUsers.map((person) => (
             <Paper key={person._id} variant="outlined" sx={{ p: 1.25, mb: 1 }}>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
                 {person.username}
-              </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                {person.email}
               </Typography>
               <Button size="small" variant="outlined" onClick={() => handleUnblock(person._id)}>
                 Unblock
