@@ -84,14 +84,18 @@ const saveCompletedGameSchema = z.object({
   endedAt: z.string().datetime().optional(),
 });
 
-export const getActiveSessionGame = asyncHandler(async (req: Request, res: Response) => {
-  const clientSessionId = req.query.clientSessionId as string | undefined;
-  const guestId = req.query.guestId as string | undefined;
+const activeSessionQuerySchema = z.object({
+  clientSessionId: z.string().min(1).max(100),
+  guestId: z.string().min(1).max(100).optional(),
+});
 
-  if (!clientSessionId) {
+export const getActiveSessionGame = asyncHandler(async (req: Request, res: Response) => {
+  const parsed = activeSessionQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
     res.status(400).json({ success: false, error: 'clientSessionId is required' });
     return;
   }
+  const { clientSessionId, guestId } = parsed.data;
 
   const userId = req.user?.userId;
   const game = await gameService.getActiveGameBySession(clientSessionId, userId, guestId);
@@ -137,8 +141,14 @@ export const createGame = asyncHandler(async (req: Request, res: Response) => {
   res.status(201).json({ success: true, data: { game } });
 });
 
+const gameStatusQuerySchema = z
+  .enum(['pending', 'waiting_for_opponent', 'active', 'completed', 'abandoned', 'cancelled'])
+  .optional();
+
 export const getGames = asyncHandler(async (req: Request, res: Response) => {
-  const status = req.query.status as string | undefined;
+  const status = gameStatusQuerySchema.parse(
+    typeof req.query.status === 'string' ? req.query.status : undefined,
+  );
   const games = await gameService.getUserGames(req.user!.userId, status);
 
   res.json({ success: true, data: { games } });

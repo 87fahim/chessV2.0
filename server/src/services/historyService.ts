@@ -1,6 +1,7 @@
 import { Game, IGame } from '../models/Game.js';
 import { GameStatus } from '../constants/gameStatus.js';
 import { createError } from '../middleware/errorMiddleware.js';
+import { escapeRegex } from '../utils/escapeRegex.js';
 
 export interface HistoryFilter {
   result?: string;
@@ -45,7 +46,7 @@ export async function getUserHistory(
 
   // Opponent name filter (case-insensitive partial match on whitePlayer.name or blackPlayer.name)
   if (filter?.opponent) {
-    const opponentRegex = new RegExp(filter.opponent, 'i');
+    const opponentRegex = new RegExp(escapeRegex(filter.opponent), 'i');
     query.$and = [
       {
         $or: [

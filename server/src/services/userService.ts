@@ -8,6 +8,7 @@ import { UserActivity, IUserActivity } from '../models/UserActivity.js';
 import { UserSavedPosition, IUserSavedPosition } from '../models/UserSavedPosition.js';
 import { Game } from '../models/Game.js';
 import { createError } from '../middleware/errorMiddleware.js';
+import { escapeRegex } from '../utils/escapeRegex.js';
 
 export interface ProfileUpdateInput {
   displayName?: string;
@@ -430,22 +431,25 @@ export async function searchUsers(query: string, currentUserId: string): Promise
   displayName: string;
   friendCode: string;
 }>> {
-  const normalized = query.trim();
+  const normalized = query.trim().slice(0, 50);
   if (!normalized) {
     return [];
   }
+
+  // User text must be treated as a literal, never as a regex pattern.
+  const literalPattern = escapeRegex(normalized);
 
   const [profilesByProfileQuery, usersByUsername] = await Promise.all([
     UserProfile.find({
       userId: { $ne: currentUserId },
       $or: [
         { friendCode: normalized.toUpperCase(), searchableByFriendCode: true },
-        { displayName: { $regex: normalized, $options: 'i' } },
+        { displayName: { $regex: literalPattern, $options: 'i' } },
       ],
     }).limit(20),
     User.find({
       _id: { $ne: currentUserId },
-      username: { $regex: normalized, $options: 'i' },
+      username: { $regex: literalPattern, $options: 'i' },
     }).select('username').limit(20),
   ]);
 

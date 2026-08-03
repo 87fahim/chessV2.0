@@ -1,27 +1,47 @@
 import { Request, Response } from 'express';
+import { z } from 'zod';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import * as historyService from '../services/historyService.js';
 
+// Query params are attacker-controlled and Express parses `?a[$ne]=x` into
+// objects, so everything must be validated as plain scalars before it can
+// reach a Mongo query.
+const historyQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(100000).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  result: z.enum(['1-0', '0-1', '1/2-1/2', '*']).optional(),
+  mode: z.enum(['local', 'computer', 'analysis', 'online']).optional(),
+  color: z.enum(['white', 'black']).optional(),
+  dateFrom: z.coerce.date().optional(),
+  dateTo: z.coerce.date().optional(),
+  opponent: z.string().trim().min(1).max(50).optional(),
+});
+
 export const getHistory = asyncHandler(async (req: Request, res: Response) => {
-  const page = parseInt(req.query.page as string) || 1;
-  const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
-  const filter: historyService.HistoryFilter = {};
+  const query = historyQuerySchema.parse(req.query);
 
-  if (req.query.result) filter.result = req.query.result as string;
-  if (req.query.mode) filter.mode = req.query.mode as string;
-  if (req.query.color) filter.color = req.query.color as 'white' | 'black';
-  if (req.query.dateFrom) filter.dateFrom = new Date(req.query.dateFrom as string);
-  if (req.query.dateTo) filter.dateTo = new Date(req.query.dateTo as string);
-  if (req.query.opponent) filter.opponent = req.query.opponent as string;
+  const filter: historyService.HistoryFilter = {
+    result: query.result,
+    mode: query.mode,
+    color: query.color,
+    dateFrom: query.dateFrom,
+    dateTo: query.dateTo,
+    opponent: query.opponent,
+  };
 
-  const { games, total } = await historyService.getUserHistory(req.user!.userId, filter, page, limit);
+  const { games, total } = await historyService.getUserHistory(
+    req.user!.userId,
+    filter,
+    query.page,
+    query.limit,
+  );
 
   res.json({
     success: true,
     data: { games },
     total,
-    page,
-    limit,
+    page: query.page,
+    limit: query.limit,
   });
 });
 
