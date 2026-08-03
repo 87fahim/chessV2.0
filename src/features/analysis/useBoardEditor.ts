@@ -592,7 +592,9 @@ export function useBoardEditor() {
     if (!analysisResult?.bestMove || isShowingMoves) return;
 
     const uciMoves = (analysisResult.pv?.trim().split(/\s+/).filter(Boolean) ?? []);
-    const movesToPreview = uciMoves.length > 0 ? uciMoves : [analysisResult.bestMove];
+    const movesToPreview = uciMoves[0] === analysisResult.bestMove
+      ? uciMoves
+      : [analysisResult.bestMove, ...uciMoves];
     const startingFen = analysisResult.analyzedFen ?? fen;
     const game = new Chess(startingFen);
     const previewSteps: Array<{ fen: string; from: string; to: string }> = [];
