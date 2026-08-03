@@ -247,39 +247,53 @@ export async function refreshTokens(
   refreshToken: string,
 ): Promise<{ tokens: AuthTokens; refreshToken: string }> {
   const payload = verifyRefreshTokenOrThrow(refreshToken);
-  const existingToken = await RefreshToken.findOne({
-    tokenId: payload.tokenId,
-    familyId: payload.familyId,
-    userId: payload.userId,
-  });
-
-  if (!existingToken) {
-    throw createError(401, 'Invalid or expired refresh token');
-  }
-
   const now = new Date();
-  if (existingToken.revokedAt || existingToken.replacedByTokenId) {
-    await revokeRefreshTokenFamily(existingToken.familyId);
-    throw createError(401, 'Invalid or expired refresh token');
-  }
 
-  if (existingToken.expiresAt.getTime() <= now.getTime()) {
-    existingToken.revokedAt = now;
-    await existingToken.save();
-    throw createError(401, 'Invalid or expired refresh token');
-  }
-
-  // Verify user still exists
+  // Verify user still exists before rotating the session.
   const user = await User.findById(payload.userId);
   if (!user) {
     throw createError(401, 'User no longer exists');
   }
 
-  const issuedTokens = await issueSessionTokens(user, existingToken.familyId);
-  existingToken.revokedAt = now;
-  existingToken.lastUsedAt = now;
-  existingToken.replacedByTokenId = issuedTokens.tokenId;
-  await existingToken.save();
+  if (user.status !== 'active') {
+    throw createError(403, `Account is ${user.status}`);
+  }
+
+  // Invalidate sessions issued before a password change.
+  if (
+    user.passwordChangedAt &&
+    payload.iat &&
+    user.passwordChangedAt.getTime() > payload.iat * 1000
+  ) {
+    await revokeRefreshTokenFamily(payload.familyId);
+    throw createError(401, 'Invalid or expired refresh token');
+  }
+
+  // Issue the replacement first, then atomically claim the previous token.
+  // If the claim fails (reuse / race / expiry), revoke the whole family.
+  const issuedTokens = await issueSessionTokens(user, payload.familyId);
+  const claimedToken = await RefreshToken.findOneAndUpdate(
+    {
+      tokenId: payload.tokenId,
+      familyId: payload.familyId,
+      userId: payload.userId,
+      revokedAt: { $exists: false },
+      replacedByTokenId: { $exists: false },
+      expiresAt: { $gt: now },
+    },
+    {
+      $set: {
+        revokedAt: now,
+        lastUsedAt: now,
+        replacedByTokenId: issuedTokens.tokenId,
+      },
+    },
+  );
+
+  if (!claimedToken) {
+    await revokeRefreshTokenFamily(payload.familyId);
+    throw createError(401, 'Invalid or expired refresh token');
+  }
 
   return {
     tokens: { accessToken: issuedTokens.accessToken },
