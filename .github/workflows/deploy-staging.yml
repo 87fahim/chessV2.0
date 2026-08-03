@@ -111,7 +111,17 @@ jobs:
           app_dir=$(printf '%q' "$APP_DIR")
           pm2_app=$(printf '%q' "$PM2_APP")
 
-          ssh -T -i ~/.ssh/deploy_key "${SERVER_USER}@${SERVER_HOST}" "APP_DIR=$app_dir PM2_APP=$pm2_app bash -s" <<'EOF'
+          # Keep the SSH session alive during long npm ci / build steps.
+          # Without this, idle periods can trip middlebox/NAT timeouts
+          # ("client_loop: send disconnect: Broken pipe").
+          ssh -T \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=20 \
+            -o TCPKeepAlive=yes \
+            -o ConnectTimeout=30 \
+            -i ~/.ssh/deploy_key \
+            "${SERVER_USER}@${SERVER_HOST}" \
+            "APP_DIR=$app_dir PM2_APP=$pm2_app bash -s" <<'EOF'
             set -euo pipefail
 
             PREVIOUS_COMMIT=""
@@ -204,12 +214,24 @@ jobs:
             BACKEND_PORT=${BACKEND_PORT:-3001}
             echo "BACKEND_PORT: ${BACKEND_PORT}"
 
-            npm ci
-            npm run build:staging
+            run_with_heartbeat() {
+              local label="$1"
+              shift
+              "$@" &
+              local cmd_pid=$!
+              while kill -0 "$cmd_pid" 2>/dev/null; do
+                echo "[deploy] ${label} still running..."
+                sleep 20
+              done
+              wait "$cmd_pid"
+            }
+
+            run_with_heartbeat "client npm ci" npm ci --no-fund --no-audit
+            run_with_heartbeat "client build" npm run build:staging
 
             cd server
-            npx --yes npm@11 ci
-            npm run build
+            run_with_heartbeat "server npm ci" npx --yes npm@11 ci --no-fund --no-audit
+            run_with_heartbeat "server build" npm run build
 
             APP_RELEASE=$(git rev-parse HEAD) APP_ENV=staging NODE_ENV=production pm2 restart "${PM2_APP}" --update-env
             sudo nginx -t
