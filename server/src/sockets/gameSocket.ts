@@ -6,6 +6,11 @@ import { calculateRemainingTime } from '../services/clockService.js';
 import { markDisconnected, markReconnected, clearGameDisconnects } from '../services/timeoutScheduler.js';
 import { isUserOnline, connectedUsers } from './index.js';
 import { logger } from '../utils/logger.js';
+import {
+  gameIdSchema,
+  gameMoveSchema,
+  parseSocketPayload,
+} from '../validators/socketPayloads.js';
 
 // Track draw offers in memory: gameId -> offeringUserId
 const drawOffers = new Map<string, string>();
@@ -36,8 +41,11 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
   }
 
   // Join a game room
-  socket.on(SocketEvents.GAME_JOIN, async (data: { gameId: string }) => {
+  socket.on(SocketEvents.GAME_JOIN, async (rawData: unknown) => {
     try {
+      const data = parseSocketPayload(socket, gameIdSchema, rawData);
+      if (!data) return;
+
       const game = await gameService.getGameById(data.gameId);
       const { isPlayer } = gameService.isParticipant(game, userId);
 
@@ -97,7 +105,10 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
   // Make a move
   socket.on(
     SocketEvents.GAME_MOVE,
-    async (data: { gameId: string; move: { from: string; to: string; promotion?: string }; clientMoveNumber?: number }) => {
+    async (rawData: unknown) => {
+      const data = parseSocketPayload(socket, gameMoveSchema, rawData);
+      if (!data) return;
+
       try {
         const result = await gameService.makeMove({
           gameId: data.gameId,
@@ -168,8 +179,10 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
   );
 
   // Resign
-  socket.on(SocketEvents.GAME_RESIGN, async (data: { gameId: string }) => {
+  socket.on(SocketEvents.GAME_RESIGN, async (rawData: unknown) => {
     try {
+      const data = parseSocketPayload(socket, gameIdSchema, rawData);
+      if (!data) return;
       const game = await gameService.resignGame(data.gameId, userId);
       const roomId = `game:${data.gameId}`;
 
@@ -202,8 +215,10 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
   };
 
   // Offer draw (limit: one unresolved offer at a time, FR-47)
-  socket.on(SocketEvents.GAME_OFFER_DRAW, async (data: { gameId: string }) => {
+  socket.on(SocketEvents.GAME_OFFER_DRAW, async (rawData: unknown) => {
     try {
+      const data = parseSocketPayload(socket, gameIdSchema, rawData);
+      if (!data) return;
       const game = await getGameAsParticipant(data.gameId);
       if (!game) return;
       if (game.status !== 'active') {
@@ -240,8 +255,10 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
   });
 
   // Accept draw
-  socket.on(SocketEvents.GAME_ACCEPT_DRAW, async (data: { gameId: string }) => {
+  socket.on(SocketEvents.GAME_ACCEPT_DRAW, async (rawData: unknown) => {
     try {
+      const data = parseSocketPayload(socket, gameIdSchema, rawData);
+      if (!data) return;
       const game = await getGameAsParticipant(data.gameId);
       if (!game) return;
 
@@ -268,8 +285,10 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
   });
 
   // Decline draw (proper event, FR-46)
-  socket.on(SocketEvents.GAME_DECLINE_DRAW, async (data: { gameId: string }) => {
+  socket.on(SocketEvents.GAME_DECLINE_DRAW, async (rawData: unknown) => {
     try {
+      const data = parseSocketPayload(socket, gameIdSchema, rawData);
+      if (!data) return;
       const game = await getGameAsParticipant(data.gameId);
       if (!game) return;
 
@@ -283,8 +302,10 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
   });
 
   // Sync request (reconnect scenario, FR-59)
-  socket.on(SocketEvents.GAME_SYNC_REQUEST, async (data: { gameId: string }) => {
+  socket.on(SocketEvents.GAME_SYNC_REQUEST, async (rawData: unknown) => {
     try {
+      const data = parseSocketPayload(socket, gameIdSchema, rawData);
+      if (!data) return;
       const game = await getGameAsParticipant(data.gameId);
       if (!game) return;
       const clocks = calculateRemainingTime(game);
@@ -307,8 +328,10 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
   });
 
   // Rematch request
-  socket.on(SocketEvents.GAME_REMATCH_REQUEST, async (data: { gameId: string }) => {
+  socket.on(SocketEvents.GAME_REMATCH_REQUEST, async (rawData: unknown) => {
     try {
+      const data = parseSocketPayload(socket, gameIdSchema, rawData);
+      if (!data) return;
       const game = await gameService.getGameById(data.gameId);
       if (game.status !== 'completed' && game.status !== 'abandoned') {
         socket.emit(SocketEvents.ERROR, { message: 'Game is not finished' });
@@ -391,8 +414,10 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
   });
 
   // Accept rematch
-  socket.on(SocketEvents.GAME_REMATCH_ACCEPT, async (data: { gameId: string }) => {
+  socket.on(SocketEvents.GAME_REMATCH_ACCEPT, async (rawData: unknown) => {
     try {
+      const data = parseSocketPayload(socket, gameIdSchema, rawData);
+      if (!data) return;
       const game = await getGameAsParticipant(data.gameId);
       if (!game) return;
 
@@ -424,8 +449,10 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
   });
 
   // Decline rematch
-  socket.on(SocketEvents.GAME_REMATCH_DECLINE, async (data: { gameId: string }) => {
+  socket.on(SocketEvents.GAME_REMATCH_DECLINE, async (rawData: unknown) => {
     try {
+      const data = parseSocketPayload(socket, gameIdSchema, rawData);
+      if (!data) return;
       const game = await getGameAsParticipant(data.gameId);
       if (!game) return;
 

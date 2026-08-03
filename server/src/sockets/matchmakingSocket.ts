@@ -4,6 +4,7 @@ import { SocketEvents } from '../constants/socketEvents.js';
 import * as matchmakingService from '../services/matchmakingService.js';
 import * as gameService from '../services/gameService.js';
 import { logger } from '../utils/logger.js';
+import { parseSocketPayload, queueJoinSchema } from '../validators/socketPayloads.js';
 
 export function registerMatchmakingHandlers(io: SocketIOServer, socket: AuthenticatedSocket): void {
   const userId = socket.user!.userId;
@@ -12,12 +13,11 @@ export function registerMatchmakingHandlers(io: SocketIOServer, socket: Authenti
   // Join queue
   socket.on(
     SocketEvents.QUEUE_JOIN,
-    async (data: {
-      preferredColor?: string;
-      rated?: boolean;
-      timeControl: { initialMs: number; incrementMs: number };
-    }) => {
+    async (rawData: unknown) => {
       try {
+        const data = parseSocketPayload(socket, queueJoinSchema, rawData);
+        if (!data) return;
+
         // AC2: if the user already has an active game, resume it instead of queuing
         const activeGame = await gameService.findActiveOnlineGame(userId);
         if (activeGame) {
