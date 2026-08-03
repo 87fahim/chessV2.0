@@ -16,6 +16,9 @@ import { logger } from '../utils/logger.js';
 import { env } from '../config/env.js';
 import { durationToMs } from '../utils/duration.js';
 
+const MAX_FAILED_LOGINS = 5;
+const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
+
 export interface RegisterInput {
   username: string;
   email: string;
@@ -203,14 +206,26 @@ export async function loginUser(input: LoginInput): Promise<AuthResult> {
     throw createError(403, `Account is ${user.status}`);
   }
 
+  if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+    const minutesLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60_000);
+    throw createError(429, `Too many failed login attempts. Try again in ${minutesLeft} minute(s).`);
+  }
+
   const isMatch = await comparePassword(password, user.passwordHash);
   if (!isMatch) {
     user.failedLoginCount = (user.failedLoginCount ?? 0) + 1;
+    // Temporary per-account lockout complements the per-IP rate limit, which
+    // a distributed credential-stuffing attack can otherwise sidestep.
+    if (user.failedLoginCount >= MAX_FAILED_LOGINS) {
+      user.lockedUntil = new Date(Date.now() + LOGIN_LOCKOUT_MS);
+      user.failedLoginCount = 0;
+    }
     await user.save();
     throw createError(401, 'Invalid credentials');
   }
 
   user.failedLoginCount = 0;
+  user.lockedUntil = undefined;
   user.lastLoginAt = new Date();
   await user.save();
 

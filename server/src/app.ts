@@ -18,6 +18,10 @@ import userRoutes from './routes/userRoutes.js';
 import maintenanceRoutes from './routes/maintenanceRoutes.js';
 
 const app = express();
+
+// The app runs behind a single reverse proxy in staging/production; trusting
+// it makes req.ip resolve to the real client so per-IP rate limits work.
+app.set('trust proxy', 1);
 const mongoConnectionStates: Record<number, string> = {
   0: 'disconnected',
   1: 'connected',

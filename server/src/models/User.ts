@@ -10,6 +10,7 @@ export interface IUser extends Document {
   lastLoginAt?: Date;
   passwordChangedAt?: Date;
   failedLoginCount: number;
+  lockedUntil?: Date;
   authProvider: string;
   createdAt: Date;
   updatedAt: Date;
@@ -58,6 +59,9 @@ const userSchema = new Schema<IUser>(
       type: Number,
       default: 0,
       min: 0,
+    },
+    lockedUntil: {
+      type: Date,
     },
     authProvider: {
       type: String,

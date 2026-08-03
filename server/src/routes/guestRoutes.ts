@@ -1,11 +1,23 @@
 import { Router, Request, Response } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import * as guestService from '../services/guestService.js';
 
 const router = Router();
 
+// Guest sessions create database records without authentication, so cap how
+// fast a single IP can mint them.
+const guestSessionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many guest sessions created, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 router.post(
   '/session',
+  guestSessionLimiter,
   asyncHandler(async (_req: Request, res: Response) => {
     const session = await guestService.createGuestSession();
     res.status(201).json({ success: true, data: { session } });
