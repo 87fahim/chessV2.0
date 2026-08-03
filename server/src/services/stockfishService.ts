@@ -51,7 +51,10 @@ class StockfishService {
 
       let latestDepth = 0;
       let latestEvaluation: string | undefined;
-      let latestPv: string | undefined;
+      // The engine can search several candidate lines (especially at reduced
+      // skill levels) and then pick a bestmove from any of them, so track each
+      // PV by its first move and match it against the final bestmove.
+      const pvLinesByFirstMove = new Map<string, { pv: string; depth: number; evaluation?: string }>();
 
       const infoListener = (line: string) => {
         if (!line.startsWith('info ')) return;
@@ -62,18 +65,28 @@ class StockfishService {
         }
 
         const scoreMatch = line.match(/\bscore\s+(cp|mate)\s+(-?\d+)/);
+        let lineEvaluation: string | undefined;
         if (scoreMatch) {
           const scoreType = scoreMatch[1];
           const scoreValue = Number(scoreMatch[2]);
-          latestEvaluation =
+          lineEvaluation =
             scoreType === 'cp'
               ? `${scoreValue >= 0 ? '+' : ''}${(scoreValue / 100).toFixed(2)}`
               : `${scoreValue >= 0 ? '+' : '-'}M${Math.abs(scoreValue)}`;
+          latestEvaluation = lineEvaluation;
         }
 
         const pvMatch = line.match(/\spv\s+(.+)$/);
         if (pvMatch) {
-          latestPv = pvMatch[1].trim();
+          const pv = pvMatch[1].trim();
+          const firstMove = pv.split(/\s+/)[0];
+          if (firstMove) {
+            pvLinesByFirstMove.set(firstMove, {
+              pv,
+              depth: latestDepth,
+              evaluation: lineEvaluation ?? latestEvaluation,
+            });
+          }
         }
       };
 
@@ -104,12 +117,16 @@ class StockfishService {
           throw new Error('Engine did not return a best move');
         }
 
+        // Only report a PV that actually starts with the chosen best move;
+        // otherwise omit it rather than returning a line for a different move.
+        const matchedLine = pvLinesByFirstMove.get(bestMoveMatch[1]);
+
         return {
           bestMove: bestMoveMatch[1],
           ponder: bestMoveMatch[2],
-          evaluation: latestEvaluation,
-          pv: latestPv,
-          depth: latestDepth,
+          evaluation: matchedLine?.evaluation ?? latestEvaluation,
+          pv: matchedLine?.pv,
+          depth: matchedLine?.depth ?? latestDepth,
         };
       } finally {
         this.lineListeners.delete(infoListener);

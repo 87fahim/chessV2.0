@@ -72,12 +72,7 @@ export function useBoardEditor() {
   const [redoStack, setRedoStack] = useState<PositionSnapshot[]>([]);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<StoredAnalysisResult | null>(() => {
-    try {
-      const saved = sessionStorage.getItem('analysis_result');
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
-  });
+  const [analysisResult, setAnalysisResult] = useState<StoredAnalysisResult | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [highlightSquares, setHighlightSquares] = useState<{ from: string; to: string } | null>(null);
   const [movePreviewStatus, setMovePreviewStatusState] = useState<MovePreviewStatus>('idle');
@@ -94,45 +89,6 @@ export function useBoardEditor() {
     () => buildFen(position, sideToMove, castling, enPassant, halfMoveClock, fullMoveNumber),
     [position, sideToMove, castling, enPassant, halfMoveClock, fullMoveNumber],
   );
-
-  // Persist analysis result & FEN to sessionStorage
-  useEffect(() => {
-    if (analysisResult) {
-      sessionStorage.setItem('analysis_result', JSON.stringify(analysisResult));
-      sessionStorage.setItem('analysis_fen', fen);
-    } else {
-      sessionStorage.removeItem('analysis_result');
-      sessionStorage.removeItem('analysis_fen');
-    }
-  }, [analysisResult, fen]);
-
-  // Restore FEN and highlight on mount
-  useEffect(() => {
-    const savedFen = sessionStorage.getItem('analysis_fen');
-    if (savedFen && savedFen !== DEFAULT_FEN) {
-      const parsed = parseFenToPosition(savedFen);
-      if (parsed) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setPosition({ ...parsed.position });
-        setSideToMove(parsed.sideToMove);
-        setCastling({ ...parsed.castling });
-        setEnPassant(parsed.enPassant);
-        setHalfMoveClock(parsed.halfMoveClock);
-        setFullMoveNumber(parsed.fullMoveNumber);
-      }
-    }
-    // Restore highlight from persisted result
-    const saved = sessionStorage.getItem('analysis_result');
-    if (saved) {
-      try {
-        const result = JSON.parse(saved);
-        if (result?.bestMove) {
-          const { from, to } = parseUciMove(result.bestMove);
-          setHighlightSquares({ from, to });
-        }
-      } catch { /* ignore */ }
-    }
-  }, []);
 
   const fenValidationError = useMemo(() => {
     try {
