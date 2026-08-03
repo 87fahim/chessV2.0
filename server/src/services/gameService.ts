@@ -133,7 +133,20 @@ export async function updateGame(gameId: string, userId: string, update: Partial
     throw createError(403, 'Not authorized to modify this game');
   }
 
-  Object.assign(game, update);
+  // Online games are server-authoritative; clients may only rename them.
+  if (game.mode === GameMode.ONLINE) {
+    const onlineSafeUpdate: Partial<IGame> = {};
+    if (typeof update.label === 'string') {
+      onlineSafeUpdate.label = update.label;
+    }
+    if (Object.keys(update).some((key) => key !== 'label')) {
+      throw createError(403, 'Online games can only be updated through gameplay events');
+    }
+    Object.assign(game, onlineSafeUpdate);
+  } else {
+    Object.assign(game, update);
+  }
+
   await game.save();
   return game;
 }

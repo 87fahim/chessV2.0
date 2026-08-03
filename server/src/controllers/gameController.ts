@@ -35,7 +35,9 @@ const createGameSchema = z.object({
 const updateGameSchema = z.object({
   fen: z.string().optional(),
   pgn: z.string().optional(),
-  status: z.string().optional(),
+  status: z
+    .enum(['pending', 'waiting_for_opponent', 'active', 'completed', 'abandoned', 'cancelled'])
+    .optional(),
   label: z.string().max(100).optional(),
 });
 
