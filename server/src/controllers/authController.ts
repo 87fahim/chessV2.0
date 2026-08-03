@@ -7,7 +7,11 @@ import { env } from '../config/env.js';
 import { durationToMs } from '../utils/duration.js';
 
 const registerSchema = z.object({
-  username: z.string().min(3).max(30),
+  username: z
+    .string()
+    .min(3)
+    .max(30)
+    .regex(/^[a-zA-Z0-9_]+$/, 'Username may only contain letters, numbers, and underscores'),
   email: z.string().email(),
   password: z.string().min(8).max(128),
 });

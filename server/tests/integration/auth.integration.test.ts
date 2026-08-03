@@ -27,7 +27,9 @@ describe('auth integration', () => {
     expect(healthResponse.status).toBe(200);
     expect(healthResponse.body.status).toBe('ok');
     expect(healthResponse.body.database.ok).toBe(true);
-    expect(healthResponse.body.requestId).toBe(healthResponse.headers['x-request-id']);
+    expect(healthResponse.headers['x-request-id']).toBeTruthy();
+    expect(healthResponse.body).not.toHaveProperty('environment');
+    expect(healthResponse.body).not.toHaveProperty('release');
 
     const registeredUser = await registerTestUser(server.request);
 

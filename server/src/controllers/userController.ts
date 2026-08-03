@@ -3,9 +3,15 @@ import { z } from 'zod';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import * as userService from '../services/userService.js';
 
+const httpsUrlSchema = z
+  .string()
+  .url()
+  .max(500)
+  .refine((value) => value.startsWith('https://'), 'Avatar URL must use https');
+
 const updateProfileSchema = z.object({
   displayName: z.string().min(1).max(30).optional(),
-  avatarUrl: z.string().url().max(500).optional(),
+  avatarUrl: httpsUrlSchema.optional(),
   bio: z.string().max(240).optional(),
   country: z.string().max(80).optional(),
   timezone: z.string().max(64).optional(),
