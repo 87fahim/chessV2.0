@@ -186,53 +186,78 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
     }
   });
 
+  /**
+   * Load a game and verify the caller actually plays in it. Draw offers,
+   * declines and state syncs must never be honoured for non-participants —
+   * otherwise any authenticated user could force-end or spy on any game.
+   */
+  const getGameAsParticipant = async (gameId: string) => {
+    const game = await gameService.getGameById(gameId);
+    const { isPlayer } = gameService.isParticipant(game, userId);
+    if (!isPlayer) {
+      socket.emit(SocketEvents.ERROR, { message: 'Not a participant in this game' });
+      return null;
+    }
+    return game;
+  };
+
   // Offer draw (limit: one unresolved offer at a time, FR-47)
   socket.on(SocketEvents.GAME_OFFER_DRAW, async (data: { gameId: string }) => {
-    const existingOffer = drawOffers.get(data.gameId);
-    if (existingOffer === userId) {
-      socket.emit(SocketEvents.ERROR, { message: 'Draw already offered' });
-      return;
-    }
-    // If opponent already offered, this counts as acceptance
-    if (existingOffer && existingOffer !== userId) {
-      try {
-        const game = await gameService.endGameByDraw(data.gameId);
+    try {
+      const game = await getGameAsParticipant(data.gameId);
+      if (!game) return;
+      if (game.status !== 'active') {
+        socket.emit(SocketEvents.ERROR, { message: 'Game is not active' });
+        return;
+      }
+
+      const existingOffer = drawOffers.get(data.gameId);
+      if (existingOffer === userId) {
+        socket.emit(SocketEvents.ERROR, { message: 'Draw already offered' });
+        return;
+      }
+      // If opponent already offered, this counts as acceptance
+      if (existingOffer && existingOffer !== userId) {
+        const ended = await gameService.endGameByDraw(data.gameId);
         drawOffers.delete(data.gameId);
         const roomId = `game:${data.gameId}`;
         io.to(roomId).emit(SocketEvents.GAME_ENDED, {
           gameId: data.gameId,
-          result: game.result,
+          result: ended.result,
           reason: 'draw_agreement',
         });
         clearGameDisconnects(data.gameId);
-      } catch (error) {
-        socket.emit(SocketEvents.ERROR, { message: 'Failed to process draw' });
-        logger.error('Draw via counter-offer error', error);
+        return;
       }
-      return;
-    }
 
-    drawOffers.set(data.gameId, userId);
-    const roomId = `game:${data.gameId}`;
-    socket.to(roomId).emit(SocketEvents.GAME_DRAW_OFFERED, { gameId: data.gameId, offeredBy: userId });
+      drawOffers.set(data.gameId, userId);
+      const roomId = `game:${data.gameId}`;
+      socket.to(roomId).emit(SocketEvents.GAME_DRAW_OFFERED, { gameId: data.gameId, offeredBy: userId });
+    } catch (error) {
+      socket.emit(SocketEvents.ERROR, { message: 'Failed to process draw offer' });
+      logger.error('Draw offer error', error);
+    }
   });
 
   // Accept draw
   socket.on(SocketEvents.GAME_ACCEPT_DRAW, async (data: { gameId: string }) => {
-    const offeredBy = drawOffers.get(data.gameId);
-    if (!offeredBy || offeredBy === userId) {
-      socket.emit(SocketEvents.ERROR, { message: 'No draw offer to accept' });
-      return;
-    }
-
     try {
-      const game = await gameService.endGameByDraw(data.gameId);
+      const game = await getGameAsParticipant(data.gameId);
+      if (!game) return;
+
+      const offeredBy = drawOffers.get(data.gameId);
+      if (!offeredBy || offeredBy === userId) {
+        socket.emit(SocketEvents.ERROR, { message: 'No draw offer to accept' });
+        return;
+      }
+
+      const ended = await gameService.endGameByDraw(data.gameId);
       drawOffers.delete(data.gameId);
 
       const roomId = `game:${data.gameId}`;
       io.to(roomId).emit(SocketEvents.GAME_ENDED, {
         gameId: data.gameId,
-        result: game.result,
+        result: ended.result,
         reason: 'draw_agreement',
       });
       clearGameDisconnects(data.gameId);
@@ -243,16 +268,25 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
   });
 
   // Decline draw (proper event, FR-46)
-  socket.on(SocketEvents.GAME_DECLINE_DRAW, (data: { gameId: string }) => {
-    drawOffers.delete(data.gameId);
-    const roomId = `game:${data.gameId}`;
-    socket.to(roomId).emit(SocketEvents.GAME_DRAW_DECLINED, { gameId: data.gameId });
+  socket.on(SocketEvents.GAME_DECLINE_DRAW, async (data: { gameId: string }) => {
+    try {
+      const game = await getGameAsParticipant(data.gameId);
+      if (!game) return;
+
+      drawOffers.delete(data.gameId);
+      const roomId = `game:${data.gameId}`;
+      socket.to(roomId).emit(SocketEvents.GAME_DRAW_DECLINED, { gameId: data.gameId });
+    } catch (error) {
+      socket.emit(SocketEvents.ERROR, { message: 'Failed to decline draw' });
+      logger.error('Decline draw error', error);
+    }
   });
 
   // Sync request (reconnect scenario, FR-59)
   socket.on(SocketEvents.GAME_SYNC_REQUEST, async (data: { gameId: string }) => {
     try {
-      const game = await gameService.getGameById(data.gameId);
+      const game = await getGameAsParticipant(data.gameId);
+      if (!game) return;
       const clocks = calculateRemainingTime(game);
 
       socket.emit(SocketEvents.GAME_STATE, {
@@ -359,6 +393,9 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
   // Accept rematch
   socket.on(SocketEvents.GAME_REMATCH_ACCEPT, async (data: { gameId: string }) => {
     try {
+      const game = await getGameAsParticipant(data.gameId);
+      if (!game) return;
+
       const offer = rematchOffers.get(data.gameId);
       if (!offer || offer.offeredBy === userId) {
         socket.emit(SocketEvents.ERROR, { message: 'This rematch request is no longer valid.' });
@@ -387,15 +424,23 @@ export function registerGameHandlers(io: SocketIOServer, socket: AuthenticatedSo
   });
 
   // Decline rematch
-  socket.on(SocketEvents.GAME_REMATCH_DECLINE, (data: { gameId: string }) => {
-    const offer = rematchOffers.get(data.gameId);
-    if (offer) {
-      clearTimeout(offer.timer);
-      rematchOffers.delete(data.gameId);
+  socket.on(SocketEvents.GAME_REMATCH_DECLINE, async (data: { gameId: string }) => {
+    try {
+      const game = await getGameAsParticipant(data.gameId);
+      if (!game) return;
+
+      const offer = rematchOffers.get(data.gameId);
+      if (offer) {
+        clearTimeout(offer.timer);
+        rematchOffers.delete(data.gameId);
+      }
+      const roomId = `game:${data.gameId}`;
+      socket.to(roomId).emit(SocketEvents.GAME_REMATCH_DECLINED, { gameId: data.gameId });
+      logger.info(`User ${userId} declined rematch for game ${data.gameId}`);
+    } catch (error) {
+      socket.emit(SocketEvents.ERROR, { message: 'Failed to decline rematch' });
+      logger.error('Rematch decline error', error);
     }
-    const roomId = `game:${data.gameId}`;
-    socket.to(roomId).emit(SocketEvents.GAME_REMATCH_DECLINED, { gameId: data.gameId });
-    logger.info(`User ${userId} declined rematch for game ${data.gameId}`);
   });
 
   // Handle disconnect — notify opponent and start abandonment timer (FR-26, FR-27, FR-33)

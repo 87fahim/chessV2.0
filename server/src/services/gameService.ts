@@ -374,6 +374,10 @@ export async function endGameByDraw(gameId: string): Promise<IGame> {
     throw createError(404, 'Game not found');
   }
 
+  if (game.status !== GameStatus.ACTIVE) {
+    throw createError(400, 'Game is not active');
+  }
+
   game.status = GameStatus.COMPLETED;
   game.result = '1/2-1/2';
   game.terminationReason = 'draw_agreement';

@@ -1,10 +1,14 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { createError } from '../middleware/errorMiddleware.js';
 import * as gameService from '../services/gameService.js';
 
+// Online games are created exclusively through matchmaking/rematch on the
+// socket layer; allowing them here would let a client fabricate games between
+// arbitrary users.
 const createGameSchema = z.object({
-  mode: z.enum(['local', 'computer', 'analysis', 'online']),
+  mode: z.enum(['local', 'computer', 'analysis']),
   whitePlayer: z.object({
     type: z.enum(['user', 'guest', 'computer']),
     userId: z.string().optional(),
@@ -94,8 +98,25 @@ export const getActiveSessionGame = asyncHandler(async (req: Request, res: Respo
   res.json({ success: true, data: { game: game ?? null } });
 });
 
+/**
+ * Any player slot marked as a registered user must belong to the requester.
+ * Without this, a client could attach another user's id to a game and pollute
+ * that user's game list and stats.
+ */
+function assertOwnUserSlots(
+  requesterId: string,
+  players: Array<{ type: string; userId?: string }>,
+): void {
+  for (const player of players) {
+    if (player.type === 'user' && player.userId && player.userId !== requesterId) {
+      throw createError(403, 'Cannot create a game on behalf of another user');
+    }
+  }
+}
+
 export const createGame = asyncHandler(async (req: Request, res: Response) => {
   const input = createGameSchema.parse(req.body);
+  assertOwnUserSlots(req.user!.userId, [input.whitePlayer, input.blackPlayer]);
   const clientSessionId = (req.body as Record<string, unknown>).clientSessionId as string | undefined;
 
   // Return existing active game for this session if one exists (prevents duplicates)
@@ -156,6 +177,7 @@ export const deleteGame = asyncHandler(async (req: Request, res: Response) => {
 
 export const saveCompletedGame = asyncHandler(async (req: Request, res: Response) => {
   const input = saveCompletedGameSchema.parse(req.body);
+  assertOwnUserSlots(req.user!.userId, [input.whitePlayer, input.blackPlayer]);
 
   const now = new Date();
   const completedAt = input.endedAt ? new Date(input.endedAt) : now;
