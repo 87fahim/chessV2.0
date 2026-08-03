@@ -461,7 +461,7 @@ export async function findActiveOnlineGame(userId: string): Promise<IGame | null
       { 'whitePlayer.userId': userId },
       { 'blackPlayer.userId': userId },
     ],
-  });
+  }).sort({ updatedAt: -1 });
 }
 
 /** Check if a user is a participant in a specific game */

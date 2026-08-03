@@ -84,26 +84,50 @@ export async function findMatch(userId: string): Promise<MatchResult | null> {
   const myEntry = await MatchmakingQueue.findOne({ userId });
   if (!myEntry) return null;
 
-  // Find a compatible opponent
-  const opponent = await MatchmakingQueue.findOne({
+  // Only the later joiner may create the match (userId tie-break on equal
+  // joinedAt). Combined with atomic deletes, concurrent findMatch calls cannot
+  // both create active games for the same pair.
+  const opponent = await MatchmakingQueue.findOneAndDelete({
     userId: { $ne: userId },
     'timeControl.initialMs': myEntry.timeControl.initialMs,
     'timeControl.incrementMs': myEntry.timeControl.incrementMs,
     rated: myEntry.rated,
+    $or: [
+      { joinedAt: { $lt: myEntry.joinedAt } },
+      {
+        joinedAt: myEntry.joinedAt,
+        userId: { $lt: myEntry.userId },
+      },
+    ],
   }).sort({ joinedAt: 1 });
 
   if (!opponent) return null;
 
+  const claimedSelf = await MatchmakingQueue.findOneAndDelete({ userId });
+  if (!claimedSelf) {
+    // Another path already claimed us; put the opponent back in queue.
+    await MatchmakingQueue.create({
+      userId: opponent.userId,
+      username: opponent.username,
+      rating: opponent.rating,
+      preferredColor: opponent.preferredColor,
+      rated: opponent.rated,
+      timeControl: opponent.timeControl,
+      joinedAt: opponent.joinedAt,
+    });
+    return null;
+  }
+
   // Determine colors
-  let whiteUserId = myEntry.userId.toString();
+  let whiteUserId = claimedSelf.userId.toString();
   let blackUserId = opponent.userId.toString();
-  let whiteName = myEntry.username;
+  let whiteName = claimedSelf.username;
   let blackName = opponent.username;
 
-  if (myEntry.preferredColor === 'black' || opponent.preferredColor === 'white') {
+  if (claimedSelf.preferredColor === 'black' || opponent.preferredColor === 'white') {
     [whiteUserId, blackUserId] = [blackUserId, whiteUserId];
     [whiteName, blackName] = [blackName, whiteName];
-  } else if (myEntry.preferredColor === 'random' && opponent.preferredColor === 'random') {
+  } else if (claimedSelf.preferredColor === 'random' && opponent.preferredColor === 'random') {
     if (Math.random() < 0.5) {
       [whiteUserId, blackUserId] = [blackUserId, whiteUserId];
       [whiteName, blackName] = [blackName, whiteName];
@@ -125,18 +149,13 @@ export async function findMatch(userId: string): Promise<MatchResult | null> {
       name: blackName,
     },
     fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-    timeControl: myEntry.timeControl,
+    timeControl: claimedSelf.timeControl,
     clocks: {
-      whiteRemainingMs: myEntry.timeControl.initialMs,
-      blackRemainingMs: myEntry.timeControl.initialMs,
+      whiteRemainingMs: claimedSelf.timeControl.initialMs,
+      blackRemainingMs: claimedSelf.timeControl.initialMs,
       activeColor: 'white',
       activeSince: new Date(),
     },
-  });
-
-  // Remove both from queue
-  await MatchmakingQueue.deleteMany({
-    userId: { $in: [myEntry.userId, opponent.userId] },
   });
 
   return {
@@ -145,7 +164,7 @@ export async function findMatch(userId: string): Promise<MatchResult | null> {
     blackUserId,
     whiteName,
     blackName,
-    timeControl: myEntry.timeControl,
+    timeControl: claimedSelf.timeControl,
   };
 }
 
