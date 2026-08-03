@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { execSync } from 'child_process'
 
@@ -28,6 +28,10 @@ export default defineConfig({
   plugins: [react()],
   define: {
     __APP_LABEL__: JSON.stringify(detectAppLabel()),
+  },
+  test: {
+    environment: 'jsdom',
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },
   server: {
     proxy: {

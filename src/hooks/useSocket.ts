@@ -11,6 +11,7 @@ import type {
   AbortWarningPayload,
   GameResumablePayload,
 } from '../../shared/types/socket';
+import { SocketEvents } from '../../shared/constants/socketEvents.js';
 import { useGameSounds } from './useGameSounds';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL;
@@ -166,7 +167,7 @@ export function useSocket() {
       // If already in a game, re-join the room on reconnect
       setOnlineGame((prev) => {
         if (prev.gameId && prev.status === 'active') {
-          socket.emit('game:join', { gameId: prev.gameId });
+          socket.emit(SocketEvents.GAME_JOIN, { gameId: prev.gameId });
         }
         return prev;
       });
@@ -175,11 +176,11 @@ export function useSocket() {
     socket.on('connect_error', () => setIsConnected(false));
 
     // Server tells us we have an active game to resume (FR-30)
-    socket.on('game:resumable', (data: GameResumablePayload) => {
+    socket.on(SocketEvents.GAME_RESUMABLE, (data: GameResumablePayload) => {
       setOnlineGame((prev) => {
         // Only auto-rejoin if we're not already in a game
         if (!prev.gameId) {
-          socket.emit('game:join', { gameId: data.gameId });
+          socket.emit(SocketEvents.GAME_JOIN, { gameId: data.gameId });
           return { ...prev, gameId: data.gameId, status: 'active' };
         }
         return prev;
@@ -187,7 +188,7 @@ export function useSocket() {
     });
 
     // Matchmaking
-    socket.on('match:found', (data: MatchFoundPayload) => {
+    socket.on(SocketEvents.MATCH_FOUND, (data: MatchFoundPayload) => {
       playGameStart();
       clearDisconnectFallback();
       setIsInQueue(false);
@@ -201,14 +202,14 @@ export function useSocket() {
         whitePlayer: { type: 'user', name: data.whiteName, userId: data.whiteUserId },
         blackPlayer: { type: 'user', name: data.blackName, userId: data.blackUserId },
       }));
-      socket.emit('game:join', { gameId: data.gameId });
+      socket.emit(SocketEvents.GAME_JOIN, { gameId: data.gameId });
     });
 
-    socket.on('queue:joined', () => setIsInQueue(true));
-    socket.on('queue:left', () => setIsInQueue(false));
+    socket.on(SocketEvents.QUEUE_JOINED, () => setIsInQueue(true));
+    socket.on(SocketEvents.QUEUE_LEFT, () => setIsInQueue(false));
 
     // Game events
-    socket.on('game:state', (data: GameStatePayload) => {
+    socket.on(SocketEvents.GAME_STATE, (data: GameStatePayload) => {
       if (data.status !== 'active') {
         clearDisconnectFallback();
       }
@@ -246,7 +247,7 @@ export function useSocket() {
       }
     });
 
-    socket.on('game:moveAccepted', (data: MoveAcceptedPayload) => {
+    socket.on(SocketEvents.GAME_MOVE_ACCEPTED, (data: MoveAcceptedPayload) => {
       playMoveOutcome({
         san: data.move.san,
         captured: data.move.san.includes('x'),
@@ -278,12 +279,12 @@ export function useSocket() {
       setDrawOffered(false);
     });
 
-    socket.on('game:moveRejected', (data: MoveRejectedPayload) => {
+    socket.on(SocketEvents.GAME_MOVE_REJECTED, (data: MoveRejectedPayload) => {
       playIllegalMove();
       setError(`Move rejected: ${data.reason}`);
     });
 
-    socket.on('game:ended', (data: GameEndedPayload) => {
+    socket.on(SocketEvents.GAME_ENDED, (data: GameEndedPayload) => {
       if (data.reason !== 'checkmate') {
         playGameEnd();
       }
@@ -300,7 +301,7 @@ export function useSocket() {
       serverClocksRef.current = null;
     });
 
-    socket.on('game:clockUpdate', (data: ClockUpdatePayload) => {
+    socket.on(SocketEvents.GAME_CLOCK, (data: ClockUpdatePayload) => {
       serverClocksRef.current = {
         whiteRemainingMs: data.clocks.whiteRemainingMs,
         blackRemainingMs: data.clocks.blackRemainingMs,
@@ -318,14 +319,14 @@ export function useSocket() {
     });
 
     // Draw events
-    socket.on('game:drawOffered', () => setDrawOffered(true));
-    socket.on('game:drawDeclined', () => {
+    socket.on(SocketEvents.GAME_DRAW_OFFERED, () => setDrawOffered(true));
+    socket.on(SocketEvents.GAME_DRAW_DECLINED, () => {
       setDrawOffered(false);
       setError('Draw offer declined');
     });
 
     // Opponent presence (FR-41)
-    socket.on('game:opponentPresence', (data: OpponentPresencePayload) => {
+    socket.on(SocketEvents.OPPONENT_PRESENCE, (data: OpponentPresencePayload) => {
       if (data.online) {
         clearDisconnectFallback();
       } else {
@@ -338,18 +339,18 @@ export function useSocket() {
       }));
     });
 
-    socket.on('game:opponentDisconnected', () => {
+    socket.on(SocketEvents.GAME_OPPONENT_DISCONNECTED, () => {
       scheduleDisconnectFallback();
       setOnlineGame((prev) => ({ ...prev, opponentOnline: false }));
     });
 
-    socket.on('game:opponentReconnected', () => {
+    socket.on(SocketEvents.GAME_OPPONENT_RECONNECTED, () => {
       clearDisconnectFallback();
       setOnlineGame((prev) => ({ ...prev, opponentOnline: true, abortWarning: null }));
     });
 
     // Abort warning (disconnect timeout countdown)
-    socket.on('game:abortWarning', (data: AbortWarningPayload) => {
+    socket.on(SocketEvents.GAME_ABORT_WARNING, (data: AbortWarningPayload) => {
       setOnlineGame((prev) => ({
         ...prev,
         abortWarning: { secondsLeft: data.secondsLeft, reason: data.reason },
@@ -357,11 +358,11 @@ export function useSocket() {
     });
 
     // Rematch events
-    socket.on('game:rematchOffered', () => {
+    socket.on(SocketEvents.GAME_REMATCH_OFFERED, () => {
       setRematchOffered(true);
     });
 
-    socket.on('game:rematchAccepted', (data: {
+    socket.on(SocketEvents.GAME_REMATCH_ACCEPTED, (data: {
       oldGameId: string;
       newGameId: string;
       whitePlayer: { type: string; name: string; userId?: string };
@@ -389,16 +390,16 @@ export function useSocket() {
       });
 
       // Join the new game room
-      socket.emit('game:join', { gameId: data.newGameId });
+      socket.emit(SocketEvents.GAME_JOIN, { gameId: data.newGameId });
     });
 
-    socket.on('game:rematchDeclined', (data?: { gameId?: string; reason?: string }) => {
+    socket.on(SocketEvents.GAME_REMATCH_DECLINED, (data?: { gameId?: string; reason?: string }) => {
       setRematchPending(false);
       setRematchDeclined(true);
       setRematchDeclineReason(data?.reason || null);
     });
 
-    socket.on('game:rematchExpired', () => {
+    socket.on(SocketEvents.GAME_REMATCH_EXPIRED, () => {
       setRematchPending(false);
       setRematchOffered(false);
       setRematchDeclined(true);
@@ -455,54 +456,54 @@ export function useSocket() {
 
   const joinQueue = useCallback(
     (timeControl: { initialMs: number; incrementMs: number }, preferredColor?: string) => {
-      socketRef.current?.emit('queue:join', { timeControl, preferredColor });
+      socketRef.current?.emit(SocketEvents.QUEUE_JOIN, { timeControl, preferredColor });
     },
     [],
   );
 
   const leaveQueue = useCallback(() => {
-    socketRef.current?.emit('queue:leave');
+    socketRef.current?.emit(SocketEvents.QUEUE_LEAVE);
     setIsInQueue(false);
   }, []);
 
   const sendMove = useCallback((gameId: string, move: { from: string; to: string; promotion?: string }) => {
-    socketRef.current?.emit('game:move', { gameId, move });
+    socketRef.current?.emit(SocketEvents.GAME_MOVE, { gameId, move });
   }, []);
 
   const resign = useCallback((gameId: string) => {
-    socketRef.current?.emit('game:resign', { gameId });
+    socketRef.current?.emit(SocketEvents.GAME_RESIGN, { gameId });
   }, []);
 
   const offerDraw = useCallback((gameId: string) => {
-    socketRef.current?.emit('game:offerDraw', { gameId });
+    socketRef.current?.emit(SocketEvents.GAME_OFFER_DRAW, { gameId });
   }, []);
 
   const acceptDraw = useCallback((gameId: string) => {
-    socketRef.current?.emit('game:acceptDraw', { gameId });
+    socketRef.current?.emit(SocketEvents.GAME_ACCEPT_DRAW, { gameId });
     setDrawOffered(false);
   }, []);
 
   const declineDraw = useCallback((gameId: string) => {
-    socketRef.current?.emit('game:declineDraw', { gameId });
+    socketRef.current?.emit(SocketEvents.GAME_DECLINE_DRAW, { gameId });
     setDrawOffered(false);
   }, []);
 
   const requestRematch = useCallback((gameId: string) => {
     // Prevent duplicate requests
     if (rematchPending) return;
-    socketRef.current?.emit('game:rematchRequest', { gameId });
+    socketRef.current?.emit(SocketEvents.GAME_REMATCH_REQUEST, { gameId });
     setRematchPending(true);
     setRematchDeclined(false);
     setRematchDeclineReason(null);
   }, [rematchPending]);
 
   const acceptRematch = useCallback((gameId: string) => {
-    socketRef.current?.emit('game:rematchAccept', { gameId });
+    socketRef.current?.emit(SocketEvents.GAME_REMATCH_ACCEPT, { gameId });
     setRematchOffered(false);
   }, []);
 
   const declineRematch = useCallback((gameId: string) => {
-    socketRef.current?.emit('game:rematchDecline', { gameId });
+    socketRef.current?.emit(SocketEvents.GAME_REMATCH_DECLINE, { gameId });
     setRematchOffered(false);
   }, []);
 
@@ -519,7 +520,7 @@ export function useSocket() {
   }, [clearDisconnectFallback]);
 
   const syncGame = useCallback((gameId: string) => {
-    socketRef.current?.emit('game:syncRequest', { gameId });
+    socketRef.current?.emit(SocketEvents.GAME_SYNC_REQUEST, { gameId });
   }, []);
 
   return {

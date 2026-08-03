@@ -278,9 +278,14 @@ Environment selection rules:
 | `npm run dev:server` | Start backend only via `server/` |
 | `npm run dev:staging` | Start frontend in staging mode |
 | `npm run build` | Type-check and build the client |
+| `npm run build:server` | Compile the backend from the repo root |
 | `npm run build:staging` | Type-check and build the client in staging mode |
 | `npm run build:prod` | Type-check and build the client in production mode |
 | `npm run lint` | Run frontend/root linting |
+| `npm run lint:server` | Lint backend source from the repo root |
+| `npm run test` | Run frontend tests |
+| `npm run test:server` | Run backend integration tests from the repo root |
+| `npm run check` | Run lint, tests, and builds for client and server |
 | `npm run preview` | Preview the built frontend |
 
 ### Server Commands
@@ -306,11 +311,7 @@ Run these from `server/` or via `npm --prefix server ...`:
 Recommended checks:
 
 ```bash
-npm run lint
-npm run build:staging
-npm --prefix server run lint
-npm --prefix server run build
-npm --prefix server run test:integration
+npm run check
 ```
 
 ### What The Integration Suite Covers
@@ -330,6 +331,16 @@ Branch mapping:
 
 - `staging` -> staging / UAT deploy path
 - `main` -> production deploy path
+
+Recommended promotion flow:
+
+1. Merge feature branches into `staging`.
+2. Let CI and the staging deploy complete successfully.
+3. Verify the staging app manually for the changed flows.
+4. Merge `staging` into `main` only after staging is accepted.
+5. Let the production deploy workflow promote the exact accepted code.
+
+Keep `staging` equal to or ahead of `main`. If production receives a hotfix directly on `main`, merge `main` back into `staging` before starting new staging work.
 
 GitHub Actions workflows:
 

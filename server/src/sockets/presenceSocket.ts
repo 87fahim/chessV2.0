@@ -6,7 +6,7 @@ import { isUserOnline } from './index.js';
 export function registerPresenceHandlers(_io: SocketIOServer, socket: AuthenticatedSocket): void {
   socket.on(SocketEvents.PRESENCE_PING, () => {
     // Acknowledge presence — client can use this to confirm connection
-    socket.emit('presence:pong', { timestamp: Date.now() });
+    socket.emit(SocketEvents.PRESENCE_PONG, { timestamp: Date.now() });
   });
 }
 
