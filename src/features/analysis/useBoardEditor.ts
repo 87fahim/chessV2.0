@@ -10,6 +10,7 @@ import type {
   PositionSnapshot,
   DragSource,
 } from './boardEditorTypes';
+import { MAX_MOVE_TIME_MS, MAX_SEARCH_DEPTH } from './boardEditorTypes';
 import { buildFen, parseFenToPosition } from './fenBuilder';
 import { validatePosition, canAddPiece, canMovePiece, normalizeCastlingRights } from './positionValidation';
 import { getStockfishService, parseUciMove } from './stockfishService';
@@ -500,13 +501,13 @@ export function useBoardEditor() {
     // Validate search parameters
     const { searchMode, searchDepth, moveTimeMs } = analysisSettings;
     if (searchMode === 'depth') {
-      if (!searchDepth || searchDepth < 1 || searchDepth > 60 || !Number.isInteger(searchDepth)) {
-        setAnalysisError('Depth must be a whole number between 1 and 60.');
+      if (!searchDepth || searchDepth < 1 || searchDepth > MAX_SEARCH_DEPTH || !Number.isInteger(searchDepth)) {
+        setAnalysisError(`Depth must be a whole number between 1 and ${MAX_SEARCH_DEPTH}.`);
         return;
       }
     } else {
-      if (!moveTimeMs || moveTimeMs < 100 || moveTimeMs > 120000) {
-        setAnalysisError('Time must be between 0.1 and 120 seconds.');
+      if (!moveTimeMs || moveTimeMs < 100 || moveTimeMs > MAX_MOVE_TIME_MS) {
+        setAnalysisError(`Time must be between 0.1 and ${MAX_MOVE_TIME_MS / 1000} seconds.`);
         return;
       }
     }

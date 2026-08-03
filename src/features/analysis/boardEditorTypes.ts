@@ -41,6 +41,11 @@ export interface EngineResult {
   depth: number;
 }
 
+// Must stay in sync with the server-side caps in
+// server/src/services/stockfishService.ts (MAX_SEARCH_DEPTH / MAX_MOVE_TIME_MS).
+export const MAX_SEARCH_DEPTH = 24;
+export const MAX_MOVE_TIME_MS = 30000;
+
 export interface AnalysisSettings {
   searchMode: EngineSearchMode;
   searchDepth: number;

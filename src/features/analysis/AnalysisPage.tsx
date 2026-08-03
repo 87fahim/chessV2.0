@@ -38,6 +38,7 @@ import { useBoardZoom } from '../../hooks/useBoardZoom';
 import { useBoardEditor } from './useBoardEditor';
 import type { PieceColor } from '../../types/chess';
 import type { CastlingRights } from './boardEditorTypes';
+import { MAX_MOVE_TIME_MS, MAX_SEARCH_DEPTH } from './boardEditorTypes';
 import { useAppSelector } from '../../hooks/useStore';
 import { userApi, type SavedPositionData } from '../../services/userService';
 
@@ -435,16 +436,16 @@ const AnalysisPage: React.FC = () => {
                 type="number"
                 value={editor.analysisSettings.searchDepth || ''}
                 onChange={(e) => editor.updateSearchDepth(e.target.value)}
-                error={editor.analysisSettings.searchDepth !== 0 && (editor.analysisSettings.searchDepth < 1 || editor.analysisSettings.searchDepth > 60)}
+                error={editor.analysisSettings.searchDepth !== 0 && (editor.analysisSettings.searchDepth < 1 || editor.analysisSettings.searchDepth > MAX_SEARCH_DEPTH)}
                 helperText={
-                  editor.analysisSettings.searchDepth !== 0 && (editor.analysisSettings.searchDepth < 1 || editor.analysisSettings.searchDepth > 60)
-                    ? '1–60'
+                  editor.analysisSettings.searchDepth !== 0 && (editor.analysisSettings.searchDepth < 1 || editor.analysisSettings.searchDepth > MAX_SEARCH_DEPTH)
+                    ? `1–${MAX_SEARCH_DEPTH}`
                     : undefined
                 }
                 sx={{ flex: 1 }}
                 slotProps={{
                   inputLabel: { sx: { fontSize: '0.74rem' } },
-                  htmlInput: { min: 1, max: 60, sx: { fontSize: '0.74rem', py: 0.85 } },
+                  htmlInput: { min: 1, max: MAX_SEARCH_DEPTH, sx: { fontSize: '0.74rem', py: 0.85 } },
                   input: { endAdornment: <InputAdornment position="end">ply</InputAdornment> },
                   formHelperText: { sx: { fontSize: '0.68rem', mx: 0 } },
                 }}
@@ -456,16 +457,16 @@ const AnalysisPage: React.FC = () => {
                 type="number"
                 value={editor.analysisSettings.moveTimeMs ? (editor.analysisSettings.moveTimeMs / 1000) : ''}
                 onChange={(e) => editor.updateMoveTimeMs(e.target.value)}
-                error={editor.analysisSettings.moveTimeMs !== 0 && (editor.analysisSettings.moveTimeMs < 100 || editor.analysisSettings.moveTimeMs > 120000)}
+                error={editor.analysisSettings.moveTimeMs !== 0 && (editor.analysisSettings.moveTimeMs < 100 || editor.analysisSettings.moveTimeMs > MAX_MOVE_TIME_MS)}
                 helperText={
-                  editor.analysisSettings.moveTimeMs !== 0 && (editor.analysisSettings.moveTimeMs < 100 || editor.analysisSettings.moveTimeMs > 120000)
-                    ? '0.1–120'
+                  editor.analysisSettings.moveTimeMs !== 0 && (editor.analysisSettings.moveTimeMs < 100 || editor.analysisSettings.moveTimeMs > MAX_MOVE_TIME_MS)
+                    ? `0.1–${MAX_MOVE_TIME_MS / 1000}`
                     : undefined
                 }
                 sx={{ flex: 1 }}
                 slotProps={{
                   inputLabel: { sx: { fontSize: '0.74rem' } },
-                  htmlInput: { min: 0.1, max: 120, step: 0.5, sx: { fontSize: '0.74rem', py: 0.85 } },
+                  htmlInput: { min: 0.1, max: MAX_MOVE_TIME_MS / 1000, step: 0.5, sx: { fontSize: '0.74rem', py: 0.85 } },
                   input: { endAdornment: <InputAdornment position="end">sec</InputAdornment> },
                   formHelperText: { sx: { fontSize: '0.68rem', mx: 0 } },
                 }}

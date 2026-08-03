@@ -4,6 +4,15 @@ import readline from 'readline';
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 
+// Hard server-side caps regardless of what the client asks for. A depth-60 /
+// 120s search can pin a CPU core for minutes per request, which is an easy
+// denial-of-service vector on a public endpoint.
+export const MAX_SEARCH_DEPTH = 24;
+export const MAX_MOVE_TIME_MS = 30000;
+// Maximum analyses allowed to wait in the single-engine queue before the API
+// starts responding 503 instead of piling up unbounded work.
+export const MAX_PENDING_ANALYSES = 4;
+
 export interface EngineAnalyzeOptions {
   difficulty?: 'easy' | 'medium' | 'hard';
   searchMode?: 'depth' | 'time';
@@ -31,8 +40,13 @@ class StockfishService {
   private outputReader: readline.Interface | null = null;
   private readyPromise: Promise<void> | null = null;
   private queue: Promise<unknown> = Promise.resolve();
+  private pendingCount = 0;
   private waiters: LineWaiter[] = [];
   private lineListeners = new Set<(line: string) => void>();
+
+  isSaturated(): boolean {
+    return this.pendingCount >= MAX_PENDING_ANALYSES;
+  }
 
   async initialize(): Promise<void> {
     await this.ensureStarted();
@@ -45,8 +59,8 @@ class StockfishService {
 
       const difficulty = options.difficulty || 'medium';
       const searchMode = options.searchMode || 'time';
-      const searchDepth = Math.max(1, Math.min(options.searchDepth || 15, 60));
-      const moveTimeMs = Math.max(50, Math.min(options.moveTimeMs || 1200, 120000));
+      const searchDepth = Math.max(1, Math.min(options.searchDepth || 15, MAX_SEARCH_DEPTH));
+      const moveTimeMs = Math.max(50, Math.min(options.moveTimeMs || 1200, MAX_MOVE_TIME_MS));
       const skillLevel = this.getSkillLevel(difficulty);
 
       let latestDepth = 0;
@@ -165,7 +179,15 @@ class StockfishService {
   }
 
   private enqueue<T>(task: () => Promise<T>): Promise<T> {
-    const nextTask = this.queue.then(task, task);
+    this.pendingCount += 1;
+    const wrappedTask = async () => {
+      try {
+        return await task();
+      } finally {
+        this.pendingCount -= 1;
+      }
+    };
+    const nextTask = this.queue.then(wrappedTask, wrappedTask);
     this.queue = nextTask.then(() => undefined, () => undefined);
     return nextTask;
   }
@@ -308,4 +330,8 @@ export async function shutdownStockfish(): Promise<void> {
 
 export function cancelAnalysis(): void {
   stockfishService.cancelCurrentAnalysis();
+}
+
+export function isEngineSaturated(): boolean {
+  return stockfishService.isSaturated();
 }

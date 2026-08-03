@@ -41,9 +41,15 @@ class StockfishService {
     signal?.addEventListener('abort', onExternalAbort);
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       const response = await fetch(ENGINE_CONFIG.backendAnalyzeUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           fen,
           options,
