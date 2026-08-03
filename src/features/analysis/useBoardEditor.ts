@@ -661,10 +661,14 @@ export function useBoardEditor() {
     const previewSteps: Array<{ fen: string; from: string; to: string }> = [];
 
     for (const uci of movesToPreview) {
-      const { from, to, promotion } = parseUciMove(uci);
-      const move = game.move({ from, to, promotion });
-      if (!move) break;
-      previewSteps.push({ fen: game.fen(), from: move.from, to: move.to });
+      try {
+        const { from, to, promotion } = parseUciMove(uci);
+        const move = game.move({ from, to, promotion });
+        if (!move) break;
+        previewSteps.push({ fen: game.fen(), from: move.from, to: move.to });
+      } catch {
+        break;
+      }
     }
 
     if (previewSteps.length === 0) return;
