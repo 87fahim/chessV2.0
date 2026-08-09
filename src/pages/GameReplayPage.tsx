@@ -275,13 +275,13 @@ const GameReplayPage: React.FC = () => {
 
           <Box sx={controlBarRowSx}>
             <Tooltip title="Back to History">
-              <IconButton onClick={() => navigate('/history')} sx={controlIconButtonSx}>
+              <IconButton aria-label="Back to history" onClick={() => navigate('/history')} sx={controlIconButtonSx}>
                 <ArrowBackIcon sx={controlIconSx} />
               </IconButton>
             </Tooltip>
 
             <Tooltip title="Flip board">
-              <IconButton onClick={() => setIsFlipped((f) => !f)} sx={controlIconButtonSx}>
+              <IconButton aria-label="Flip board" onClick={() => setIsFlipped((f) => !f)} sx={controlIconButtonSx}>
                 <SwapVertIcon sx={controlIconSx} />
               </IconButton>
             </Tooltip>
@@ -290,7 +290,7 @@ const GameReplayPage: React.FC = () => {
 
             <Tooltip title="First move">
               <span>
-                <IconButton onClick={handleFirst} disabled={atStart} color="primary" sx={controlIconButtonSx}>
+                <IconButton aria-label="First move" onClick={handleFirst} disabled={atStart} color="primary" sx={controlIconButtonSx}>
                   <FirstPageIcon sx={controlIconSx} />
                 </IconButton>
               </span>
@@ -298,7 +298,7 @@ const GameReplayPage: React.FC = () => {
 
             <Tooltip title="Previous move (←)">
               <span>
-                <IconButton onClick={handlePrev} disabled={atStart} color="primary" sx={controlIconButtonSx}>
+                <IconButton aria-label="Previous move" onClick={handlePrev} disabled={atStart} color="primary" sx={controlIconButtonSx}>
                   <ChevronLeftIcon sx={controlIconSx} />
                 </IconButton>
               </span>
@@ -307,6 +307,7 @@ const GameReplayPage: React.FC = () => {
             <Tooltip title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}>
               <span>
                 <IconButton
+                  aria-label={isPlaying ? 'Pause replay' : 'Play replay'}
                   onClick={handlePlayPause}
                   disabled={totalMoves === 0}
                   color="primary"
@@ -327,7 +328,7 @@ const GameReplayPage: React.FC = () => {
 
             <Tooltip title="Next move (→)">
               <span>
-                <IconButton onClick={handleNext} disabled={atEnd} color="primary" sx={controlIconButtonSx}>
+                <IconButton aria-label="Next move" onClick={handleNext} disabled={atEnd} color="primary" sx={controlIconButtonSx}>
                   <ChevronRightIcon sx={controlIconSx} />
                 </IconButton>
               </span>
@@ -335,7 +336,7 @@ const GameReplayPage: React.FC = () => {
 
             <Tooltip title="Last move">
               <span>
-                <IconButton onClick={handleLast} disabled={atEnd} color="primary" sx={controlIconButtonSx}>
+                <IconButton aria-label="Last move" onClick={handleLast} disabled={atEnd} color="primary" sx={controlIconButtonSx}>
                   <LastPageIcon sx={controlIconSx} />
                 </IconButton>
               </span>

@@ -36,13 +36,13 @@ const GameControls: React.FC<GameControlsProps> = ({
     <Box sx={controlBarRowSx}>
       <Tooltip title="Undo">
         <span>
-          <IconButton onClick={onUndo} disabled={!canUndo} sx={controlIconButtonSx}>
+          <IconButton aria-label="Undo move" onClick={onUndo} disabled={!canUndo} sx={controlIconButtonSx}>
             <UndoIcon sx={controlIconSx} />
           </IconButton>
         </span>
       </Tooltip>
       <Tooltip title="Flip Board">
-        <IconButton onClick={onFlip} sx={controlIconButtonSx}>
+        <IconButton aria-label="Flip board" onClick={onFlip} sx={controlIconButtonSx}>
           <SwapVertIcon sx={controlIconSx} />
         </IconButton>
       </Tooltip>

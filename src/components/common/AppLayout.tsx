@@ -192,6 +192,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         >
           <Toolbar variant="dense">
             <IconButton
+              aria-label="Toggle navigation menu"
               edge="start"
               color="inherit"
               onClick={() => setMobileOpen(!mobileOpen)}

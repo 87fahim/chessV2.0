@@ -39,6 +39,7 @@ const PromotionDialog: React.FC<PromotionDialogProps> = ({ color, onSelect, onCa
         {PROMOTION_PIECES.map((piece) => (
           <IconButton
             key={piece}
+            aria-label={`Promote to ${piece === 'q' ? 'queen' : piece === 'r' ? 'rook' : piece === 'b' ? 'bishop' : 'knight'}`}
             onClick={() => onSelect(piece)}
             sx={{
               width: 56,
