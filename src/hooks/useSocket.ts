@@ -14,54 +14,22 @@ import type {
 import { SocketEvents } from '../../shared/constants/socketEvents.js';
 import { useGameSounds } from './useGameSounds';
 import { useAppSelector } from './useStore';
+import {
+  INITIAL_ONLINE,
+  applyDisconnectForfeit,
+  applyGameEnded,
+  applyGameStatePayload,
+  applyMoveAccepted,
+  moveOutcomeFromSan,
+  resolveYourColor,
+} from './onlineGameState';
+import type { OnlineGameState } from './onlineGameState';
+import { useClockInterpolation } from './useClockInterpolation';
+
+export type { OnlineGameState };
 
 const SOCKET_URL = import.meta.env.VITE_API_URL;
 const DISCONNECT_FORFEIT_MS = 60_000;
-
-function resolveYourColor(
-  currentUserId: string | null,
-  whitePlayer: { userId?: string } | null | undefined,
-  blackPlayer: { userId?: string } | null | undefined,
-  fallback: 'white' | 'black' | null,
-): 'white' | 'black' | null {
-  if (!currentUserId) return fallback;
-  if (whitePlayer?.userId === currentUserId) return 'white';
-  if (blackPlayer?.userId === currentUserId) return 'black';
-  return fallback;
-}
-
-export interface OnlineGameState {
-  gameId: string | null;
-  fen: string;
-  moves: Array<{ from: string; to: string; san: string; ply: number }>;
-  yourColor: 'white' | 'black' | null;
-  status: string;
-  result: string;
-  terminationReason: string | null;
-  clocks: { whiteRemainingMs: number; blackRemainingMs: number; activeColor: string } | null;
-  whitePlayer: { type: string; name: string; userId?: string } | null;
-  blackPlayer: { type: string; name: string; userId?: string } | null;
-  opponentOnline: boolean;
-  abortWarning: { secondsLeft: number; reason: string } | null;
-}
-
-const INITIAL_ONLINE: OnlineGameState = {
-  gameId: null,
-  fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-  moves: [],
-  yourColor: null,
-  status: 'idle',
-  result: '*',
-  terminationReason: null,
-  clocks: null,
-  whitePlayer: null,
-  blackPlayer: null,
-  opponentOnline: true,
-  abortWarning: null,
-};
-
-/** Client-side clock interpolation interval (ms) */
-const CLOCK_TICK_MS = 100;
 
 export function useSocket() {
   const { playGameStart, playGameEnd, playIllegalMove, playMoveOutcome } = useGameSounds();
@@ -82,13 +50,7 @@ export function useSocket() {
   const [rematchDeclined, setRematchDeclined] = useState(false);
   const [rematchDeclineReason, setRematchDeclineReason] = useState<string | null>(null);
 
-  // Ref to hold latest clocks from server for interpolation
-  const serverClocksRef = useRef<{
-    whiteRemainingMs: number;
-    blackRemainingMs: number;
-    activeColor: string;
-    receivedAt: number;
-  } | null>(null);
+  const { updateServerClocks, clearServerClocks } = useClockInterpolation(setOnlineGame);
 
   const clearDisconnectFallback = useCallback(() => {
     if (disconnectFallbackTimerRef.current) {
@@ -100,30 +62,11 @@ export function useSocket() {
   const scheduleDisconnectFallback = useCallback(() => {
     clearDisconnectFallback();
     disconnectFallbackTimerRef.current = setTimeout(() => {
-      setOnlineGame((prev) => {
-        if (prev.status !== 'active' || prev.opponentOnline) {
-          return prev;
-        }
-
-        const result = prev.yourColor === 'white'
-          ? '1-0'
-          : prev.yourColor === 'black'
-            ? '0-1'
-            : prev.result;
-
-        return {
-          ...prev,
-          status: 'abandoned',
-          result,
-          terminationReason: 'abandonment',
-          abortWarning: null,
-        };
-      });
-
-      serverClocksRef.current = null;
+      setOnlineGame(applyDisconnectForfeit);
+      clearServerClocks();
       disconnectFallbackTimerRef.current = null;
     }, DISCONNECT_FORFEIT_MS);
-  }, [clearDisconnectFallback]);
+  }, [clearDisconnectFallback, clearServerClocks]);
 
   // Connect socket with auth token
   useEffect(() => {
@@ -202,32 +145,11 @@ export function useSocket() {
         clearDisconnectFallback();
       }
 
-      setOnlineGame((prev) => {
-        const yourColor = resolveYourColor(currentUserIdRef.current, data.whitePlayer, data.blackPlayer, prev.yourColor);
+      if (data.clocks) {
+        updateServerClocks(data.clocks);
+      }
 
-        // Update server clocks ref
-        if (data.clocks) {
-          serverClocksRef.current = {
-            whiteRemainingMs: data.clocks.whiteRemainingMs,
-            blackRemainingMs: data.clocks.blackRemainingMs,
-            activeColor: data.clocks.activeColor,
-            receivedAt: Date.now(),
-          };
-        }
-
-        return {
-          ...prev,
-          gameId: data.gameId,
-          fen: data.fen,
-          moves: data.moves.map((m) => ({ from: m.from, to: m.to, san: m.san, ply: m.ply })),
-          yourColor,
-          status: data.status,
-          result: data.result,
-          clocks: data.clocks,
-          whitePlayer: data.whitePlayer,
-          blackPlayer: data.blackPlayer,
-        };
-      });
+      setOnlineGame((prev) => applyGameStatePayload(prev, data, currentUserIdRef.current));
 
       // Restore draw offer from state sync
       if ((data as GameStatePayload & { drawOfferedBy?: string | null }).drawOfferedBy) {
@@ -236,33 +158,13 @@ export function useSocket() {
     });
 
     socket.on(SocketEvents.GAME_MOVE_ACCEPTED, (data: MoveAcceptedPayload) => {
-      playMoveOutcome({
-        san: data.move.san,
-        captured: data.move.san.includes('x'),
-        promotion: data.move.san.includes('=') ? 'p' : undefined,
-        isCheck: data.move.san.includes('+') || data.move.san.includes('#'),
-        isCheckmate: data.move.san.includes('#'),
-      });
+      playMoveOutcome(moveOutcomeFromSan(data.move.san));
 
-      setOnlineGame((prev) => {
-        // Update server clocks ref
-        if (data.clocks) {
-          serverClocksRef.current = {
-            whiteRemainingMs: data.clocks.whiteRemainingMs,
-            blackRemainingMs: data.clocks.blackRemainingMs,
-            activeColor: data.clocks.activeColor,
-            receivedAt: Date.now(),
-          };
-        }
+      if (data.clocks) {
+        updateServerClocks(data.clocks);
+      }
 
-        return {
-          ...prev,
-          fen: data.fen,
-          moves: [...prev.moves, data.move],
-          clocks: data.clocks ?? prev.clocks,
-          abortWarning: null,
-        };
-      });
+      setOnlineGame((prev) => applyMoveAccepted(prev, data));
       // Clear draw offer on new move
       setDrawOffered(false);
     });
@@ -278,24 +180,12 @@ export function useSocket() {
       }
 
       clearDisconnectFallback();
-      setOnlineGame((prev) => ({
-        ...prev,
-        status: data.reason === 'abandonment' ? 'abandoned' : 'completed',
-        result: data.result,
-        terminationReason: data.reason,
-        abortWarning: null,
-        opponentOnline: true,
-      }));
-      serverClocksRef.current = null;
+      setOnlineGame((prev) => applyGameEnded(prev, data));
+      clearServerClocks();
     });
 
     socket.on(SocketEvents.GAME_CLOCK, (data: ClockUpdatePayload) => {
-      serverClocksRef.current = {
-        whiteRemainingMs: data.clocks.whiteRemainingMs,
-        blackRemainingMs: data.clocks.blackRemainingMs,
-        activeColor: data.clocks.activeColor,
-        receivedAt: Date.now(),
-      };
+      updateServerClocks(data.clocks);
       setOnlineGame((prev) => ({
         ...prev,
         clocks: {
@@ -398,49 +288,18 @@ export function useSocket() {
       clearDisconnectFallback();
       socket.disconnect();
       socketRef.current = null;
-      serverClocksRef.current = null;
+      clearServerClocks();
     };
   }, [
     clearDisconnectFallback,
     scheduleDisconnectFallback,
+    updateServerClocks,
+    clearServerClocks,
     playGameStart,
     playGameEnd,
     playIllegalMove,
     playMoveOutcome,
   ]);
-
-  // Client-side clock interpolation (NFR-3): smooth visual countdown
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const sc = serverClocksRef.current;
-      if (!sc) return;
-
-      setOnlineGame((prev) => {
-        if (prev.status !== 'active' || !prev.clocks) return prev;
-
-        const elapsed = Date.now() - sc.receivedAt;
-        let whiteMs = sc.whiteRemainingMs;
-        let blackMs = sc.blackRemainingMs;
-
-        if (sc.activeColor === 'white') {
-          whiteMs = Math.max(0, sc.whiteRemainingMs - elapsed);
-        } else {
-          blackMs = Math.max(0, sc.blackRemainingMs - elapsed);
-        }
-
-        return {
-          ...prev,
-          clocks: {
-            whiteRemainingMs: whiteMs,
-            blackRemainingMs: blackMs,
-            activeColor: sc.activeColor,
-          },
-        };
-      });
-    }, CLOCK_TICK_MS);
-
-    return () => clearInterval(interval);
-  }, []);
 
   const joinQueue = useCallback(
     (timeControl: { initialMs: number; incrementMs: number }, preferredColor?: string) => {
@@ -504,8 +363,8 @@ export function useSocket() {
     setRematchDeclined(false);
     setRematchDeclineReason(null);
     setError(null);
-    serverClocksRef.current = null;
-  }, [clearDisconnectFallback]);
+    clearServerClocks();
+  }, [clearDisconnectFallback, clearServerClocks]);
 
   const syncGame = useCallback((gameId: string) => {
     socketRef.current?.emit(SocketEvents.GAME_SYNC_REQUEST, { gameId });
