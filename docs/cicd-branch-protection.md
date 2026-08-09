@@ -25,6 +25,14 @@ Apply these in **Settings → Branches** (and Environments) for a corporate-styl
 ### `staging` (legacy)
 - Mirror `uat` until the branch is retired
 
+## Merge strategy
+
+- **Feature PRs into `dev`**: squash-merge is fine (keeps `dev` history tidy).
+- **Promotion PRs (`dev` → `uat`, `uat` → `main`): always use "Create a merge commit", never squash.**
+  Squashing a promotion creates duplicate commits with new IDs, so git stops recognizing the shared
+  history between branches. That causes spurious merge conflicts on every following promotion.
+  Merge commits keep `dev`, `uat`, and `main` on a common history so promotions stay conflict-free.
+
 ## Environments
 
 Create environments: `development`, `uat`, `staging`, `production`.
