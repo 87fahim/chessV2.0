@@ -664,6 +664,46 @@ const OnlinePlayPage: React.FC = () => {
             />
           </Box>
           {renderPlayerStrip(yourName, yourCapturedCount, yourClock, youActive, yourName, true)}
+          <Paper elevation={2} sx={{ p: 1.25 }}>
+            <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, mb: 0.75 }}>
+              Controls
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.5, rowGap: 0.5, alignItems: 'center', flexWrap: 'wrap', overflowX: 'visible' }}>
+              {!gameEnded && (
+                <>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => onlineGame.gameId && offerDraw(onlineGame.gameId)}
+                    sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem', flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
+                  >
+                    Draw
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    onClick={() => setShowResignDialog(true)}
+                    sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem', flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
+                  >
+                    Resign
+                  </Button>
+                </>
+              )}
+              {gameEnded && (
+                <Button variant="contained" onClick={handleNewGame} sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem', flex: { xs: '1 1 auto', sm: '0 0 auto' } }}>
+                  New
+                </Button>
+              )}
+              <ZoomControls
+                onZoomIn={zoom.handleZoomIn}
+                onZoomOut={zoom.handleZoomOut}
+                canZoomIn={zoom.canZoomIn}
+                canZoomOut={zoom.canZoomOut}
+                zoomPercent={zoom.zoomPercent}
+              />
+            </Box>
+          </Paper>
         </>}
         panel={<>
           {/* Status */}
@@ -714,47 +754,6 @@ const OnlinePlayPage: React.FC = () => {
               </Box>
             </Paper>
           )}
-
-          <Paper elevation={2} sx={{ p: 1.25 }}>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, mb: 0.75 }}>
-              Controls
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 0.5, rowGap: 0.5, alignItems: 'center', flexWrap: 'wrap', overflowX: 'visible' }}>
-              {!gameEnded && (
-                <>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={() => onlineGame.gameId && offerDraw(onlineGame.gameId)}
-                    sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem', flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
-                  >
-                    Draw
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    size="small"
-                    onClick={() => setShowResignDialog(true)}
-                    sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem', flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
-                  >
-                    Resign
-                  </Button>
-                </>
-              )}
-              {gameEnded && (
-                <Button variant="contained" onClick={handleNewGame} sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem', flex: { xs: '1 1 auto', sm: '0 0 auto' } }}>
-                  New
-                </Button>
-              )}
-              <ZoomControls
-                onZoomIn={zoom.handleZoomIn}
-                onZoomOut={zoom.handleZoomOut}
-                canZoomIn={zoom.canZoomIn}
-                canZoomOut={zoom.canZoomOut}
-                zoomPercent={zoom.zoomPercent}
-              />
-            </Box>
-          </Paper>
 
           <MoveList moves={onlineGame.moves.map((m) => m.san)} />
         </>}

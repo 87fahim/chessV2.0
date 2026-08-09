@@ -233,54 +233,6 @@ const GameReplayPage: React.FC = () => {
       boardWidth={zoom.boardWidth}
       board={<>
         <ReplayBoard fen={currentFen} lastMove={lastMove} isFlipped={isFlipped} />
-      </>}
-      panel={<>
-        {/* Status card */}
-        <Paper elevation={2} sx={{ p: 2 }}>
-          <Typography
-            variant="subtitle2"
-            color="text.secondary"
-            sx={{ fontSize: { xs: '0.95rem', lg: '1.28rem' }, fontWeight: 700 }}
-          >
-            Status
-          </Typography>
-
-          <Chip
-            label={res.text}
-            color={res.color}
-            sx={{ mt: 0.75, fontWeight: 700, fontSize: { xs: '0.85rem', lg: '1rem' } }}
-          />
-
-          <Divider sx={{ my: 1.25 }} />
-
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box>
-              <Typography variant="caption" color="text.secondary">White</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>{currentGame.whitePlayer.name}</Typography>
-            </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700 }}>vs</Typography>
-            <Box sx={{ textAlign: 'right' }}>
-              <Typography variant="caption" color="text.secondary">Black</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>{currentGame.blackPlayer.name}</Typography>
-            </Box>
-          </Box>
-
-          <Divider sx={{ my: 1.25 }} />
-
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-            <Chip label={currentGame.mode} size="small" variant="outlined" />
-            <Chip label={tc} size="small" variant="outlined" />
-            {duration !== '—' && <Chip label={duration} size="small" variant="outlined" />}
-          </Box>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
-            {date}
-          </Typography>
-
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-            {moveIndex === -1 ? 'Starting position' : `Move ${moveIndex + 1} of ${totalMoves}`}
-          </Typography>
-        </Paper>
-
         <Paper elevation={2} sx={{ p: 1.25 }}>
           <Typography
             variant="subtitle2"
@@ -382,6 +334,53 @@ const GameReplayPage: React.FC = () => {
 
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
             ← → arrow keys · Space to play/pause
+          </Typography>
+        </Paper>
+      </>}
+      panel={<>
+        {/* Status card */}
+        <Paper elevation={2} sx={{ p: 2 }}>
+          <Typography
+            variant="subtitle2"
+            color="text.secondary"
+            sx={{ fontSize: { xs: '0.95rem', lg: '1.28rem' }, fontWeight: 700 }}
+          >
+            Status
+          </Typography>
+
+          <Chip
+            label={res.text}
+            color={res.color}
+            sx={{ mt: 0.75, fontWeight: 700, fontSize: { xs: '0.85rem', lg: '1rem' } }}
+          />
+
+          <Divider sx={{ my: 1.25 }} />
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="caption" color="text.secondary">White</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>{currentGame.whitePlayer.name}</Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700 }}>vs</Typography>
+            <Box sx={{ textAlign: 'right' }}>
+              <Typography variant="caption" color="text.secondary">Black</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>{currentGame.blackPlayer.name}</Typography>
+            </Box>
+          </Box>
+
+          <Divider sx={{ my: 1.25 }} />
+
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+            <Chip label={currentGame.mode} size="small" variant="outlined" />
+            <Chip label={tc} size="small" variant="outlined" />
+            {duration !== '—' && <Chip label={duration} size="small" variant="outlined" />}
+          </Box>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+            {date}
+          </Typography>
+
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+            {moveIndex === -1 ? 'Starting position' : `Move ${moveIndex + 1} of ${totalMoves}`}
           </Typography>
         </Paper>
 

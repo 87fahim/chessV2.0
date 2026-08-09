@@ -156,6 +156,54 @@ const AnalysisPage: React.FC = () => {
           onDrop={editor.handleDrop}
           onBoardHeightChange={setBoardHeight}
         />
+        <Paper elevation={2} sx={{ p: 1.25 }}>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, fontSize: '0.86rem', mb: 0.75 }}>
+            Controls
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 0.25, rowGap: 0.5, alignItems: 'center', flexWrap: 'wrap', overflowX: 'visible' }}>
+            <Tooltip title="Flip Board">
+              <IconButton onClick={editor.flipBoard} size="small" sx={{ p: 0.4 }}>
+                <SwapVertIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Undo">
+              <span>
+                <IconButton onClick={editor.undo} size="small" disabled={!editor.canUndo} sx={{ p: 0.4 }}>
+                  <UndoIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Redo">
+              <span>
+                <IconButton onClick={editor.redo} size="small" disabled={!editor.canRedo} sx={{ p: 0.4 }}>
+                  <RedoIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Reset to Starting Position">
+              <IconButton onClick={editor.resetToStart} size="small" sx={{ p: 0.4 }}>
+                <RestartAltIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Clear Board">
+              <IconButton onClick={editor.clearBoard} size="small" sx={{ p: 0.4 }}>
+                <DeleteOutlinedIcon sx={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Keep Kings Only">
+              <IconButton onClick={editor.keepKingsOnly} size="small" sx={{ p: 0.4, fontSize: '0.95rem' }}>
+                ♚
+              </IconButton>
+            </Tooltip>
+            <ZoomControls
+              onZoomIn={zoom.handleZoomIn}
+              onZoomOut={zoom.handleZoomOut}
+              canZoomIn={zoom.canZoomIn}
+              canZoomOut={zoom.canZoomOut}
+              zoomPercent={zoom.zoomPercent}
+            />
+          </Box>
+        </Paper>
       </>}
       panel={
         <Box
@@ -275,55 +323,6 @@ const AnalysisPage: React.FC = () => {
               </Box>
             </Paper>
           )}
-        </Paper>
-
-        <Paper elevation={2} sx={{ p: 1.25 }}>
-          <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, fontSize: '0.86rem', mb: 0.75 }}>
-            Controls
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 0.25, rowGap: 0.5, alignItems: 'center', flexWrap: 'wrap', overflowX: 'visible' }}>
-            <Tooltip title="Flip Board">
-              <IconButton onClick={editor.flipBoard} size="small" sx={{ p: 0.4 }}>
-                <SwapVertIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Undo">
-              <span>
-                <IconButton onClick={editor.undo} size="small" disabled={!editor.canUndo} sx={{ p: 0.4 }}>
-                  <UndoIcon sx={{ fontSize: 18 }} />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="Redo">
-              <span>
-                <IconButton onClick={editor.redo} size="small" disabled={!editor.canRedo} sx={{ p: 0.4 }}>
-                  <RedoIcon sx={{ fontSize: 18 }} />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="Reset to Starting Position">
-              <IconButton onClick={editor.resetToStart} size="small" sx={{ p: 0.4 }}>
-                <RestartAltIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Clear Board">
-              <IconButton onClick={editor.clearBoard} size="small" sx={{ p: 0.4 }}>
-                <DeleteOutlinedIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Keep Kings Only">
-              <IconButton onClick={editor.keepKingsOnly} size="small" sx={{ p: 0.4, fontSize: '0.95rem' }}>
-                ♚
-              </IconButton>
-            </Tooltip>
-            <ZoomControls
-              onZoomIn={zoom.handleZoomIn}
-              onZoomOut={zoom.handleZoomOut}
-              canZoomIn={zoom.canZoomIn}
-              canZoomOut={zoom.canZoomOut}
-              zoomPercent={zoom.zoomPercent}
-            />
-          </Box>
         </Paper>
 
         {isAuthenticated && (
