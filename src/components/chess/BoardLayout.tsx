@@ -68,7 +68,8 @@ const BoardLayout: React.FC<BoardLayoutProps> = ({
         p: { xs: 1, lg: 2 },
         height: '100%',
         flexDirection: useColumn ? 'column' : 'row',
-        alignItems: useColumn ? 'stretch' : 'flex-start',
+        // Stretch so the side panel matches the board column height on desktop.
+        alignItems: 'stretch',
         ...(useColumn
           ? {
               '@media (max-height: 760px)': {
@@ -91,6 +92,9 @@ const BoardLayout: React.FC<BoardLayoutProps> = ({
           flexDirection: 'column',
           gap: 2,
           minHeight: useColumn ? 'auto' : 300,
+          height: useColumn ? 'auto' : '100%',
+          alignSelf: 'stretch',
+          overflow: useColumn ? 'visible' : 'auto',
         }}
       >
         {panel}

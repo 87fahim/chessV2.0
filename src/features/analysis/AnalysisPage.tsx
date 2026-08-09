@@ -155,9 +155,18 @@ const AnalysisPage: React.FC = () => {
           onDrop={editor.handleDrop}
         />
       </>}
-      panel={<>
+      panel={
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            height: { xs: 'auto', lg: '100%' },
+            minHeight: 0,
+          }}
+        >
         {/* Engine Analysis */}
-        <Paper elevation={2} sx={{ p: 1.25 }}>
+        <Paper elevation={2} sx={{ p: 1.25, flex: '0 0 auto' }}>
           <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
             Next Best Move
           </Typography>
@@ -262,7 +271,7 @@ const AnalysisPage: React.FC = () => {
           )}
         </Paper>
 
-        <Paper elevation={2} sx={{ p: 1.25 }}>
+        <Paper elevation={2} sx={{ p: 1.25, flex: '0 0 auto' }}>
           <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, fontSize: '0.86rem', mb: 0.75 }}>
             Controls
           </Typography>
@@ -312,7 +321,7 @@ const AnalysisPage: React.FC = () => {
         </Paper>
 
         {isAuthenticated && (
-          <Paper elevation={2} sx={{ p: 1.25 }}>
+          <Paper elevation={2} sx={{ p: 1.25, flex: '0 0 auto' }}>
             <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
               Positions
             </Typography>
@@ -343,7 +352,7 @@ const AnalysisPage: React.FC = () => {
         )}
 
         {/* FEN Display & Load */}
-        <Paper elevation={2} sx={{ p: 1.25 }}>
+        <Paper elevation={2} sx={{ p: 1.25, flex: '0 0 auto' }}>
           <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
             FEN Position
           </Typography>
@@ -380,7 +389,7 @@ const AnalysisPage: React.FC = () => {
           </Box>
         </Paper>
 
-        <Paper elevation={2} sx={{ p: 1.25 }}>
+        <Paper elevation={2} sx={{ p: 1.25, flex: '0 0 auto' }}>
           <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
             Engine Setup
           </Typography>
@@ -475,7 +484,16 @@ const AnalysisPage: React.FC = () => {
           </Box>
         </Paper>
 
-        <Paper elevation={2} sx={{ p: 1.25 }}>
+        <Paper
+          elevation={2}
+          sx={{
+            p: 1.25,
+            flex: { xs: '0 0 auto', lg: '1 1 auto' },
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
           <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
             Position Settings
           </Typography>
@@ -509,7 +527,7 @@ const AnalysisPage: React.FC = () => {
 
         {/* Validation */}
         {(errors.length > 0 || warnings.length > 0) && (
-          <Paper elevation={2} sx={{ p: 1.25 }}>
+          <Paper elevation={2} sx={{ p: 1.25, flex: '0 0 auto' }}>
             <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
               Validation
             </Typography>
@@ -526,7 +544,8 @@ const AnalysisPage: React.FC = () => {
           </Paper>
         )}
 
-      </>}
+        </Box>
+      }
     />
 
     {/* Save Position Dialog */}
