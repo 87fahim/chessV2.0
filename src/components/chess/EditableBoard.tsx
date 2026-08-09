@@ -15,6 +15,8 @@ interface EditableBoardProps {
   isFlipped: boolean;
   highlightSquares?: { from: string; to: string } | null;
   onDrop: (source: DragSource, targetSquare: string | null) => void;
+  /** Reports the 8x8 board pixel height (not including spare-piece trays). */
+  onBoardHeightChange?: (height: number) => void;
 }
 
 const EditableBoard: React.FC<EditableBoardProps> = ({
@@ -22,6 +24,7 @@ const EditableBoard: React.FC<EditableBoardProps> = ({
   isFlipped,
   highlightSquares,
   onDrop,
+  onBoardHeightChange,
 }) => {
   const settings = useAppSelector((state) => state.settings.data);
   const boardTheme = settings.boardTheme;
@@ -48,10 +51,11 @@ const EditableBoard: React.FC<EditableBoardProps> = ({
     const observer = new ResizeObserver(() => {
       const rect = el.getBoundingClientRect();
       setSquareSize(rect.width / 8);
+      onBoardHeightChange?.(Math.round(rect.height));
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [onBoardHeightChange]);
 
   const squareAtPoint = useCallback(
     (px: number, py: number): string | null => {
