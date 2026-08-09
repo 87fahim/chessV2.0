@@ -1,17 +1,15 @@
-# Temporary alias of UAT. Prefer the `uat` branch + Deploy UAT workflow.
-# Keep this until all consumers stop pushing to `staging`.
-name: Deploy Staging
+name: Deploy UAT
 
 on:
   workflow_dispatch:
   push:
-    branches: [staging]
+    branches: [uat]
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 concurrency:
-  group: deploy-staging
+  group: deploy-uat
   cancel-in-progress: true
 
 jobs:
@@ -35,8 +33,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Test
+        run: npm run test
+
       - name: Build
-        run: npm run build
+        run: npm run build:uat
 
   lint-and-build-server:
     name: Lint & Build Server
@@ -66,19 +67,21 @@ jobs:
         run: npm run build
 
       - name: Integration Tests
+        # Treat as regression gate for UAT promotions until a dedicated suite exists.
         run: npm run test:integration
 
   deploy:
-    name: Deploy To Staging Server
+    name: Deploy To UAT Server
     needs: [lint-and-build-client, lint-and-build-server]
     runs-on: ubuntu-latest
-    environment: staging
+    environment: uat
     env:
       SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
       SERVER_HOST: ${{ secrets.SERVER_HOST }}
       SERVER_USER: ${{ secrets.SERVER_USER }}
-      APP_DIR: ${{ secrets.STAGING_APP_DIR }}
-      PM2_APP: ${{ secrets.STAGING_PM2_APP }}
+      # Prefer UAT_* secrets; fall back to legacy STAGING_* during migration.
+      APP_DIR: ${{ secrets.UAT_APP_DIR || secrets.STAGING_APP_DIR }}
+      PM2_APP: ${{ secrets.UAT_PM2_APP || secrets.STAGING_PM2_APP }}
     steps:
       - name: Validate deployment secrets
         id: validate
@@ -88,12 +91,12 @@ jobs:
           [[ -n "$SERVER_SSH_KEY" ]] || missing+=("SERVER_SSH_KEY")
           [[ -n "$SERVER_HOST" ]] || missing+=("SERVER_HOST")
           [[ -n "$SERVER_USER" ]] || missing+=("SERVER_USER")
-          [[ -n "$APP_DIR" ]] || missing+=("STAGING_APP_DIR")
-          [[ -n "$PM2_APP" ]] || missing+=("STAGING_PM2_APP")
+          [[ -n "$APP_DIR" ]] || missing+=("UAT_APP_DIR|STAGING_APP_DIR")
+          [[ -n "$PM2_APP" ]] || missing+=("UAT_PM2_APP|STAGING_PM2_APP")
 
           if (( ${#missing[@]} > 0 )); then
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Skipping staging deploy because required secrets are missing: ${missing[*]}"
+            echo "::notice::Skipping UAT deploy because required secrets are missing: ${missing[*]}"
             exit 0
           fi
 
@@ -210,7 +213,7 @@ jobs:
               echo "Client install/build..."
               rm -rf node_modules
               npm_ci_low_mem "client npm ci"
-              run_with_heartbeat "client build" npm run build:staging
+              run_with_heartbeat "client build" npm run build:uat
 
               echo "Server install/build..."
               cd server
@@ -244,7 +247,7 @@ jobs:
 
               echo "Deployment failed. Rolling back to $PREVIOUS_COMMIT"
               cd "${APP_DIR}" || exit $status
-              git checkout staging
+              git checkout uat
               git reset --hard "$PREVIOUS_COMMIT"
 
               ensure_swap
@@ -270,9 +273,9 @@ jobs:
             print_runtime_diagnostics "pre-deploy"
             PREVIOUS_COMMIT=$(git rev-parse HEAD)
             git fetch origin
-            git checkout staging
+            git checkout uat
             DEPLOY_STARTED=1
-            git pull --ff-only origin staging
+            git pull --ff-only origin uat
 
             test -f .env.staging
             test -f server/.env.staging
