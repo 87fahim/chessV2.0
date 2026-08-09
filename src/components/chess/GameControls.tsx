@@ -4,6 +4,13 @@ import UndoIcon from '@mui/icons-material/Undo';
 import SwapVertIcon from '@mui/icons-material/SwapVert';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import FlagIcon from '@mui/icons-material/Flag';
+import {
+  controlBarRowSx,
+  controlDividerSx,
+  controlIconButtonSx,
+  controlIconSx,
+  controlOutlinedButtonSx,
+} from './controlBarStyles';
 
 interface GameControlsProps {
   canUndo: boolean;
@@ -26,36 +33,25 @@ const GameControls: React.FC<GameControlsProps> = ({
   zoomControls,
 }) => {
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        gap: 0.5,
-        rowGap: 0.5,
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        width: '100%',
-        overflowX: 'visible',
-      }}
-    >
+    <Box sx={controlBarRowSx}>
       <Tooltip title="Undo">
         <span>
-          <IconButton onClick={onUndo} disabled={!canUndo} size="small" sx={{ p: 0.4 }}>
-            <UndoIcon sx={{ fontSize: 18 }} />
+          <IconButton onClick={onUndo} disabled={!canUndo} sx={controlIconButtonSx}>
+            <UndoIcon sx={controlIconSx} />
           </IconButton>
         </span>
       </Tooltip>
       <Tooltip title="Flip Board">
-        <IconButton onClick={onFlip} size="small" sx={{ p: 0.4 }}>
-          <SwapVertIcon sx={{ fontSize: 18 }} />
+        <IconButton onClick={onFlip} sx={controlIconButtonSx}>
+          <SwapVertIcon sx={controlIconSx} />
         </IconButton>
       </Tooltip>
-      <Divider orientation="vertical" flexItem sx={{ mx: 0.25 }} />
+      <Divider orientation="vertical" flexItem sx={controlDividerSx} />
       <Button
         variant="outlined"
-        size="small"
-        startIcon={<RestartAltIcon sx={{ fontSize: 16 }} />}
+        startIcon={<RestartAltIcon />}
         onClick={onNewGame}
-        sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem', '& .MuiButton-startIcon': { mr: 0.4 } }}
+        sx={controlOutlinedButtonSx}
       >
         New
       </Button>
@@ -63,10 +59,9 @@ const GameControls: React.FC<GameControlsProps> = ({
         <Button
           variant="outlined"
           color="error"
-          size="small"
-          startIcon={<FlagIcon sx={{ fontSize: 16 }} />}
+          startIcon={<FlagIcon />}
           onClick={onResign}
-          sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem', '& .MuiButton-startIcon': { mr: 0.4 } }}
+          sx={controlOutlinedButtonSx}
         >
           Resign
         </Button>
