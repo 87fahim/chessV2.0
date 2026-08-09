@@ -169,36 +169,37 @@ const AnalysisPage: React.FC = () => {
           </Typography>
           <Box sx={controlBarRowSx}>
             <Tooltip title="Flip Board">
-              <IconButton onClick={editor.flipBoard} sx={controlIconButtonSx}>
+              <IconButton aria-label="Flip board" onClick={editor.flipBoard} sx={controlIconButtonSx}>
                 <SwapVertIcon sx={controlIconSx} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Undo">
               <span>
-                <IconButton onClick={editor.undo} disabled={!editor.canUndo} sx={controlIconButtonSx}>
+                <IconButton aria-label="Undo" onClick={editor.undo} disabled={!editor.canUndo} sx={controlIconButtonSx}>
                   <UndoIcon sx={controlIconSx} />
                 </IconButton>
               </span>
             </Tooltip>
             <Tooltip title="Redo">
               <span>
-                <IconButton onClick={editor.redo} disabled={!editor.canRedo} sx={controlIconButtonSx}>
+                <IconButton aria-label="Redo" onClick={editor.redo} disabled={!editor.canRedo} sx={controlIconButtonSx}>
                   <RedoIcon sx={controlIconSx} />
                 </IconButton>
               </span>
             </Tooltip>
             <Tooltip title="Reset to Starting Position">
-              <IconButton onClick={editor.resetToStart} sx={controlIconButtonSx}>
+              <IconButton aria-label="Reset to starting position" onClick={editor.resetToStart} sx={controlIconButtonSx}>
                 <RestartAltIcon sx={controlIconSx} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Clear Board">
-              <IconButton onClick={editor.clearBoard} sx={controlIconButtonSx}>
+              <IconButton aria-label="Clear board" onClick={editor.clearBoard} sx={controlIconButtonSx}>
                 <DeleteOutlinedIcon sx={controlIconSx} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Keep Kings Only">
               <IconButton
+                aria-label="Keep kings only"
                 onClick={editor.keepKingsOnly}
                 sx={{ ...controlIconButtonSx, fontSize: { xs: '0.95rem', lg: '1.35rem' } }}
               >
@@ -397,7 +398,7 @@ const AnalysisPage: React.FC = () => {
               }}
             />
             <Tooltip title="Copy Current FEN">
-              <IconButton onClick={handleCopyFen} size="small" sx={{ width: 36, height: 36, flex: '0 0 auto' }}>
+              <IconButton aria-label="Copy FEN" onClick={handleCopyFen} size="small" sx={{ width: 36, height: 36, flex: '0 0 auto' }}>
                 <ContentCopyIcon fontSize="small" />
               </IconButton>
             </Tooltip>
