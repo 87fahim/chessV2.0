@@ -68,7 +68,8 @@ const BoardLayout: React.FC<BoardLayoutProps> = ({
         p: { xs: 1, lg: 2 },
         height: '100%',
         flexDirection: useColumn ? 'column' : 'row',
-        alignItems: useColumn ? 'stretch' : 'flex-start',
+        // Center vertically so a shorter panel lines up with the chessboard middle.
+        alignItems: useColumn ? 'stretch' : 'center',
         ...(useColumn
           ? {
               '@media (max-height: 760px)': {
@@ -91,6 +92,7 @@ const BoardLayout: React.FC<BoardLayoutProps> = ({
           flexDirection: 'column',
           gap: 2,
           minHeight: useColumn ? 'auto' : 300,
+          alignSelf: useColumn ? 'stretch' : 'center',
         }}
       >
         {panel}

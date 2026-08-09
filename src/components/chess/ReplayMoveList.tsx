@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Box, Paper, Typography } from '@mui/material';
+import { scrollChildWithinContainer } from '../../lib/chess/scrollWithin';
 
 interface Move {
   ply: number;
@@ -16,11 +17,15 @@ interface ReplayMoveListProps {
 }
 
 const ReplayMoveList: React.FC<ReplayMoveListProps> = ({ moves, currentMoveIndex, onMoveClick }) => {
+  const listRef = useRef<HTMLDivElement | null>(null);
   const activeRef = useRef<HTMLDivElement | null>(null);
 
-  // Scroll active move into view whenever it changes
+  // Keep the active move visible inside the list only — never scroll the window.
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    const container = listRef.current;
+    const active = activeRef.current;
+    if (!container || !active) return;
+    scrollChildWithinContainer(container, active);
   }, [currentMoveIndex]);
 
   // Group into pairs: [{ number, whiteIdx, blackIdx? }]
@@ -50,7 +55,15 @@ const ReplayMoveList: React.FC<ReplayMoveListProps> = ({ moves, currentMoveIndex
   return (
     <Paper
       elevation={2}
-      sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}
+      sx={{
+        flex: 1,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: { xs: 160, lg: 0 },
+        maxHeight: { xs: '36vh', lg: 'none' },
+        overflowAnchor: 'none',
+      }}
     >
       <Typography
         variant="subtitle2"
@@ -59,7 +72,10 @@ const ReplayMoveList: React.FC<ReplayMoveListProps> = ({ moves, currentMoveIndex
         Moves
       </Typography>
 
-      <Box sx={{ flex: 1, overflowY: 'auto', p: 0.5 }}>
+      <Box
+        ref={listRef}
+        sx={{ flex: 1, overflowY: 'auto', p: 0.5, minHeight: 0, overflowAnchor: 'none' }}
+      >
         {moves.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
             No moves played

@@ -25,6 +25,11 @@ import { useChessGame } from '../../hooks/useChessGame';
 import { usePremoveQueue } from '../../hooks/usePremoveQueue';
 import BoardLayout from '../../components/chess/BoardLayout';
 import ZoomControls from '../../components/chess/ZoomControls';
+import {
+  controlBarPaperSx,
+  controlBarTitleSx,
+  controlOutlinedButtonSx,
+} from '../../components/chess/controlBarStyles';
 import { useBoardZoom } from '../../hooks/useBoardZoom';
 import { useAppSelector, useAppDispatch } from '../../hooks/useStore';
 import { saveCurrentGame, autoSaveGame } from '../savedGames/savedGamesSlice';
@@ -278,6 +283,38 @@ const PlayVsComputerPage: React.FC = () => {
               subtitle={`vs Computer (${gameState.difficulty.charAt(0).toUpperCase() + gameState.difficulty.slice(1)})`}
             />
           </Box>
+          <Paper elevation={2} sx={controlBarPaperSx}>
+            <Typography variant="subtitle2" color="text.secondary" sx={controlBarTitleSx}>
+              Controls
+            </Typography>
+            <GameControls
+              canUndo={gameState.moves.length > 0 && gameState.status === 'playing'}
+              isPlaying={gameState.status === 'playing'}
+              onUndo={() => { clearPremoves(); handleUndo(); }}
+              onFlip={handleFlip}
+              onNewGame={handleNewGame}
+              onResign={handleResign}
+              zoomControls={
+                <ZoomControls
+                  onZoomIn={zoom.handleZoomIn}
+                  onZoomOut={zoom.handleZoomOut}
+                  canZoomIn={zoom.canZoomIn}
+                  canZoomOut={zoom.canZoomOut}
+                  zoomPercent={zoom.zoomPercent}
+                />
+              }
+            />
+            {isAuthenticated && gameState.moves.length > 0 && (
+              <Button
+                variant="outlined"
+                startIcon={<SaveIcon />}
+                onClick={handleSaveGame}
+                sx={{ ...controlOutlinedButtonSx, mt: { xs: 0.75, lg: 1.25 } }}
+              >
+                Save Game
+              </Button>
+            )}
+          </Paper>
         </>}
         panel={<>
           {/* Status */}
@@ -315,41 +352,6 @@ const PlayVsComputerPage: React.FC = () => {
               >
                 {engineError}
               </Alert>
-            )}
-          </Paper>
-
-          {/* Controls */}
-          <Paper elevation={2} sx={{ p: 1.25 }}>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: { xs: '0.95rem', lg: '1.15rem' }, fontWeight: 700, mb: 0.75 }}>
-              Controls
-            </Typography>
-            <GameControls
-              canUndo={gameState.moves.length > 0 && gameState.status === 'playing'}
-              isPlaying={gameState.status === 'playing'}
-              onUndo={() => { clearPremoves(); handleUndo(); }}
-              onFlip={handleFlip}
-              onNewGame={handleNewGame}
-              onResign={handleResign}
-              zoomControls={
-                <ZoomControls
-                  onZoomIn={zoom.handleZoomIn}
-                  onZoomOut={zoom.handleZoomOut}
-                  canZoomIn={zoom.canZoomIn}
-                  canZoomOut={zoom.canZoomOut}
-                  zoomPercent={zoom.zoomPercent}
-                />
-              }
-            />
-            {isAuthenticated && gameState.moves.length > 0 && (
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<SaveIcon />}
-                onClick={handleSaveGame}
-                sx={{ mt: 0.75 }}
-              >
-                Save Game
-              </Button>
             )}
           </Paper>
 

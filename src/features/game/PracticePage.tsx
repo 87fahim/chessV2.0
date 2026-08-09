@@ -7,6 +7,13 @@ import { Chess } from 'chess.js';
 import ChessBoard from '../../components/chess/ChessBoard';
 import BoardLayout from '../../components/chess/BoardLayout';
 import ZoomControls from '../../components/chess/ZoomControls';
+import {
+  controlBarPaperSx,
+  controlBarRowSx,
+  controlBarTitleSx,
+  controlIconButtonSx,
+  controlIconSx,
+} from '../../components/chess/controlBarStyles';
 import { useBoardZoom } from '../../hooks/useBoardZoom';
 import { useAppDispatch, useAppSelector } from '../../hooks/useStore';
 import { loadPosition, flipBoard, moveMade } from '../../features/game/gameSlice';
@@ -104,6 +111,30 @@ const PracticePage: React.FC = () => {
       boardWidth={zoom.boardWidth}
       board={<>
         <ChessBoard onMove={handleMove} />
+        <Paper elevation={2} sx={controlBarPaperSx}>
+          <Typography variant="subtitle2" color="text.secondary" sx={controlBarTitleSx}>
+            Controls
+          </Typography>
+          <Box sx={controlBarRowSx}>
+            <Tooltip title="Flip Board">
+              <IconButton onClick={() => dispatch(flipBoard())} sx={controlIconButtonSx}>
+                <SwapVertIcon sx={controlIconSx} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Reset Board">
+              <IconButton onClick={handleReset} sx={controlIconButtonSx}>
+                <RestartAltIcon sx={controlIconSx} />
+              </IconButton>
+            </Tooltip>
+            <ZoomControls
+              onZoomIn={zoom.handleZoomIn}
+              onZoomOut={zoom.handleZoomOut}
+              canZoomIn={zoom.canZoomIn}
+              canZoomOut={zoom.canZoomOut}
+              zoomPercent={zoom.zoomPercent}
+            />
+          </Box>
+        </Paper>
       </>}
       panel={<>
         <Paper elevation={2} sx={{ p: 2 }}>
@@ -132,31 +163,6 @@ const PracticePage: React.FC = () => {
           <Button variant="contained" size="small" onClick={handleLoadFen} fullWidth>
             Load FEN
           </Button>
-        </Paper>
-
-        <Paper elevation={2} sx={{ p: 1.25 }}>
-          <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: { xs: '0.95rem', lg: '1.15rem' }, fontWeight: 700, mb: 0.75 }}>
-            Controls
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 0.5, rowGap: 0.5, alignItems: 'center', flexWrap: 'wrap', overflowX: 'visible' }}>
-            <Tooltip title="Flip Board">
-              <IconButton onClick={() => dispatch(flipBoard())} size="small" sx={{ p: 0.4 }}>
-                <SwapVertIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Reset Board">
-              <IconButton onClick={handleReset} size="small" sx={{ p: 0.4 }}>
-                <RestartAltIcon sx={{ fontSize: 18 }} />
-              </IconButton>
-            </Tooltip>
-            <ZoomControls
-              onZoomIn={zoom.handleZoomIn}
-              onZoomOut={zoom.handleZoomOut}
-              canZoomIn={zoom.canZoomIn}
-              canZoomOut={zoom.canZoomOut}
-              zoomPercent={zoom.zoomPercent}
-            />
-          </Box>
         </Paper>
 
         <Paper elevation={2} sx={{ p: 2 }}>
