@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -26,7 +26,6 @@ import { useAppDispatch, useAppSelector } from '../hooks/useStore';
 import { fetchHistoryGame, clearCurrentGame } from '../features/savedGames/savedGamesSlice';
 import ReplayBoard from '../components/chess/ReplayBoard';
 import ReplayMoveList from '../components/chess/ReplayMoveList';
-import { type ReplaySpeed } from '../components/chess/ReplayControls';
 import BoardLayout from '../components/chess/BoardLayout';
 import ZoomControls from '../components/chess/ZoomControls';
 import {
@@ -41,6 +40,8 @@ import { useBoardZoom } from '../hooks/useBoardZoom';
 import { useGameSounds } from '../hooks/useGameSounds';
 
 const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+export type ReplaySpeed = 0.5 | 1 | 2 | 4;
 
 const SPEED_MS: Record<ReplaySpeed, number> = {
   0.5: 2000,
@@ -113,7 +114,7 @@ const GameReplayPage: React.FC = () => {
     }
   }, [currentGameId, defaultBoardFlipped]);
 
-  const moves = currentGame?.moves ?? [];
+  const moves = useMemo(() => currentGame?.moves ?? [], [currentGame?.moves]);
   const totalMoves = moves.length;
 
   // Build position array: index 0 = start, index i+1 = after moves[i]
