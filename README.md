@@ -65,7 +65,7 @@ The project is structured as a monorepo-style workspace:
 | Accounts | Register, login, guest mode, protected routes, profile and account summary |
 | Social | User search, friend requests, blocking, challenge/privacy policies |
 | Customization | Board themes, move highlighting, sounds, animation, orientation, move confirmation, auto-promotion, analysis/practice preferences |
-| Operations | Health endpoint, structured request logging, optional Sentry capture, staging/production deploy workflows, smoke checks, rollback path, scheduled health monitoring |
+| Operations | Health endpoint, structured request logging, optional Sentry capture, dev/uat/production deploy workflows, smoke checks, rollback path, scheduled health monitoring |
 | Quality | ESLint, TypeScript builds, backend integration tests with in-memory MongoDB + real HTTP/Socket.IO flows |
 
 ### Gameplay Modes
@@ -133,7 +133,7 @@ The project is structured as a monorepo-style workspace:
 
 ### Infrastructure And Operations
 
-- GitHub Actions for CI, staging deploy, production deploy, and health monitoring
+- GitHub Actions for CI, dev/uat/production deploys, and health monitoring
 - PM2 for process management
 - nginx for reverse proxy / edge serving
 - optional Sentry backend error tracking
