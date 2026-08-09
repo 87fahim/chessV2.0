@@ -80,12 +80,12 @@ const SavedGamesPage: React.FC = () => {
                 </Box>
               </Box>
               <Tooltip title="Resume game">
-                <IconButton color="primary" onClick={() => navigate(`/play?resume=${game._id}`)}>
+                <IconButton aria-label="Resume game" color="primary" onClick={() => navigate(`/play?resume=${game._id}`)}>
                   <PlayArrowIcon />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Delete">
-                <IconButton color="error" onClick={() => handleDelete(game._id)}>
+                <IconButton aria-label="Delete saved game" color="error" onClick={() => handleDelete(game._id)}>
                   <DeleteIcon />
                 </IconButton>
               </Tooltip>

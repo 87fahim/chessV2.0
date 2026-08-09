@@ -137,13 +137,13 @@ const HistoryPage: React.FC = () => {
           Game History
         </Typography>
         <Tooltip title="Filters">
-          <IconButton onClick={() => setFiltersOpen((o) => !o)} color={hasActiveFilters ? 'primary' : 'default'}>
+          <IconButton aria-label="Toggle filters" onClick={() => setFiltersOpen((o) => !o)} color={hasActiveFilters ? 'primary' : 'default'}>
             <FilterListIcon />
           </IconButton>
         </Tooltip>
         {hasActiveFilters && (
           <Tooltip title="Clear filters">
-            <IconButton onClick={handleClearFilters} size="small" color="warning">
+            <IconButton aria-label="Clear filters" onClick={handleClearFilters} size="small" color="warning">
               <ClearIcon />
             </IconButton>
           </Tooltip>

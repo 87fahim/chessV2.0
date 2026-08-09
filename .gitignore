@@ -40,5 +40,7 @@ id_rsa.pub
 id_git_token
 *.pem
 
+# Scratch assets not part of the app
+src/assets/squars/
 
 git_commands
