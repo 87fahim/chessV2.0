@@ -327,36 +327,90 @@ Notes:
 
 ## Deployment And Environments
 
-Branch mapping:
+### Branch model (corporate promotion path)
 
-- `staging` -> staging / UAT deploy path
-- `main` -> production deploy path
+```text
+feature/* or fix/*
+        │  PR (feature tests)
+        ▼
+       dev  ──────── deploy-dev (integration / daily)
+        │  PR (promote after feature acceptance)
+        ▼
+       uat  ──────── deploy-uat (stakeholder / regression)
+        │  PR (promote after UAT sign-off)
+        ▼
+      main  ──────── deploy-production (prod)
+```
 
-Recommended promotion flow:
+| Branch | Environment | Purpose | Merge style |
+|---|---|---|---|
+| `feature/*`, `fix/*` | local | One change | open PR into `dev` |
+| `dev` | development | Integration / daily testing | PR only |
+| `uat` | uat | Release candidate / acceptance | PR from `dev` |
+| `main` | production | Live traffic | PR from `uat` only |
+| `staging` | legacy alias of UAT | Temporary compatibility | keep synced with `uat`, then retire |
 
-1. Merge feature branches into `staging`.
-2. Let CI and the staging deploy complete successfully.
-3. Verify the staging app manually for the changed flows.
-4. Merge `staging` into `main` only after staging is accepted.
-5. Let the production deploy workflow promote the exact accepted code.
+Never open feature PRs directly into `uat` or `main`. Never promote backward (`main` → `uat` → `dev`) except when back-merging a production hotfix.
 
-Keep `staging` equal to or ahead of `main`. If production receives a hotfix directly on `main`, merge `main` back into `staging` before starting new staging work.
+### Day-to-day flow
 
-GitHub Actions workflows:
+1. Branch from `dev`: `git checkout -b feature/my-change origin/dev`
+2. Open a PR into `dev`. CI runs lint/unit/integration for the change.
+3. After the PR is green and reviewed, merge to `dev`. Deploy Dev runs (if `DEV_*` secrets exist).
+4. When the feature is ready for acceptance, open a **promotion PR** `dev` → `uat`.
+5. On `uat`, run regression / manual UAT. Deploy UAT runs on merge.
+6. When UAT is signed off, open a **promotion PR** `uat` → `main`.
+7. Production deploy runs on merge to `main` (use GitHub Environment approval on `production`).
 
-- `.github/workflows/ci.yml` - pull request CI
-- `.github/workflows/deploy-staging.yml` - deploy on pushes to `staging`
+Hotfix rule: if you must patch `main` directly, immediately PR `main` back into `uat` and `dev` so they do not diverge.
+
+### GitHub Actions workflows
+
+- `.github/workflows/ci.yml` - PR checks for `dev`, `uat`, `staging`, `main`
+- `.github/workflows/deploy-dev.yml` - deploy on pushes to `dev`
+- `.github/workflows/deploy-uat.yml` - deploy on pushes to `uat`
+- `.github/workflows/deploy-staging.yml` - temporary alias deploy for `staging`
 - `.github/workflows/deploy-production.yml` - deploy on pushes to `main`
-- `.github/workflows/monitor-health.yml` - scheduled health and latency checks
+- `.github/workflows/monitor-health.yml` - scheduled health checks per environment
+
+### Required GitHub setup
+
+Create GitHub Environments: `development`, `uat`, `staging` (legacy), `production`.
+
+Recommended protection:
+
+- `dev`, `uat`, `main`: require PRs, require CI status checks, deny force-push
+- `uat` / `production` environments: required reviewers before deploy jobs run
+- `production`: optional wait timer
+
+Deploy secrets (per environment / repo secrets):
+
+| Secret | Used by |
+|---|---|
+| `SERVER_SSH_KEY`, `SERVER_HOST`, `SERVER_USER` | all remote deploys |
+| `DEV_APP_DIR`, `DEV_PM2_APP` | Deploy Dev |
+| `UAT_APP_DIR`, `UAT_PM2_APP` (or legacy `STAGING_*`) | Deploy UAT |
+| `STAGING_APP_DIR`, `STAGING_PM2_APP` | Deploy Staging (legacy) |
+| `PROD_APP_DIR`, `PROD_PM2_APP` | Deploy Production |
+
+### Runtime config files on each host
+
+| Git branch | Client build | Server `APP_ENV` | Host env files |
+|---|---|---|---|
+| `dev` | `npm run build:dev` | `development` | `.env.development`, `server/.env` |
+| `uat` / `staging` | `npm run build:uat` / `build:staging` | `staging` | `.env.staging`, `server/.env.staging` |
+| `main` | `npm run build:prod` | `production` | `.env.production`, `server/.env.production` |
+
+UAT still uses `APP_ENV=staging` config files for historical reasons; the **git branch** to promote through is `uat`.
 
 ### Deploy Workflow Behavior
 
-Current deploy workflows do all of the following:
+Deploy workflows do all of the following:
 
 - validate required secrets and environment assumptions
 - run client and server lint/build jobs before deploy
 - run backend integration tests in the server job
-- SSH to the target server
+- SSH to the target server with keepalive + low-memory npm installs
 - install dependencies and build the client/server
 - restart PM2 with updated environment values
 - validate nginx and reload it
@@ -365,10 +419,11 @@ Current deploy workflows do all of the following:
 
 ### Important Rules
 
-- never reuse production secrets in staging
+- never reuse production secrets in `dev` or `uat`
 - keep separate databases and JWT secrets per environment
-- ensure `server/.env.staging` contains `APP_ENV=staging`
-- ensure `server/.env.production` contains `APP_ENV=production`
+- ensure `server/.env.staging` contains `APP_ENV=staging` on UAT hosts
+- ensure `server/.env.production` contains `APP_ENV=production` on prod hosts
+- prefer promotion PRs over direct pushes for auditability
 
 ## Monitoring And Operations
 

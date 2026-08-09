@@ -1,17 +1,15 @@
-# Temporary alias of UAT. Prefer the `uat` branch + Deploy UAT workflow.
-# Keep this until all consumers stop pushing to `staging`.
-name: Deploy Staging
+name: Deploy Dev
 
 on:
   workflow_dispatch:
   push:
-    branches: [staging]
+    branches: [dev]
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 concurrency:
-  group: deploy-staging
+  group: deploy-dev
   cancel-in-progress: true
 
 jobs:
@@ -35,8 +33,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Test
+        run: npm run test
+
       - name: Build
-        run: npm run build
+        run: npm run build:dev
 
   lint-and-build-server:
     name: Lint & Build Server
@@ -69,16 +70,16 @@ jobs:
         run: npm run test:integration
 
   deploy:
-    name: Deploy To Staging Server
+    name: Deploy To Dev Server
     needs: [lint-and-build-client, lint-and-build-server]
     runs-on: ubuntu-latest
-    environment: staging
+    environment: development
     env:
       SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
       SERVER_HOST: ${{ secrets.SERVER_HOST }}
       SERVER_USER: ${{ secrets.SERVER_USER }}
-      APP_DIR: ${{ secrets.STAGING_APP_DIR }}
-      PM2_APP: ${{ secrets.STAGING_PM2_APP }}
+      APP_DIR: ${{ secrets.DEV_APP_DIR }}
+      PM2_APP: ${{ secrets.DEV_PM2_APP }}
     steps:
       - name: Validate deployment secrets
         id: validate
@@ -88,12 +89,12 @@ jobs:
           [[ -n "$SERVER_SSH_KEY" ]] || missing+=("SERVER_SSH_KEY")
           [[ -n "$SERVER_HOST" ]] || missing+=("SERVER_HOST")
           [[ -n "$SERVER_USER" ]] || missing+=("SERVER_USER")
-          [[ -n "$APP_DIR" ]] || missing+=("STAGING_APP_DIR")
-          [[ -n "$PM2_APP" ]] || missing+=("STAGING_PM2_APP")
+          [[ -n "$APP_DIR" ]] || missing+=("DEV_APP_DIR")
+          [[ -n "$PM2_APP" ]] || missing+=("DEV_PM2_APP")
 
           if (( ${#missing[@]} > 0 )); then
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Skipping staging deploy because required secrets are missing: ${missing[*]}"
+            echo "::notice::Skipping dev deploy because required secrets are missing: ${missing[*]}"
             exit 0
           fi
 
@@ -113,9 +114,6 @@ jobs:
           app_dir=$(printf '%q' "$APP_DIR")
           pm2_app=$(printf '%q' "$PM2_APP")
 
-          # Keep the SSH session alive during long npm ci / build steps.
-          # Without this, idle periods can trip middlebox/NAT timeouts
-          # ("client_loop: send disconnect: Broken pipe").
           ssh -T \
             -o ServerAliveInterval=15 \
             -o ServerAliveCountMax=20 \
@@ -159,7 +157,6 @@ jobs:
 
             print_runtime_diagnostics() {
               local phase="$1"
-
               echo "=== Runtime diagnostics: $phase ==="
               free -h || true
               df -h . || true
@@ -210,7 +207,7 @@ jobs:
               echo "Client install/build..."
               rm -rf node_modules
               npm_ci_low_mem "client npm ci"
-              run_with_heartbeat "client build" npm run build:staging
+              run_with_heartbeat "client build" npm run build:dev
 
               echo "Server install/build..."
               cd server
@@ -221,7 +218,7 @@ jobs:
             }
 
             start_app() {
-              APP_RELEASE=$(git rev-parse HEAD) APP_ENV=staging NODE_ENV=production \
+              APP_RELEASE=$(git rev-parse HEAD) APP_ENV=development NODE_ENV=production \
                 pm2 restart "${PM2_APP}" --update-env
               APP_STOPPED=0
               sudo nginx -t
@@ -241,10 +238,9 @@ jobs:
               set +e
 
               print_runtime_diagnostics "before rollback"
-
               echo "Deployment failed. Rolling back to $PREVIOUS_COMMIT"
               cd "${APP_DIR}" || exit $status
-              git checkout staging
+              git checkout dev
               git reset --hard "$PREVIOUS_COMMIT"
 
               ensure_swap
@@ -252,15 +248,13 @@ jobs:
                 echo "Rollback rebuild failed; attempting PM2 restart on previous commit anyway"
               fi
 
-              APP_RELEASE=$(git rev-parse HEAD) APP_ENV=staging NODE_ENV=production \
+              APP_RELEASE=$(git rev-parse HEAD) APP_ENV=development NODE_ENV=production \
                 pm2 restart "${PM2_APP}" --update-env || true
               APP_STOPPED=0
               sudo nginx -t || true
               sudo systemctl reload nginx || true
-
               wait_for_health "http://127.0.0.1:${BACKEND_PORT}/api/health" "rollback backend" || true
               wait_for_health http://127.0.0.1/api/health "rollback nginx" || true
-
               exit $status
             }
 
@@ -270,14 +264,14 @@ jobs:
             print_runtime_diagnostics "pre-deploy"
             PREVIOUS_COMMIT=$(git rev-parse HEAD)
             git fetch origin
-            git checkout staging
+            git checkout dev
             DEPLOY_STARTED=1
-            git pull --ff-only origin staging
+            git pull --ff-only origin dev
 
-            test -f .env.staging
-            test -f server/.env.staging
-            grep -q '^APP_ENV=staging$' server/.env.staging
-            BACKEND_PORT=$(awk -F= '/^PORT=/{print $2}' server/.env.staging | tail -n 1)
+            echo "Checking env files..."
+            test -f .env.development
+            test -f server/.env
+            BACKEND_PORT=$(awk -F= '/^PORT=/{print $2}' server/.env | tail -n 1)
             BACKEND_PORT=${BACKEND_PORT:-3001}
             echo "BACKEND_PORT: ${BACKEND_PORT}"
 

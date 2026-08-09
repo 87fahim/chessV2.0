@@ -5,8 +5,9 @@ import { execSync } from 'child_process'
 /**
  * Derive the UI label from the current git branch.
  *  main           → "" (production – no suffix)
- *  staging        → "Staging"
- *  features/xyz   → "xyz"
+ *  uat / staging  → "UAT"
+ *  dev            → "Dev"
+ *  feature/xyz    → "xyz"
  *  anything-else  → branch name as-is
  *
  * Env var VITE_APP_LABEL wins if set (deploy workflows can pin it).
@@ -16,8 +17,9 @@ function detectAppLabel(): string {
   try {
     const branch = execSync('git branch --show-current', { encoding: 'utf-8' }).trim()
     if (!branch || branch === 'main') return ''
-    if (branch === 'staging') return 'Staging'
-    const m = branch.match(/^features?\/(.+)$/)
+    if (branch === 'uat' || branch === 'staging') return 'UAT'
+    if (branch === 'dev') return 'Dev'
+    const m = branch.match(/^(?:features?|fix)\/(.+)$/)
     return m ? m[1] : branch
   } catch {
     return ''

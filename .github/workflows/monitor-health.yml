@@ -16,6 +16,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - environment: development
+            max_latency_ms: 3000
+          - environment: uat
+            max_latency_ms: 2500
           - environment: staging
             max_latency_ms: 2500
           - environment: production

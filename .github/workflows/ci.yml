@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, staging]
+    branches: [dev, uat, staging, main]
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -62,4 +62,5 @@ jobs:
         run: npm run build
 
       - name: Integration Tests
+        # Full suite today; later split feature vs regression by target branch.
         run: npm run test:integration
