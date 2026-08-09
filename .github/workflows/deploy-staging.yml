@@ -126,6 +126,8 @@ jobs:
 
             PREVIOUS_COMMIT=""
             DEPLOY_STARTED=0
+            APP_STOPPED=0
+            BACKEND_PORT=3001
 
             wait_for_health() {
               local url="$1"
@@ -157,62 +159,29 @@ jobs:
               local phase="$1"
 
               echo "=== Runtime diagnostics: $phase ==="
+              free -h || true
+              df -h . || true
               pm2 status || true
-              pm2 describe "${PM2_APP}" || true
-              pm2 logs "${PM2_APP}" --lines 100 --nostream || true
+              pm2 logs "${PM2_APP}" --lines 20 --nostream || true
               ss -ltnp | grep -E ':(80|3001)\b' || true
               curl -sS -i "http://127.0.0.1:${BACKEND_PORT}/api/health" || true
               curl -sS -i http://127.0.0.1/api/health || true
             }
 
-            rollback() {
-              status=$?
-              if [[ $status -eq 0 || $DEPLOY_STARTED -eq 0 || -z "$PREVIOUS_COMMIT" ]]; then
-                exit $status
+            ensure_swap() {
+              if free -b | awk '/^Swap:/ {exit !($2 > 0)}'; then
+                echo "Swap already present"
+                free -h
+                return 0
               fi
 
-              trap - EXIT
-              set +e
-
-              print_runtime_diagnostics "before rollback"
-
-              echo "Deployment failed. Rolling back to $PREVIOUS_COMMIT"
-              cd "${APP_DIR}" || exit $status
-              git checkout staging
-              git reset --hard "$PREVIOUS_COMMIT"
-
-              npm ci
-              npm run build:staging
-
-              cd server || exit $status
-              npx --yes npm@11 ci
-              npm run build
-
-              APP_RELEASE=$(git rev-parse HEAD) APP_ENV=staging NODE_ENV=production pm2 restart "${PM2_APP}" --update-env
-              sudo nginx -t
-              sudo systemctl reload nginx
-
-              wait_for_health "http://127.0.0.1:${BACKEND_PORT}/api/health" "rollback backend"
-              wait_for_health http://127.0.0.1/api/health "rollback nginx"
-
-              exit $status
+              echo "Creating 2G swapfile to avoid OOM during npm ci/build"
+              sudo fallocate -l 2G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
+              sudo chmod 600 /swapfile
+              sudo mkswap /swapfile
+              sudo swapon /swapfile
+              free -h
             }
-
-            trap rollback EXIT
-
-            cd "${APP_DIR}"
-            PREVIOUS_COMMIT=$(git rev-parse HEAD)
-            git fetch origin
-            git checkout staging
-            DEPLOY_STARTED=1
-            git pull --ff-only origin staging
-
-            test -f .env.staging
-            test -f server/.env.staging
-            grep -q '^APP_ENV=staging$' server/.env.staging
-            BACKEND_PORT=$(awk -F= '/^PORT=/{print $2}' server/.env.staging | tail -n 1)
-            BACKEND_PORT=${BACKEND_PORT:-3001}
-            echo "BACKEND_PORT: ${BACKEND_PORT}"
 
             run_with_heartbeat() {
               local label="$1"
@@ -226,16 +195,97 @@ jobs:
               wait "$cmd_pid"
             }
 
-            run_with_heartbeat "client npm ci" npm ci --no-fund --no-audit
-            run_with_heartbeat "client build" npm run build:staging
+            npm_ci_low_mem() {
+              local label="$1"
+              export npm_config_fund=false
+              export npm_config_audit=false
+              export npm_config_maxsockets=1
+              export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=1536}"
+              run_with_heartbeat "$label" npm ci --no-fund --no-audit --maxsockets=1
+            }
 
-            cd server
-            run_with_heartbeat "server npm ci" npx --yes npm@11 ci --no-fund --no-audit
-            run_with_heartbeat "server build" npm run build
+            build_release() {
+              echo "Client install/build..."
+              rm -rf node_modules
+              npm_ci_low_mem "client npm ci"
+              run_with_heartbeat "client build" npm run build:staging
 
-            APP_RELEASE=$(git rev-parse HEAD) APP_ENV=staging NODE_ENV=production pm2 restart "${PM2_APP}" --update-env
-            sudo nginx -t
-            sudo systemctl reload nginx
+              echo "Server install/build..."
+              cd server
+              rm -rf node_modules
+              npm_ci_low_mem "server npm ci"
+              run_with_heartbeat "server build" npm run build
+              cd ..
+            }
+
+            start_app() {
+              APP_RELEASE=$(git rev-parse HEAD) APP_ENV=staging NODE_ENV=production \
+                pm2 restart "${PM2_APP}" --update-env
+              APP_STOPPED=0
+              sudo nginx -t
+              sudo systemctl reload nginx
+            }
+
+            rollback() {
+              status=$?
+              if [[ $status -eq 0 || $DEPLOY_STARTED -eq 0 || -z "$PREVIOUS_COMMIT" ]]; then
+                if [[ $APP_STOPPED -eq 1 ]]; then
+                  pm2 restart "${PM2_APP}" --update-env || true
+                fi
+                exit $status
+              fi
+
+              trap - EXIT
+              set +e
+
+              print_runtime_diagnostics "before rollback"
+
+              echo "Deployment failed. Rolling back to $PREVIOUS_COMMIT"
+              cd "${APP_DIR}" || exit $status
+              git checkout staging
+              git reset --hard "$PREVIOUS_COMMIT"
+
+              ensure_swap
+              if ! build_release; then
+                echo "Rollback rebuild failed; attempting PM2 restart on previous commit anyway"
+              fi
+
+              APP_RELEASE=$(git rev-parse HEAD) APP_ENV=staging NODE_ENV=production \
+                pm2 restart "${PM2_APP}" --update-env || true
+              APP_STOPPED=0
+              sudo nginx -t || true
+              sudo systemctl reload nginx || true
+
+              wait_for_health "http://127.0.0.1:${BACKEND_PORT}/api/health" "rollback backend" || true
+              wait_for_health http://127.0.0.1/api/health "rollback nginx" || true
+
+              exit $status
+            }
+
+            trap rollback EXIT
+
+            cd "${APP_DIR}"
+            print_runtime_diagnostics "pre-deploy"
+            PREVIOUS_COMMIT=$(git rev-parse HEAD)
+            git fetch origin
+            git checkout staging
+            DEPLOY_STARTED=1
+            git pull --ff-only origin staging
+
+            test -f .env.staging
+            test -f server/.env.staging
+            grep -q '^APP_ENV=staging$' server/.env.staging
+            BACKEND_PORT=$(awk -F= '/^PORT=/{print $2}' server/.env.staging | tail -n 1)
+            BACKEND_PORT=${BACKEND_PORT:-3001}
+            echo "BACKEND_PORT: ${BACKEND_PORT}"
+
+            ensure_swap
+            echo "Stopping PM2 app during install/build to reduce OOM risk"
+            pm2 stop "${PM2_APP}" || true
+            APP_STOPPED=1
+
+            build_release
+            start_app
 
             wait_for_health "http://127.0.0.1:${BACKEND_PORT}/api/health" "backend"
             wait_for_health http://127.0.0.1/api/health "nginx"
