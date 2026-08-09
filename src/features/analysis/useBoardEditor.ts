@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { Chess } from 'chess.js';
 import type { PieceColor, PieceType } from '../../types/chess';
 import type { Difficulty } from '../../types/game';
@@ -6,85 +6,56 @@ import type {
   AnalysisSettings,
   BoardPosition,
   CastlingRights,
-  PieceOnBoard,
-  PositionSnapshot,
   DragSource,
+  PieceOnBoard,
 } from './boardEditorTypes';
-import { MAX_MOVE_TIME_MS, MAX_SEARCH_DEPTH } from './boardEditorTypes';
 import { buildFen, parseFenToPosition } from './fenBuilder';
 import { validatePosition, canAddPiece, canMovePiece, normalizeCastlingRights } from './positionValidation';
 import { getStockfishService, parseUciMove } from './stockfishService';
-import type { AnalysisResult } from './stockfishService';
 import { useGameSounds } from '../../hooks/useGameSounds';
-
-const DEFAULT_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-const DEFAULT_CASTLING: CastlingRights = { K: true, Q: true, k: true, q: true };
-const EMPTY_CASTLING: CastlingRights = { K: false, Q: false, k: false, q: false };
-const DEFAULT_ANALYSIS_SETTINGS: AnalysisSettings = {
-  searchMode: 'depth',
-  searchDepth: 15,
-  moveTimeMs: 1200,
-  autoFixCastling: false,
-  resetEnPassantOnEdit: true,
-  highlightSuggestedMove: true,
-  showPrincipalVariation: true,
-};
-const MOVE_PREVIEW_DELAY_MS = 650;
-
-type StoredAnalysisResult = AnalysisResult & {
-  san?: string;
-  analyzedFen?: string;
-};
-
-type MovePreviewStatus = 'idle' | 'playing' | 'paused' | 'finished';
-
-function takeSnapshot(state: {
-  position: BoardPosition;
-  sideToMove: PieceColor;
-  castling: CastlingRights;
-  enPassant: string;
-  halfMoveClock: number;
-  fullMoveNumber: number;
-}): PositionSnapshot {
-  return {
-    position: { ...state.position },
-    sideToMove: state.sideToMove,
-    castling: { ...state.castling },
-    enPassant: state.enPassant,
-    halfMoveClock: state.halfMoveClock,
-    fullMoveNumber: state.fullMoveNumber,
-  };
-}
+import {
+  DEFAULT_ANALYSIS_SETTINGS,
+  DEFAULT_CASTLING,
+  DEFAULT_FEN,
+  EMPTY_CASTLING,
+  normalizeAnalysisError,
+  validateSearchSettings,
+  type StoredAnalysisResult,
+} from './boardEditorDefaults';
+import { usePositionHistory } from './usePositionHistory';
+import { useMovePreview, type PreviewStep } from './useMovePreview';
 
 export function useBoardEditor() {
   const { playMoveOutcome } = useGameSounds();
-  const startParsed = parseFenToPosition(DEFAULT_FEN);
-  const [position, setPosition] = useState<BoardPosition>({ ...startParsed.position });
-  const [sideToMove, setSideToMove] = useState<PieceColor>('w');
-  const [castling, setCastling] = useState<CastlingRights>({ ...DEFAULT_CASTLING });
-  const [enPassant, setEnPassant] = useState('-');
-  const [halfMoveClock, setHalfMoveClock] = useState(0);
-  const [fullMoveNumber, setFullMoveNumber] = useState(1);
+  const history = usePositionHistory(DEFAULT_FEN);
+  const {
+    position,
+    setPosition,
+    sideToMove,
+    setSideToMove,
+    castling,
+    setCastling,
+    enPassant,
+    setEnPassant,
+    halfMoveClock,
+    setHalfMoveClock,
+    fullMoveNumber,
+    setFullMoveNumber,
+    pushUndo,
+    applySnapshot,
+  } = history;
+
   const [isFlipped, setIsFlipped] = useState(false);
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [analysisSettings, setAnalysisSettings] = useState<AnalysisSettings>(DEFAULT_ANALYSIS_SETTINGS);
-
-  const [undoStack, setUndoStack] = useState<PositionSnapshot[]>([]);
-  const [redoStack, setRedoStack] = useState<PositionSnapshot[]>([]);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<StoredAnalysisResult | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [highlightSquares, setHighlightSquares] = useState<{ from: string; to: string } | null>(null);
-  const [movePreviewStatus, setMovePreviewStatusState] = useState<MovePreviewStatus>('idle');
   const abortControllerRef = useRef<AbortController | null>(null);
-  const showMovesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showMovesRunIdRef = useRef(0);
-  const showMovesStatusRef = useRef<MovePreviewStatus>('idle');
-  const showMovesStartSnapshotRef = useRef<PositionSnapshot | null>(null);
-  const showMovesStepsRef = useRef<Array<{ fen: string; from: string; to: string }>>([]);
-  const showMovesStepIndexRef = useRef(0);
-  const playNextShowMoveStepRef = useRef<(runId: number) => void>(() => undefined);
+
+  const preview = useMovePreview(applySnapshot, setHighlightSquares);
 
   const fen = useMemo(
     () => buildFen(position, sideToMove, castling, enPassant, halfMoveClock, fullMoveNumber),
@@ -113,113 +84,12 @@ export function useBoardEditor() {
     [validationErrors],
   );
 
-  const pushUndo = useCallback(() => {
-    setUndoStack((prev) => [
-      ...prev,
-      takeSnapshot({ position, sideToMove, castling, enPassant, halfMoveClock, fullMoveNumber }),
-    ]);
-    setRedoStack([]);
-  }, [position, sideToMove, castling, enPassant, halfMoveClock, fullMoveNumber]);
-
-  const setMovePreviewStatus = useCallback((status: MovePreviewStatus) => {
-    showMovesStatusRef.current = status;
-    setMovePreviewStatusState(status);
-  }, []);
-
-  const applySnapshot = useCallback((snapshot: PositionSnapshot) => {
-    setPosition(snapshot.position);
-    setSideToMove(snapshot.sideToMove);
-    setCastling(snapshot.castling);
-    setEnPassant(snapshot.enPassant);
-    setHalfMoveClock(snapshot.halfMoveClock);
-    setFullMoveNumber(snapshot.fullMoveNumber);
-  }, []);
-
-  const cancelShowMoves = useCallback(() => {
-    showMovesRunIdRef.current += 1;
-    if (showMovesTimerRef.current) {
-      clearTimeout(showMovesTimerRef.current);
-      showMovesTimerRef.current = null;
-    }
-    showMovesStepsRef.current = [];
-    showMovesStepIndexRef.current = 0;
-    showMovesStartSnapshotRef.current = null;
-    setMovePreviewStatus('idle');
-  }, [setMovePreviewStatus]);
-
   const clearAnalysis = useCallback(() => {
-    cancelShowMoves();
+    preview.cancel();
     setAnalysisResult(null);
     setAnalysisError(null);
     setHighlightSquares(null);
-  }, [cancelShowMoves]);
-
-  useEffect(() => () => {
-    showMovesRunIdRef.current += 1;
-    if (showMovesTimerRef.current) {
-      clearTimeout(showMovesTimerRef.current);
-      showMovesTimerRef.current = null;
-    }
-  }, []);
-
-  playNextShowMoveStepRef.current = (runId: number) => {
-    if (
-      showMovesRunIdRef.current !== runId ||
-      showMovesStatusRef.current !== 'playing'
-    ) {
-      return;
-    }
-
-    const step = showMovesStepsRef.current[showMovesStepIndexRef.current];
-    if (!step) {
-      setMovePreviewStatus('finished');
-      return;
-    }
-
-    showMovesTimerRef.current = setTimeout(() => {
-      showMovesTimerRef.current = null;
-
-      if (
-        showMovesRunIdRef.current !== runId ||
-        showMovesStatusRef.current !== 'playing'
-      ) {
-        return;
-      }
-
-      const parsed = parseFenToPosition(step.fen);
-      applySnapshot(parsed);
-      setHighlightSquares({ from: step.from, to: step.to });
-      showMovesStepIndexRef.current += 1;
-
-      if (showMovesStepIndexRef.current >= showMovesStepsRef.current.length) {
-        setMovePreviewStatus('finished');
-      } else {
-        playNextShowMoveStepRef.current(runId);
-      }
-    }, MOVE_PREVIEW_DELAY_MS);
-  };
-
-  const normalizeAnalysisError = useCallback((error: unknown) => {
-    const message = error instanceof Error ? error.message : 'Engine error';
-
-    if (
-      message.includes('Failed to fetch') ||
-      message.includes('Backend engine is unavailable') ||
-      message.includes('Backend engine endpoint failed')
-    ) {
-      return 'Analysis engine is unavailable. Start the backend server and ensure Stockfish is configured correctly.';
-    }
-
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      return 'Analysis timed out. Try a lower depth or shorter time.';
-    }
-
-    if (message.includes('Timed out')) {
-      return 'Analysis timed out. Try a lower depth or shorter time.';
-    }
-
-    return message;
-  }, []);
+  }, [preview]);
 
   const getSyncedCastling = useCallback(
     (nextPosition: BoardPosition, nextCastling: CastlingRights) => (
@@ -251,7 +121,7 @@ export function useBoardEditor() {
       clearAnalysis();
       return undefined;
     },
-    [position, pushUndo, clearAnalysis, getSyncedCastling, castling, analysisSettings.resetEnPassantOnEdit],
+    [position, pushUndo, setPosition, setCastling, setEnPassant, clearAnalysis, getSyncedCastling, castling, analysisSettings.resetEnPassantOnEdit],
   );
 
   const addPiece = useCallback(
@@ -273,7 +143,7 @@ export function useBoardEditor() {
       clearAnalysis();
       return undefined;
     },
-    [position, pushUndo, clearAnalysis, getSyncedCastling, castling, analysisSettings.resetEnPassantOnEdit],
+    [position, pushUndo, setPosition, setCastling, setEnPassant, clearAnalysis, getSyncedCastling, castling, analysisSettings.resetEnPassantOnEdit],
   );
 
   const removePiece = useCallback(
@@ -290,7 +160,7 @@ export function useBoardEditor() {
       }
       clearAnalysis();
     },
-    [position, pushUndo, clearAnalysis, getSyncedCastling, castling, analysisSettings.resetEnPassantOnEdit],
+    [position, pushUndo, setPosition, setCastling, setEnPassant, clearAnalysis, getSyncedCastling, castling, analysisSettings.resetEnPassantOnEdit],
   );
 
   const handleDrop = useCallback(
@@ -314,38 +184,16 @@ export function useBoardEditor() {
   // --- Undo / Redo ---
 
   const undo = useCallback(() => {
-    if (undoStack.length === 0) return;
-    const prev = undoStack[undoStack.length - 1];
-    setRedoStack((r) => [
-      ...r,
-      takeSnapshot({ position, sideToMove, castling, enPassant, halfMoveClock, fullMoveNumber }),
-    ]);
-    setUndoStack((u) => u.slice(0, -1));
-    setPosition(prev.position);
-    setSideToMove(prev.sideToMove);
-    setCastling(prev.castling);
-    setEnPassant(prev.enPassant);
-    setHalfMoveClock(prev.halfMoveClock);
-    setFullMoveNumber(prev.fullMoveNumber);
-    clearAnalysis();
-  }, [undoStack, position, sideToMove, castling, enPassant, halfMoveClock, fullMoveNumber, clearAnalysis]);
+    if (history.undo()) {
+      clearAnalysis();
+    }
+  }, [history, clearAnalysis]);
 
   const redo = useCallback(() => {
-    if (redoStack.length === 0) return;
-    const next = redoStack[redoStack.length - 1];
-    setUndoStack((u) => [
-      ...u,
-      takeSnapshot({ position, sideToMove, castling, enPassant, halfMoveClock, fullMoveNumber }),
-    ]);
-    setRedoStack((r) => r.slice(0, -1));
-    setPosition(next.position);
-    setSideToMove(next.sideToMove);
-    setCastling(next.castling);
-    setEnPassant(next.enPassant);
-    setHalfMoveClock(next.halfMoveClock);
-    setFullMoveNumber(next.fullMoveNumber);
-    clearAnalysis();
-  }, [redoStack, position, sideToMove, castling, enPassant, halfMoveClock, fullMoveNumber, clearAnalysis]);
+    if (history.redo()) {
+      clearAnalysis();
+    }
+  }, [history, clearAnalysis]);
 
   // --- Board presets ---
 
@@ -359,7 +207,7 @@ export function useBoardEditor() {
     setHalfMoveClock(0);
     setFullMoveNumber(1);
     clearAnalysis();
-  }, [pushUndo, clearAnalysis]);
+  }, [pushUndo, setPosition, setSideToMove, setCastling, setEnPassant, setHalfMoveClock, setFullMoveNumber, clearAnalysis]);
 
   const clearBoard = useCallback(() => {
     pushUndo();
@@ -369,7 +217,7 @@ export function useBoardEditor() {
     setHalfMoveClock(0);
     setFullMoveNumber(1);
     clearAnalysis();
-  }, [pushUndo, clearAnalysis]);
+  }, [pushUndo, setPosition, setCastling, setEnPassant, setHalfMoveClock, setFullMoveNumber, clearAnalysis]);
 
   const keepKingsOnly = useCallback(() => {
     pushUndo();
@@ -381,7 +229,7 @@ export function useBoardEditor() {
     setCastling({ ...EMPTY_CASTLING });
     setEnPassant('-');
     clearAnalysis();
-  }, [position, pushUndo, clearAnalysis]);
+  }, [position, pushUndo, setPosition, setCastling, setEnPassant, clearAnalysis]);
 
   const flipBoard = useCallback(() => {
     setIsFlipped((f) => !f);
@@ -393,32 +241,32 @@ export function useBoardEditor() {
     pushUndo();
     setSideToMove(side);
     clearAnalysis();
-  }, [pushUndo, clearAnalysis]);
+  }, [pushUndo, setSideToMove, clearAnalysis]);
 
   const updateCastling = useCallback((key: keyof CastlingRights, value: boolean) => {
     const nextCastling = getSyncedCastling(position, { ...castling, [key]: value });
     pushUndo();
     setCastling(nextCastling);
     clearAnalysis();
-  }, [pushUndo, clearAnalysis, getSyncedCastling, position, castling]);
+  }, [pushUndo, setCastling, clearAnalysis, getSyncedCastling, position, castling]);
 
   const updateEnPassant = useCallback((value: string) => {
     pushUndo();
     setEnPassant(value || '-');
     clearAnalysis();
-  }, [pushUndo, clearAnalysis]);
+  }, [pushUndo, setEnPassant, clearAnalysis]);
 
   const updateHalfMoveClock = useCallback((value: number) => {
     pushUndo();
     setHalfMoveClock(Math.max(0, value));
     clearAnalysis();
-  }, [pushUndo, clearAnalysis]);
+  }, [pushUndo, setHalfMoveClock, clearAnalysis]);
 
   const updateFullMoveNumber = useCallback((value: number) => {
     pushUndo();
     setFullMoveNumber(Math.max(1, value));
     clearAnalysis();
-  }, [pushUndo, clearAnalysis]);
+  }, [pushUndo, setFullMoveNumber, clearAnalysis]);
 
   const loadFen = useCallback((fenStr: string) => {
     try {
@@ -436,7 +284,9 @@ export function useBoardEditor() {
     } catch (error) {
       return error instanceof Error ? error.message : 'Invalid FEN string';
     }
-  }, [pushUndo, clearAnalysis, getSyncedCastling]);
+  }, [pushUndo, setPosition, setSideToMove, setCastling, setEnPassant, setHalfMoveClock, setFullMoveNumber, clearAnalysis, getSyncedCastling]);
+
+  // --- Analysis settings ---
 
   const updateSearchMode = useCallback((mode: AnalysisSettings['searchMode']) => {
     setAnalysisSettings((prev) => ({ ...prev, searchMode: mode }));
@@ -463,7 +313,7 @@ export function useBoardEditor() {
       setCastling((prev) => normalizeCastlingRights(position, prev));
     }
     clearAnalysis();
-  }, [position, clearAnalysis]);
+  }, [position, setCastling, clearAnalysis]);
 
   const setResetEnPassantOnEdit = useCallback((value: boolean) => {
     setAnalysisSettings((prev) => ({ ...prev, resetEnPassantOnEdit: value }));
@@ -484,7 +334,7 @@ export function useBoardEditor() {
     pushUndo();
     setCastling((prev) => normalizeCastlingRights(position, prev));
     clearAnalysis();
-  }, [position, pushUndo, clearAnalysis]);
+  }, [position, pushUndo, setCastling, clearAnalysis]);
 
   // --- Engine analysis ---
 
@@ -498,25 +348,17 @@ export function useBoardEditor() {
   const findBestMove = useCallback(async () => {
     if (!canAnalyze || isAnalyzing) return;
 
-    // Validate search parameters
-    const { searchMode, searchDepth, moveTimeMs } = analysisSettings;
-    if (searchMode === 'depth') {
-      if (!searchDepth || searchDepth < 1 || searchDepth > MAX_SEARCH_DEPTH || !Number.isInteger(searchDepth)) {
-        setAnalysisError(`Depth must be a whole number between 1 and ${MAX_SEARCH_DEPTH}.`);
-        return;
-      }
-    } else {
-      if (!moveTimeMs || moveTimeMs < 100 || moveTimeMs > MAX_MOVE_TIME_MS) {
-        setAnalysisError(`Time must be between 0.1 and ${MAX_MOVE_TIME_MS / 1000} seconds.`);
-        return;
-      }
+    const settingsError = validateSearchSettings(analysisSettings);
+    if (settingsError) {
+      setAnalysisError(settingsError);
+      return;
     }
 
     // Create a new abort controller for this analysis
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    cancelShowMoves();
+    preview.cancel();
     setIsAnalyzing(true);
     setAnalysisError(null);
     setAnalysisResult(null);
@@ -526,9 +368,9 @@ export function useBoardEditor() {
       const service = getStockfishService();
       const result = await service.analyze(fen, {
         difficulty,
-        searchMode,
-        searchDepth,
-        moveTimeMs,
+        searchMode: analysisSettings.searchMode,
+        searchDepth: analysisSettings.searchDepth,
+        moveTimeMs: analysisSettings.moveTimeMs,
       }, controller.signal);
 
       if (!result.bestMove || result.bestMove === '(none)') {
@@ -558,12 +400,12 @@ export function useBoardEditor() {
       setIsAnalyzing(false);
       abortControllerRef.current = null;
     }
-  }, [canAnalyze, isAnalyzing, fen, difficulty, analysisSettings, normalizeAnalysisError, cancelShowMoves]);
+  }, [canAnalyze, isAnalyzing, fen, difficulty, analysisSettings, preview]);
 
   const applyBestMove = useCallback(() => {
     if (!analysisResult?.bestMove) return;
 
-    cancelShowMoves();
+    preview.cancel();
 
     try {
       // Use chess.js for correct handling of castling, en passant, etc.
@@ -582,12 +424,7 @@ export function useBoardEditor() {
 
       const parsed = parseFenToPosition(game.fen());
       pushUndo();
-      setPosition(parsed.position);
-      setSideToMove(parsed.sideToMove);
-      setCastling(parsed.castling);
-      setEnPassant(parsed.enPassant);
-      setHalfMoveClock(parsed.halfMoveClock);
-      setFullMoveNumber(parsed.fullMoveNumber);
+      applySnapshot(parsed);
     } catch {
       // Fallback: manually move the piece
       const { from, to, promotion } = parseUciMove(analysisResult.bestMove);
@@ -604,10 +441,10 @@ export function useBoardEditor() {
       setSideToMove((prev) => (prev === 'w' ? 'b' : 'w'));
     }
     clearAnalysis();
-  }, [analysisResult, fen, pushUndo, clearAnalysis, playMoveOutcome, cancelShowMoves]);
+  }, [analysisResult, fen, pushUndo, applySnapshot, setPosition, setSideToMove, clearAnalysis, playMoveOutcome, preview]);
 
   const showSuggestedMoves = useCallback(() => {
-    if (!analysisResult?.bestMove || movePreviewStatus === 'playing') return;
+    if (!analysisResult?.bestMove || preview.status === 'playing') return;
 
     const uciMoves = (analysisResult.pv?.trim().split(/\s+/).filter(Boolean) ?? []);
     const movesToPreview = uciMoves[0] === analysisResult.bestMove
@@ -615,7 +452,7 @@ export function useBoardEditor() {
       : [analysisResult.bestMove, ...uciMoves];
     const startingFen = analysisResult.analyzedFen ?? fen;
     const game = new Chess(startingFen);
-    const previewSteps: Array<{ fen: string; from: string; to: string }> = [];
+    const previewSteps: PreviewStep[] = [];
 
     for (const uci of movesToPreview) {
       try {
@@ -631,69 +468,13 @@ export function useBoardEditor() {
     if (previewSteps.length === 0) return;
 
     const startPosition = parseFenToPosition(startingFen);
-    const runId = showMovesRunIdRef.current + 1;
-    showMovesRunIdRef.current = runId;
-    showMovesStartSnapshotRef.current = takeSnapshot({
-      position,
-      sideToMove,
-      castling,
-      enPassant,
-      halfMoveClock,
-      fullMoveNumber,
-    });
-    showMovesStepsRef.current = previewSteps;
-    showMovesStepIndexRef.current = 0;
+    const startSnapshot = history.snapshot();
     pushUndo();
-    applySnapshot(startPosition);
-    setHighlightSquares(null);
-    setMovePreviewStatus('playing');
-    playNextShowMoveStepRef.current(runId);
-  }, [
-    analysisResult,
-    movePreviewStatus,
-    fen,
-    position,
-    sideToMove,
-    castling,
-    enPassant,
-    halfMoveClock,
-    fullMoveNumber,
-    pushUndo,
-    applySnapshot,
-    setMovePreviewStatus,
-  ]);
-
-  const pauseSuggestedMoves = useCallback(() => {
-    if (movePreviewStatus !== 'playing') return;
-
-    if (showMovesTimerRef.current) {
-      clearTimeout(showMovesTimerRef.current);
-      showMovesTimerRef.current = null;
-    }
-    setMovePreviewStatus('paused');
-  }, [movePreviewStatus, setMovePreviewStatus]);
-
-  const resumeSuggestedMoves = useCallback(() => {
-    if (movePreviewStatus !== 'paused') return;
-
-    setMovePreviewStatus('playing');
-    playNextShowMoveStepRef.current(showMovesRunIdRef.current);
-  }, [movePreviewStatus, setMovePreviewStatus]);
+    preview.start(previewSteps, startSnapshot, startPosition);
+  }, [analysisResult, fen, history, pushUndo, preview]);
 
   const restoreSuggestedMoves = useCallback(() => {
-    const snapshot = showMovesStartSnapshotRef.current;
-    if (!snapshot) return;
-
-    showMovesRunIdRef.current += 1;
-    if (showMovesTimerRef.current) {
-      clearTimeout(showMovesTimerRef.current);
-      showMovesTimerRef.current = null;
-    }
-    applySnapshot(snapshot);
-    showMovesStepsRef.current = [];
-    showMovesStepIndexRef.current = 0;
-    showMovesStartSnapshotRef.current = null;
-    setMovePreviewStatus('idle');
+    if (!preview.restore()) return;
 
     if (analysisResult?.bestMove) {
       const { from, to } = parseUciMove(analysisResult.bestMove);
@@ -701,7 +482,7 @@ export function useBoardEditor() {
     } else {
       setHighlightSquares(null);
     }
-  }, [analysisResult, analysisSettings.highlightSuggestedMove, applySnapshot, setMovePreviewStatus]);
+  }, [analysisResult, analysisSettings.highlightSuggestedMove, preview]);
 
   return {
     position,
@@ -746,12 +527,12 @@ export function useBoardEditor() {
 
     undo,
     redo,
-    canUndo: undoStack.length > 0,
-    canRedo: redoStack.length > 0,
+    canUndo: history.canUndo,
+    canRedo: history.canRedo,
 
     isAnalyzing,
-    movePreviewStatus,
-    isShowingMoves: movePreviewStatus === 'playing',
+    movePreviewStatus: preview.status,
+    isShowingMoves: preview.status === 'playing',
     analysisResult,
     analysisError,
     highlightSquares,
@@ -759,8 +540,8 @@ export function useBoardEditor() {
     cancelAnalysis,
     applyBestMove,
     showSuggestedMoves,
-    pauseSuggestedMoves,
-    resumeSuggestedMoves,
+    pauseSuggestedMoves: preview.pause,
+    resumeSuggestedMoves: preview.resume,
     restoreSuggestedMoves,
   };
 }
