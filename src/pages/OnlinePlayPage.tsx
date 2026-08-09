@@ -23,6 +23,12 @@ import GameStartCurtain from '../components/chess/GameStartCurtain';
 import GameEndDialog from '../components/chess/GameEndDialog';
 import BoardLayout from '../components/chess/BoardLayout';
 import ZoomControls from '../components/chess/ZoomControls';
+import {
+  controlBarPaperSx,
+  controlBarRowSx,
+  controlBarTitleSx,
+  controlOutlinedButtonSx,
+} from '../components/chess/controlBarStyles';
 import { useBoardZoom } from '../hooks/useBoardZoom';
 import { useSocket } from '../hooks/useSocket';
 import { usePremoveQueue } from '../hooks/usePremoveQueue';
@@ -664,34 +670,36 @@ const OnlinePlayPage: React.FC = () => {
             />
           </Box>
           {renderPlayerStrip(yourName, yourCapturedCount, yourClock, youActive, yourName, true)}
-          <Paper elevation={2} sx={{ p: 1.25 }}>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 700, mb: 0.75 }}>
+          <Paper elevation={2} sx={controlBarPaperSx}>
+            <Typography variant="subtitle2" color="text.secondary" sx={controlBarTitleSx}>
               Controls
             </Typography>
-            <Box sx={{ display: 'flex', gap: 0.5, rowGap: 0.5, alignItems: 'center', flexWrap: 'wrap', overflowX: 'visible' }}>
+            <Box sx={controlBarRowSx}>
               {!gameEnded && (
                 <>
                   <Button
                     variant="outlined"
-                    size="small"
                     onClick={() => onlineGame.gameId && offerDraw(onlineGame.gameId)}
-                    sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem', flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
+                    sx={{ ...controlOutlinedButtonSx, flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
                   >
                     Draw
                   </Button>
                   <Button
                     variant="outlined"
                     color="error"
-                    size="small"
                     onClick={() => setShowResignDialog(true)}
-                    sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem', flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
+                    sx={{ ...controlOutlinedButtonSx, flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
                   >
                     Resign
                   </Button>
                 </>
               )}
               {gameEnded && (
-                <Button variant="contained" onClick={handleNewGame} sx={{ minWidth: 0, px: 0.8, py: 0.2, fontSize: '0.72rem', flex: { xs: '1 1 auto', sm: '0 0 auto' } }}>
+                <Button
+                  variant="contained"
+                  onClick={handleNewGame}
+                  sx={{ ...controlOutlinedButtonSx, flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
+                >
                   New
                 </Button>
               )}

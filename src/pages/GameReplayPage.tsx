@@ -29,6 +29,14 @@ import ReplayMoveList from '../components/chess/ReplayMoveList';
 import { type ReplaySpeed } from '../components/chess/ReplayControls';
 import BoardLayout from '../components/chess/BoardLayout';
 import ZoomControls from '../components/chess/ZoomControls';
+import {
+  controlBarPaperSx,
+  controlBarRowSx,
+  controlBarTitleSx,
+  controlDividerSx,
+  controlIconButtonSx,
+  controlIconSx,
+} from '../components/chess/controlBarStyles';
 import { useBoardZoom } from '../hooks/useBoardZoom';
 import { useGameSounds } from '../hooks/useGameSounds';
 
@@ -259,42 +267,38 @@ const GameReplayPage: React.FC = () => {
       boardWidth={zoom.boardWidth}
       board={<>
         <ReplayBoard fen={currentFen} lastMove={lastMove} isFlipped={isFlipped} />
-        <Paper elevation={2} sx={{ p: 1.25 }}>
-          <Typography
-            variant="subtitle2"
-            color="text.secondary"
-            sx={{ fontSize: { xs: '0.95rem', lg: '1.15rem' }, fontWeight: 700, mb: 0.75 }}
-          >
+        <Paper elevation={2} sx={controlBarPaperSx}>
+          <Typography variant="subtitle2" color="text.secondary" sx={controlBarTitleSx}>
             Controls
           </Typography>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, rowGap: 0.5, flexWrap: 'wrap', overflowX: 'visible' }}>
+          <Box sx={controlBarRowSx}>
             <Tooltip title="Back to History">
-              <IconButton size="small" onClick={() => navigate('/history')} sx={{ p: 0.4 }}>
-                <ArrowBackIcon fontSize="small" />
+              <IconButton onClick={() => navigate('/history')} sx={controlIconButtonSx}>
+                <ArrowBackIcon sx={controlIconSx} />
               </IconButton>
             </Tooltip>
 
             <Tooltip title="Flip board">
-              <IconButton size="small" onClick={() => setIsFlipped((f) => !f)} sx={{ p: 0.4 }}>
-                <SwapVertIcon fontSize="small" />
+              <IconButton onClick={() => setIsFlipped((f) => !f)} sx={controlIconButtonSx}>
+                <SwapVertIcon sx={controlIconSx} />
               </IconButton>
             </Tooltip>
 
-            <Divider orientation="vertical" flexItem sx={{ mx: 0.25 }} />
+            <Divider orientation="vertical" flexItem sx={controlDividerSx} />
 
             <Tooltip title="First move">
               <span>
-                <IconButton onClick={handleFirst} disabled={atStart} size="small" color="primary" sx={{ p: 0.4 }}>
-                  <FirstPageIcon sx={{ fontSize: 18 }} />
+                <IconButton onClick={handleFirst} disabled={atStart} color="primary" sx={controlIconButtonSx}>
+                  <FirstPageIcon sx={controlIconSx} />
                 </IconButton>
               </span>
             </Tooltip>
 
             <Tooltip title="Previous move (←)">
               <span>
-                <IconButton onClick={handlePrev} disabled={atStart} size="small" color="primary" sx={{ p: 0.4 }}>
-                  <ChevronLeftIcon sx={{ fontSize: 18 }} />
+                <IconButton onClick={handlePrev} disabled={atStart} color="primary" sx={controlIconButtonSx}>
+                  <ChevronLeftIcon sx={controlIconSx} />
                 </IconButton>
               </span>
             </Tooltip>
@@ -304,44 +308,49 @@ const GameReplayPage: React.FC = () => {
                 <IconButton
                   onClick={handlePlayPause}
                   disabled={totalMoves === 0}
-                  size="small"
                   color="primary"
                   sx={{
-                    p: 0.5,
+                    ...controlIconButtonSx,
+                    p: { xs: 0.55, lg: 1 },
                     bgcolor: 'primary.main',
                     color: 'primary.contrastText',
-                    '&:hover': { bgcolor: 'primary.dark' },
-                    '&:disabled': { bgcolor: 'action.disabledBackground' },
+                    borderColor: 'primary.main',
+                    '&:hover': { bgcolor: 'primary.dark', borderColor: 'primary.dark' },
+                    '&:disabled': { bgcolor: 'action.disabledBackground', borderColor: 'divider' },
                   }}
                 >
-                  {isPlaying ? <PauseIcon sx={{ fontSize: 18 }} /> : <PlayArrowIcon sx={{ fontSize: 18 }} />}
+                  {isPlaying ? <PauseIcon sx={controlIconSx} /> : <PlayArrowIcon sx={controlIconSx} />}
                 </IconButton>
               </span>
             </Tooltip>
 
             <Tooltip title="Next move (→)">
               <span>
-                <IconButton onClick={handleNext} disabled={atEnd} size="small" color="primary" sx={{ p: 0.4 }}>
-                  <ChevronRightIcon sx={{ fontSize: 18 }} />
+                <IconButton onClick={handleNext} disabled={atEnd} color="primary" sx={controlIconButtonSx}>
+                  <ChevronRightIcon sx={controlIconSx} />
                 </IconButton>
               </span>
             </Tooltip>
 
             <Tooltip title="Last move">
               <span>
-                <IconButton onClick={handleLast} disabled={atEnd} size="small" color="primary" sx={{ p: 0.4 }}>
-                  <LastPageIcon sx={{ fontSize: 18 }} />
+                <IconButton onClick={handleLast} disabled={atEnd} color="primary" sx={controlIconButtonSx}>
+                  <LastPageIcon sx={controlIconSx} />
                 </IconButton>
               </span>
             </Tooltip>
 
-            <Divider orientation="vertical" flexItem sx={{ mx: 0.25 }} />
+            <Divider orientation="vertical" flexItem sx={controlDividerSx} />
 
             <Select
               value={speed}
               onChange={(e) => handleSpeedChange(Number(e.target.value) as ReplaySpeed)}
               size="small"
-              sx={{ fontSize: '0.7rem', minWidth: 58 }}
+              sx={{
+                fontSize: { xs: '0.7rem', lg: '0.9rem' },
+                minWidth: { xs: 58, lg: 78 },
+                minHeight: { xs: 30, lg: 42 },
+              }}
             >
               <MenuItem value={0.5}>0.5×</MenuItem>
               <MenuItem value={1}>1×</MenuItem>

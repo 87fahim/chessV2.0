@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, IconButton, Tooltip, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
+import { controlIconButtonSx, controlIconSx } from './controlBarStyles';
 
 interface ZoomControlsProps {
   onZoomIn: () => void;
@@ -22,21 +23,19 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
     sx={{
       display: 'flex',
       alignItems: 'center',
-      gap: 0.25,
+      gap: { xs: 0.35, lg: 0.6 },
       ml: { xs: 0, sm: 'auto' },
       flex: '0 0 auto',
     }}
   >
     <Tooltip title="Zoom out">
-      {/* span needed so Tooltip works on a disabled button */}
       <span>
         <IconButton
-          size="small"
           onClick={onZoomOut}
           disabled={!canZoomOut}
-          sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: '2px' }}
+          sx={controlIconButtonSx}
         >
-          <RemoveIcon sx={{ fontSize: 16 }} />
+          <RemoveIcon sx={controlIconSx} />
         </IconButton>
       </span>
     </Tooltip>
@@ -44,10 +43,11 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
     <Typography
       variant="caption"
       sx={{
-        minWidth: 30,
+        minWidth: { xs: 30, lg: 44 },
         textAlign: 'center',
         userSelect: 'none',
-        fontSize: '0.64rem',
+        fontSize: { xs: '0.68rem', lg: '0.9rem' },
+        fontWeight: 700,
         color: 'text.secondary',
       }}
     >
@@ -57,12 +57,11 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
     <Tooltip title="Zoom in">
       <span>
         <IconButton
-          size="small"
           onClick={onZoomIn}
           disabled={!canZoomIn}
-          sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: '2px' }}
+          sx={controlIconButtonSx}
         >
-          <AddIcon sx={{ fontSize: 16 }} />
+          <AddIcon sx={controlIconSx} />
         </IconButton>
       </span>
     </Tooltip>
