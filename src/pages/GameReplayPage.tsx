@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -113,7 +113,7 @@ const GameReplayPage: React.FC = () => {
     }
   }, [currentGameId, defaultBoardFlipped]);
 
-  const moves = currentGame?.moves ?? [];
+  const moves = useMemo(() => currentGame?.moves ?? [], [currentGame?.moves]);
   const totalMoves = moves.length;
 
   // Build position array: index 0 = start, index i+1 = after moves[i]

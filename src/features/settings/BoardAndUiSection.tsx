@@ -13,8 +13,8 @@ import {
   ThemeGridSection,
   ThemeGridViewport,
   ThemeOptionCard,
-  getThemeGridMetrics,
 } from './ThemePreview';
+import { getThemeGridMetrics } from './themeGrid';
 
 interface BoardAndUiSectionProps {
   settings: UserSettingsData;
