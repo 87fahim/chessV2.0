@@ -53,6 +53,7 @@ const AnalysisPage: React.FC = () => {
   const [isSavingPosition, setIsSavingPosition] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
+  const [boardHeight, setBoardHeight] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -153,9 +154,23 @@ const AnalysisPage: React.FC = () => {
           isFlipped={editor.isFlipped}
           highlightSquares={editor.highlightSquares}
           onDrop={editor.handleDrop}
+          onBoardHeightChange={setBoardHeight}
         />
       </>}
-      panel={<>
+      panel={
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+            // Match the 8x8 board height and stay vertically centered with it.
+            height: { xs: 'auto', lg: boardHeight ? `${boardHeight}px` : 'auto' },
+            maxHeight: { xs: 'none', lg: boardHeight ? `${boardHeight}px` : 'none' },
+            overflow: { xs: 'visible', lg: 'auto' },
+            minHeight: 0,
+            boxSizing: 'border-box',
+          }}
+        >
         {/* Engine Analysis */}
         <Paper elevation={2} sx={{ p: 1.25 }}>
           <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.86rem' }}>
@@ -526,7 +541,8 @@ const AnalysisPage: React.FC = () => {
           </Paper>
         )}
 
-      </>}
+        </Box>
+      }
     />
 
     {/* Save Position Dialog */}
