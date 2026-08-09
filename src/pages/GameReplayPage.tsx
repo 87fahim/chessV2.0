@@ -30,6 +30,7 @@ import { type ReplaySpeed } from '../components/chess/ReplayControls';
 import BoardLayout from '../components/chess/BoardLayout';
 import ZoomControls from '../components/chess/ZoomControls';
 import { useBoardZoom } from '../hooks/useBoardZoom';
+import { useGameSounds } from '../hooks/useGameSounds';
 
 const STARTING_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -70,6 +71,7 @@ function resultLabel(result: string, reason?: string): { text: string; color: 's
 
 const GameReplayPage: React.FC = () => {
   const zoom = useBoardZoom();
+  const { playMoveOutcome } = useGameSounds();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -83,6 +85,7 @@ const GameReplayPage: React.FC = () => {
   const [isFlipped, setIsFlipped] = useState(defaultBoardFlipped);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const previousMoveIndexRef = useRef(moveIndex);
   const currentGameId = currentGame?._id;
 
   useEffect(() => {
@@ -113,6 +116,29 @@ const GameReplayPage: React.FC = () => {
 
   const currentFen = positions[moveIndex + 1] ?? STARTING_FEN;
   const lastMove = moveIndex >= 0 ? { from: moves[moveIndex].from, to: moves[moveIndex].to } : null;
+
+  // Play move/capture/check sounds when replay advances forward.
+  useEffect(() => {
+    const previousIndex = previousMoveIndexRef.current;
+    previousMoveIndexRef.current = moveIndex;
+
+    if (moveIndex < 0 || moveIndex <= previousIndex) {
+      return;
+    }
+
+    const move = moves[moveIndex];
+    if (!move?.san) {
+      return;
+    }
+
+    playMoveOutcome({
+      san: move.san,
+      captured: move.san.includes('x'),
+      promotion: move.san.includes('=') ? 'q' : undefined,
+      isCheck: move.san.includes('+') && !move.san.includes('#'),
+      isCheckmate: move.san.includes('#'),
+    });
+  }, [moveIndex, moves, playMoveOutcome]);
 
   // Auto-play interval
   const stopPlay = useCallback(() => {
