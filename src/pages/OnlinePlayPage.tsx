@@ -4,16 +4,8 @@ import {
   Typography,
   Paper,
   Button,
-  ToggleButtonGroup,
-  ToggleButton,
   Alert,
   Chip,
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Avatar,
 } from '@mui/material';
 import { Chess } from 'chess.js';
 import { useNavigate } from 'react-router-dom';
@@ -29,6 +21,18 @@ import {
   controlBarTitleSx,
   controlOutlinedButtonSx,
 } from '../components/chess/controlBarStyles';
+import OnlineLobby from '../features/onlinePlay/OnlineLobby';
+import PlayerStrip from '../features/onlinePlay/PlayerStrip';
+import ConfirmActionDialog from '../features/onlinePlay/ConfirmActionDialog';
+import {
+  DISCONNECT_TIMEOUT_S,
+  getCapturedCounts,
+  getResultText,
+  isPlayersTurn,
+  resolveDefaultTimeControl,
+  resolvePreferredColor,
+  type TimeControlValue,
+} from '../features/onlinePlay/onlinePlayUtils';
 import { useBoardZoom } from '../hooks/useBoardZoom';
 import { useSocket } from '../hooks/useSocket';
 import { usePremoveQueue } from '../hooks/usePremoveQueue';
@@ -36,78 +40,6 @@ import { useAppSelector, useAppDispatch } from '../hooks/useStore';
 import { useActiveGameSession } from '../hooks/useActiveGameSession';
 import { setFen, moveMade, gameOver, setStatus, resetGame, setFlipped, setLastMove } from '../features/game/gameSlice';
 import type { PieceColor, PieceType } from '../types/chess';
-
-const STARTING_PIECE_COUNTS = {
-  w: { p: 8, n: 2, b: 2, r: 2, q: 1 },
-  b: { p: 8, n: 2, b: 2, r: 2, q: 1 },
-} as const;
-
-const TIME_CONTROLS = [
-  { label: '1 min', value: { initialMs: 60000, incrementMs: 0 } },
-  { label: '3 min', value: { initialMs: 180000, incrementMs: 0 } },
-  { label: '5 min', value: { initialMs: 300000, incrementMs: 0 } },
-  { label: '10 min', value: { initialMs: 600000, incrementMs: 0 } },
-  { label: '3+2', value: { initialMs: 180000, incrementMs: 2000 } },
-  { label: '5+3', value: { initialMs: 300000, incrementMs: 3000 } },
-  { label: '15+10', value: { initialMs: 900000, incrementMs: 10000 } },
-];
-
-const COMPACT_PLAYER_STRIP_QUERY = '@media (max-height: 760px)';
-
-type TimeControlValue = (typeof TIME_CONTROLS)[number]['value'];
-
-function resolveDefaultTimeControl(defaultTimeControl?: string) {
-  const match = TIME_CONTROLS.find((timeControl) => {
-    const baseMinutes = Math.round(timeControl.value.initialMs / 60000);
-    const incrementSeconds = Math.round(timeControl.value.incrementMs / 1000);
-    return `${baseMinutes}+${incrementSeconds}` === defaultTimeControl;
-  });
-
-  return match?.value ?? TIME_CONTROLS[3].value;
-}
-
-function resolvePreferredColor(value?: string): 'random' | 'white' | 'black' {
-  if (value === 'white' || value === 'black') {
-    return value;
-  }
-  return 'random';
-}
-
-function formatTime(ms: number) {
-  const totalSec = Math.max(0, Math.floor(ms / 1000));
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-function getCapturedCounts(fen: string) {
-  const game = new Chess(fen);
-  const remaining = {
-    w: { p: 0, n: 0, b: 0, r: 0, q: 0 },
-    b: { p: 0, n: 0, b: 0, r: 0, q: 0 },
-  };
-
-  for (const row of game.board()) {
-    for (const piece of row) {
-      if (!piece || piece.type === 'k') continue;
-      remaining[piece.color][piece.type] += 1;
-    }
-  }
-
-  const missingWhite = Object.entries(STARTING_PIECE_COUNTS.w).reduce(
-    (sum, [type, count]) => sum + (count - remaining.w[type as keyof typeof remaining.w]),
-    0,
-  );
-  const missingBlack = Object.entries(STARTING_PIECE_COUNTS.b).reduce(
-    (sum, [type, count]) => sum + (count - remaining.b[type as keyof typeof remaining.b]),
-    0,
-  );
-
-  return {
-    capturedByWhite: missingBlack,
-    capturedByBlack: missingWhite,
-  };
-}
 
 const OnlinePlayPage: React.FC = () => {
   const zoom = useBoardZoom();
@@ -168,7 +100,6 @@ const OnlinePlayPage: React.FC = () => {
   const myPieceColor: PieceColor | undefined = onlineGame.yourColor === 'white' ? 'w' : onlineGame.yourColor === 'black' ? 'b' : undefined;
 
   // Disconnect countdown: tick from 60 → 0 when opponent goes offline
-  const DISCONNECT_TIMEOUT_S = 60;
   useEffect(() => {
     if (!onlineGame.opponentOnline && onlineGame.status === 'active') {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional disconnect countdown init
@@ -278,14 +209,10 @@ const OnlinePlayPage: React.FC = () => {
   const handleMoveInternal = useCallback(
     (from: string, to: string, promotion?: string) => {
       if (!onlineGame.gameId) return;
+      if (!isPlayersTurn(onlineGame.fen, onlineGame.yourColor)) return;
 
       // Validate locally first
       const game = new Chess(onlineGame.fen);
-      const yourTurn =
-        (onlineGame.yourColor === 'white' && game.turn() === 'w') ||
-        (onlineGame.yourColor === 'black' && game.turn() === 'b');
-      if (!yourTurn) return;
-
       const result = game.move({ from, to, promotion: promotion || undefined });
       if (!result) return;
 
@@ -315,12 +242,7 @@ const OnlinePlayPage: React.FC = () => {
 
     if (onlineGame.status !== 'active' || !onlineGame.gameId) return;
     if (premoveQueue.length === 0) return;
-
-    const game = new Chess(onlineGame.fen);
-    const isMyTurn =
-      (onlineGame.yourColor === 'white' && game.turn() === 'w') ||
-      (onlineGame.yourColor === 'black' && game.turn() === 'b');
-    if (!isMyTurn) return;
+    if (!isPlayersTurn(onlineGame.fen, onlineGame.yourColor)) return;
 
     const premove = processNextPremove(onlineGame.fen);
     if (premove) {
@@ -375,128 +297,24 @@ const OnlinePlayPage: React.FC = () => {
   // Lobby view - no active game
   if (!onlineGame.gameId) {
     return (
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: { xs: 'flex-start', sm: 'center' },
-          alignItems: { xs: 'stretch', sm: 'center' },
-          minHeight: '100%',
-          p: { xs: 1.5, sm: 3 },
-          boxSizing: 'border-box',
-        }}
-      >
-        <Paper elevation={3} sx={{ p: { xs: 2, sm: 4 }, maxWidth: 460, width: '100%', textAlign: 'center' }}>
-          <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
-            Play Online
-          </Typography>
-
-          {!isConnected && (
-            <Alert severity="warning" sx={{ mb: 2 }}>Connecting to server...</Alert>
-          )}
-          {error && <Alert severity="error" sx={{ mb: 2 }} onClose={clearError}>{error}</Alert>}
-
-          {/* AC1/AC7/AC8: while checking for an existing active session, show a subtle indicator */}
-          {isCheckingSession && !isInQueue && (
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 2 }}>
-              <CircularProgress size={16} />
-              <Typography variant="caption" color="text.secondary">Checking for active game…</Typography>
-            </Box>
-          )}
-
-          {isInQueue ? (
-            <Box>
-              <CircularProgress sx={{ mb: 2 }} />
-              <Typography variant="body1" sx={{ mb: 2 }}>Searching for opponent...</Typography>
-              <Button variant="outlined" onClick={handleLeaveQueue}>Cancel</Button>
-            </Box>
-          ) : (
-            <>
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>Time Control</Typography>
-                <ToggleButtonGroup
-                  value={JSON.stringify(selectedTC)}
-                  exclusive
-                  onChange={(_, v) => v && setSelectedTCOverride(JSON.parse(v) as TimeControlValue)}
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: 'repeat(3, minmax(0, 1fr))', sm: 'repeat(4, minmax(0, 1fr))' },
-                    gap: 0.5,
-                    width: '100%',
-                    '& .MuiToggleButtonGroup-grouped': {
-                      m: 0,
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                    },
-                    '& .MuiToggleButton-root': {
-                      px: 1,
-                      py: 0.85,
-                      whiteSpace: 'nowrap',
-                      fontSize: { xs: '0.75rem', sm: '0.85rem' },
-                    },
-                  }}
-                >
-                  {TIME_CONTROLS.map((tc) => (
-                    <ToggleButton key={tc.label} value={JSON.stringify(tc.value)} size="small">
-                      {tc.label}
-                    </ToggleButton>
-                  ))}
-                </ToggleButtonGroup>
-              </Box>
-
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>Preferred Color</Typography>
-                <ToggleButtonGroup
-                  value={preferredColor}
-                  exclusive
-                  onChange={(_, v) => v && setPreferredColorOverride(v)}
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                    gap: 0.5,
-                    width: '100%',
-                    '& .MuiToggleButtonGroup-grouped': {
-                      m: 0,
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                    },
-                    '& .MuiToggleButton-root': {
-                      px: 1,
-                      py: 0.9,
-                      whiteSpace: 'nowrap',
-                      fontSize: { xs: '0.75rem', sm: '0.85rem' },
-                    },
-                  }}
-                >
-                  <ToggleButton value="random">Random</ToggleButton>
-                  <ToggleButton value="white">♔ White</ToggleButton>
-                  <ToggleButton value="black">♚ Black</ToggleButton>
-                </ToggleButtonGroup>
-              </Box>
-
-              <Button
-                variant="contained"
-                size="large"
-                fullWidth
-                disabled={!isConnected || isCheckingSession}
-                onClick={handleJoinQueue}
-              >
-                Find Match
-              </Button>
-            </>
-          )}
-        </Paper>
-      </Box>
+      <OnlineLobby
+        isConnected={isConnected}
+        isCheckingSession={isCheckingSession}
+        isInQueue={isInQueue}
+        error={error}
+        selectedTC={selectedTC}
+        preferredColor={preferredColor}
+        onClearError={clearError}
+        onSelectTimeControl={setSelectedTCOverride}
+        onSelectColor={setPreferredColorOverride}
+        onJoinQueue={handleJoinQueue}
+        onLeaveQueue={handleLeaveQueue}
+      />
     );
   }
 
   // Active game view
-  const isYourTurn =
-    onlineGame.yourColor &&
-    ((onlineGame.yourColor === 'white' && new Chess(onlineGame.fen).turn() === 'w') ||
-     (onlineGame.yourColor === 'black' && new Chess(onlineGame.fen).turn() === 'b'));
-
+  const isYourTurn = isPlayersTurn(onlineGame.fen, onlineGame.yourColor);
   const gameEnded = onlineGame.status === 'completed' || onlineGame.status === 'abandoned';
   const { capturedByWhite, capturedByBlack } = getCapturedCounts(onlineGame.fen);
 
@@ -522,130 +340,6 @@ const OnlinePlayPage: React.FC = () => {
     ? onlineGame.clocks.activeColor === (isYouWhite ? 'white' : 'black')
     : false;
 
-  /** Low time threshold in ms */
-  const LOW_TIME_MS = 30_000;
-
-  const renderPlayerStrip = (
-    name: string,
-    capturedCount: number,
-    clockMs: number | null,
-    active: boolean,
-    avatarSeed: string,
-    isSelf: boolean,
-    online?: boolean,
-    countdown?: number | null,
-  ) => {
-    const isLowTime = clockMs !== null && clockMs > 0 && clockMs <= LOW_TIME_MS;
-    return (
-      <Paper
-        sx={{
-          width: '100%',
-          maxWidth: '100%',
-          mx: 'auto',
-          px: { xs: 1, sm: 1.5 },
-          py: { xs: 0.75, sm: 1 },
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: { xs: 1, sm: 2 },
-          border: '1px solid',
-          borderColor: active ? 'primary.main' : 'divider',
-          boxShadow: active ? 3 : 1,
-          [COMPACT_PLAYER_STRIP_QUERY]: {
-            px: 0.5,
-            py: 0,
-            gap: 0.5,
-            minHeight: 24,
-          },
-        }}
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: { xs: 0.75, sm: 1.25 },
-            minWidth: 0,
-            flex: '1 1 auto',
-            [COMPACT_PLAYER_STRIP_QUERY]: { gap: 0.5 },
-          }}
-        >
-          <Box sx={{ position: 'relative', [COMPACT_PLAYER_STRIP_QUERY]: { display: 'none' } }}>
-            <Avatar sx={{ width: { xs: 30, sm: 34 }, height: { xs: 30, sm: 34 }, bgcolor: isSelf ? 'primary.main' : 'grey.700', fontSize: { xs: '0.82rem', sm: '0.95rem' } }}>
-              {avatarSeed.charAt(0).toUpperCase()}
-            </Avatar>
-            {/* Online/offline indicator for opponent */}
-            {online !== undefined && (
-              <Box
-                sx={{
-                  position: 'absolute',
-                  bottom: -1,
-                  right: -1,
-                  width: 10,
-                  height: 10,
-                  borderRadius: '50%',
-                  bgcolor: online ? 'success.main' : 'error.main',
-                  border: '2px solid',
-                  borderColor: 'background.paper',
-                }}
-              />
-            )}
-          </Box>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography
-              variant="body2"
-              sx={{
-                fontWeight: 700,
-                fontSize: { xs: '0.9rem', sm: '0.95rem' },
-                [COMPACT_PLAYER_STRIP_QUERY]: {
-                  fontSize: '0.78rem',
-                  lineHeight: 1.15,
-                },
-              }}
-              noWrap
-            >
-              {name}
-              {online === false && !gameEnded && (
-                <Typography component="span" variant="caption" color="error.main" sx={{ ml: 0.5, [COMPACT_PLAYER_STRIP_QUERY]: { display: 'none' } }}>
-                  {countdown != null ? `(disconnected ... ${countdown})` : '(disconnected)'}
-                </Typography>
-              )}
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.72rem', sm: '0.75rem' }, [COMPACT_PLAYER_STRIP_QUERY]: { display: 'none' } }}>
-              Captured: {capturedCount}
-            </Typography>
-          </Box>
-        </Box>
-
-        <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
-          <Typography
-            variant="h6"
-            sx={{
-              fontFamily: 'monospace',
-              fontWeight: 800,
-              fontSize: { xs: '0.98rem', sm: '1.25rem' },
-              color: isLowTime ? 'error.main' : active ? 'primary.main' : 'text.primary',
-              lineHeight: 1,
-              [COMPACT_PLAYER_STRIP_QUERY]: {
-                fontSize: '0.88rem',
-              },
-            }}
-          >
-            {clockMs === null ? '--:--' : formatTime(clockMs)}
-          </Typography>
-        </Box>
-      </Paper>
-    );
-  };
-
-  const resultText = () => {
-    if (onlineGame.result === '*') return '';
-    if (onlineGame.result === '1/2-1/2') return 'Draw!';
-    const youWon =
-      (onlineGame.yourColor === 'white' && onlineGame.result === '1-0') ||
-      (onlineGame.yourColor === 'black' && onlineGame.result === '0-1');
-    return youWon ? 'You Win!' : 'You Lose!';
-  };
-
   return (
     <>
       <BoardLayout
@@ -653,7 +347,16 @@ const OnlinePlayPage: React.FC = () => {
         boardColRef={zoom.boardColRef}
         boardWidth={zoom.boardWidth}
         board={<>
-          {renderPlayerStrip(opponentName, opponentCapturedCount, opponentClock, opponentActive, opponentName, false, onlineGame.opponentOnline, disconnectCountdown)}
+          <PlayerStrip
+            name={opponentName}
+            capturedCount={opponentCapturedCount}
+            clockMs={opponentClock}
+            active={opponentActive}
+            isSelf={false}
+            gameEnded={gameEnded}
+            online={onlineGame.opponentOnline}
+            countdown={disconnectCountdown}
+          />
           <Box sx={{ position: 'relative' }}>
             <ChessBoard
               onMove={handleMove}
@@ -669,7 +372,14 @@ const OnlinePlayPage: React.FC = () => {
               subtitle={`vs ${opponentName}`}
             />
           </Box>
-          {renderPlayerStrip(yourName, yourCapturedCount, yourClock, youActive, yourName, true)}
+          <PlayerStrip
+            name={yourName}
+            capturedCount={yourCapturedCount}
+            clockMs={yourClock}
+            active={youActive}
+            isSelf
+            gameEnded={gameEnded}
+          />
           <Paper elevation={2} sx={controlBarPaperSx}>
             <Typography variant="subtitle2" color="text.secondary" sx={controlBarTitleSx}>
               Controls
@@ -721,7 +431,7 @@ const OnlinePlayPage: React.FC = () => {
             </Typography>
             {gameEnded ? (
               <Typography variant="h6" sx={{ fontWeight: 800 }} color="primary">
-                {resultText()}
+                {getResultText(onlineGame.result, onlineGame.yourColor)}
               </Typography>
             ) : (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -768,54 +478,27 @@ const OnlinePlayPage: React.FC = () => {
       />
 
       {/* Resign confirmation */}
-      <Dialog
+      <ConfirmActionDialog
         open={showResignDialog}
-        onClose={() => setShowResignDialog(false)}
-        fullWidth
-        maxWidth="xs"
-        slotProps={{
-          paper: {
-            sx: {
-              width: { xs: 'calc(100% - 16px)', sm: '100%' },
-              m: { xs: 1, sm: 2 },
-            },
-          },
-        }}
-      >
-        <DialogTitle>Resign?</DialogTitle>
-        <DialogContent sx={{ overflowX: 'hidden' }}>
-          <Typography>Are you sure you want to resign this game?</Typography>
-        </DialogContent>
-        <DialogActions sx={{ gap: 1, flexDirection: { xs: 'column-reverse', sm: 'row' }, '& > :not(style)': { ml: 0 } }}>
-          <Button onClick={() => setShowResignDialog(false)} sx={{ width: { xs: '100%', sm: 'auto' } }}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={handleResign} sx={{ width: { xs: '100%', sm: 'auto' } }}>Resign</Button>
-        </DialogActions>
-      </Dialog>
+        title="Resign?"
+        message="Are you sure you want to resign this game?"
+        cancelLabel="Cancel"
+        confirmLabel="Resign"
+        confirmColor="error"
+        onCancel={() => setShowResignDialog(false)}
+        onConfirm={handleResign}
+      />
 
       {/* Rematch offer from opponent */}
-      <Dialog
+      <ConfirmActionDialog
         open={rematchOffered}
-        onClose={() => onlineGame.gameId && declineRematch(onlineGame.gameId)}
-        fullWidth
-        maxWidth="xs"
-        slotProps={{
-          paper: {
-            sx: {
-              width: { xs: 'calc(100% - 16px)', sm: '100%' },
-              m: { xs: 1, sm: 2 },
-            },
-          },
-        }}
-      >
-        <DialogTitle>Rematch Offer</DialogTitle>
-        <DialogContent sx={{ overflowX: 'hidden' }}>
-          <Typography>Your opponent wants a rematch!</Typography>
-        </DialogContent>
-        <DialogActions sx={{ gap: 1, flexDirection: { xs: 'column-reverse', sm: 'row' }, '& > :not(style)': { ml: 0 } }}>
-          <Button onClick={() => onlineGame.gameId && declineRematch(onlineGame.gameId)} sx={{ width: { xs: '100%', sm: 'auto' } }}>Decline</Button>
-          <Button variant="contained" onClick={() => onlineGame.gameId && acceptRematch(onlineGame.gameId)} sx={{ width: { xs: '100%', sm: 'auto' } }}>Accept</Button>
-        </DialogActions>
-      </Dialog>
+        title="Rematch Offer"
+        message="Your opponent wants a rematch!"
+        cancelLabel="Decline"
+        confirmLabel="Accept"
+        onCancel={() => onlineGame.gameId && declineRematch(onlineGame.gameId)}
+        onConfirm={() => onlineGame.gameId && acceptRematch(onlineGame.gameId)}
+      />
 
       {/* Game End Dialog */}
       <GameEndDialog
