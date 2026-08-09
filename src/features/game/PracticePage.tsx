@@ -117,12 +117,12 @@ const PracticePage: React.FC = () => {
           </Typography>
           <Box sx={controlBarRowSx}>
             <Tooltip title="Flip Board">
-              <IconButton onClick={() => dispatch(flipBoard())} sx={controlIconButtonSx}>
+              <IconButton aria-label="Flip board" onClick={() => dispatch(flipBoard())} sx={controlIconButtonSx}>
                 <SwapVertIcon sx={controlIconSx} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Reset Board">
-              <IconButton onClick={handleReset} sx={controlIconButtonSx}>
+              <IconButton aria-label="Reset board" onClick={handleReset} sx={controlIconButtonSx}>
                 <RestartAltIcon sx={controlIconSx} />
               </IconButton>
             </Tooltip>
@@ -155,7 +155,7 @@ const PracticePage: React.FC = () => {
               placeholder="Enter FEN..."
             />
             <Tooltip title="Copy FEN">
-              <IconButton onClick={handleCopyFen} size="small" sx={{ width: 36, height: 36, flex: '0 0 auto' }}>
+              <IconButton aria-label="Copy FEN" onClick={handleCopyFen} size="small" sx={{ width: 36, height: 36, flex: '0 0 auto' }}>
                 <ContentCopyIcon fontSize="small" />
               </IconButton>
             </Tooltip>

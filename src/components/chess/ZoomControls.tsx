@@ -31,6 +31,7 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
     <Tooltip title="Zoom out">
       <span>
         <IconButton
+          aria-label="Zoom out"
           onClick={onZoomOut}
           disabled={!canZoomOut}
           sx={controlIconButtonSx}
@@ -57,6 +58,7 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
     <Tooltip title="Zoom in">
       <span>
         <IconButton
+          aria-label="Zoom in"
           onClick={onZoomIn}
           disabled={!canZoomIn}
           sx={controlIconButtonSx}
