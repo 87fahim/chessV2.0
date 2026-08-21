@@ -43,4 +43,10 @@ id_git_token
 # Scratch assets not part of the app
 src/assets/squars/
 
+# Nested Ludo app build/deps (client source under src/ludo/src is tracked)
+src/ludo/node_modules/
+src/ludo/dist/
+src/ludo/dist-server/
+src/ludo/dist-ssr/
+
 git_commands
