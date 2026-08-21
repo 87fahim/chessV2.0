@@ -18,6 +18,7 @@ const GameReplayPage = lazy(() => import('../pages/GameReplayPage'));
 const OnlinePlayPage = lazy(() => import('../pages/OnlinePlayPage'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage'));
 const SocialPage = lazy(() => import('../pages/SocialPage'));
+const LudoPage = lazy(() => import('../pages/LudoPage'));
 
 const protectedRoute = (element: React.ReactElement) => (
   <ProtectedRoute>{element}</ProtectedRoute>
@@ -37,6 +38,7 @@ const AppRoutes: React.FC = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/play" element={<PlayVsComputerPage />} />
           <Route path="/practice" element={<PracticePage />} />
+          <Route path="/ludo" element={<LudoPage />} />
           <Route path="/analysis" element={<AnalysisPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/login" element={<LoginPage />} />

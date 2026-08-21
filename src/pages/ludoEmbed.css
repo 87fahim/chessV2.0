@@ -1,0 +1,27 @@
+/**
+ * Scoped base styles for the embedded Ludo page.
+ * Intentionally avoids html/body/#root so Chess chrome is unchanged.
+ */
+.ludo-root {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100%;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #17202c;
+}
+
+.ludo-root *,
+.ludo-root *::before,
+.ludo-root *::after {
+  box-sizing: border-box;
+}
+
+.ludo-root button,
+.ludo-root input {
+  font: inherit;
+}
+
+/* Fill the Chess main panel instead of forcing a full viewport shell. */
+.ludo-root .app-shell {
+  min-height: 100%;
+}

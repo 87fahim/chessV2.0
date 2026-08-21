@@ -27,6 +27,7 @@ import WifiIcon from '@mui/icons-material/Wifi';
 import SaveIcon from '@mui/icons-material/Save';
 import HistoryIcon from '@mui/icons-material/History';
 import PersonIcon from '@mui/icons-material/Person';
+import CasinoIcon from '@mui/icons-material/Casino';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -44,6 +45,7 @@ const NAV_ITEMS = [
   { label: 'VS Computer', icon: <SportsEsportsIcon />, path: '/play' },
   { label: 'Online Play', icon: <WifiIcon />, path: '/online', authOnly: true },
   { label: 'Practice', icon: <SchoolIcon />, path: '/practice' },
+  { label: 'Ludo', icon: <CasinoIcon />, path: '/ludo' },
   { label: 'Next Best Move', icon: <TipsAndUpdatesIcon />, path: '/analysis' },
   { label: 'Profile', icon: <PersonIcon />, path: '/profile', authOnly: true },
   { label: 'Social', icon: <PersonIcon />, path: '/social', authOnly: true },
