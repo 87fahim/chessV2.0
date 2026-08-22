@@ -5,6 +5,7 @@ import {
   HOME_SLOT_POSITIONS,
   HOME_YARDS,
   getTokenCoord,
+  type ClassicPlayerColor,
   type Coordinate,
 } from './boardLayout'
 import type { PlayerColor } from './types'
@@ -16,6 +17,10 @@ const HOP_PAUSE_MS = 0
 
 export type BoardPercent = { left: number; top: number }
 
+function isClassicPlayerColor(color: PlayerColor): color is ClassicPlayerColor {
+  return color === 'red' || color === 'green' || color === 'yellow' || color === 'blue'
+}
+
 export function prefersReducedMotion(): boolean {
   return globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false
 }
@@ -25,6 +30,9 @@ export function getProgressCoord(
   progress: number,
   tokenIndex = 0,
 ): Coordinate | null {
+  if (!isClassicPlayerColor(color)) {
+    return null
+  }
   if (progress >= FINISH_PROGRESS) {
     return FINISH_COORDS[color]
   }
@@ -42,6 +50,9 @@ export function coordToPercent(coord: Coordinate): BoardPercent {
 
 /** Maps a home-yard slot to board percentage, matching `.home-yard-tokens__inner` layout. */
 export function yardSlotToPercent(color: PlayerColor, tokenIndex: number): BoardPercent {
+  if (!isClassicPlayerColor(color)) {
+    return { left: 50, top: 50 }
+  }
   const yard = HOME_YARDS[color]
   const slot = HOME_SLOT_POSITIONS[tokenIndex % HOME_SLOT_POSITIONS.length]
   const yardLeft = (yard.columnStart / BOARD_SIZE) * 100
