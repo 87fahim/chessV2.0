@@ -5,11 +5,14 @@ import {
   applyLocalRoll,
   clearGameLocal,
   createLocalGame,
+  forceEndGame,
+  forceFinishPlayer,
   loadGameLocal,
   repairStuckTurn,
   saveGameLocal,
   setPlayerPaintHex,
   setPlayerName,
+  withdrawPlayer,
 } from './localGameEngine'
 import {
   getGameSoundVolume,
@@ -28,7 +31,13 @@ import {
   setGameSoundVolume,
   unlockGameSounds,
 } from './gameSounds'
-import { BOARD_CELLS, FINISH_PROGRESS, HOME_SLOT_POSITIONS, HOME_YARDS, getTokenCoord } from './boardLayout'
+import { BOARD_CELLS, FINISH_PROGRESS, HOME_SLOT_POSITIONS, HOME_YARDS, getTokenCoord, type ClassicPlayerColor } from './boardLayout'
+import {
+  buildRadialBoardLayout,
+  buildRadialCaptureReturnPercentPath,
+  buildRadialMovePercentPath,
+} from './boardLayoutRadial'
+import { getBoardRules, isRadialPlayerCount } from './boardRules'
 import { COLOR_STACK_ORDER, stackAnchorPercents, stackTokenScale } from './boardStacking'
 import {
   DIE_ORIENTATIONS,
@@ -42,31 +51,38 @@ import {
 } from './dieConfig'
 import { averageProgressScore } from './progressScore'
 import { LudoToken } from './LudoToken'
+import { RadialBoard } from './RadialBoard'
 import { animateTokenHops, animateTokenSlide, buildCaptureReturnPercentPath, buildMovePercentPath, type BoardPercent } from './tokenMotion'
-import type { GameState, PlayerColor, TokenState } from './types'
+import type { GameState, PlayerColor, PlayerCount, TokenState } from './types'
 import { resolvePlayerPaintHex, buildSeatPaintMap, seatPaintCssVars } from './playerPaint'
 import {
   LudoBoardSurface,
   LudoLoadingPanel,
   LudoMatchLayout,
+  LudoNewGameDialog,
   LudoPageShell,
+  LudoRestartDialog,
   LudoSessionHeader,
   LudoSetupPanel,
+  LudoWithdrawPlayerDialog,
 } from './LudoMatchChrome'
 import './App.css'
+import './radialBoard.css'
 
-type SetupCount = 2 | 3 | 4
+type SetupCount = PlayerCount
 type SetupStep = 'count' | 'names'
 
 const COLORS_BY_PLAYER_COUNT: Record<SetupCount, PlayerColor[]> = {
   2: ['blue', 'green'],
   3: ['blue', 'red', 'green'],
   4: ['blue', 'red', 'green', 'yellow'],
+  5: ['blue', 'orange', 'green', 'red', 'yellow'],
+  6: ['blue', 'orange', 'green', 'red', 'yellow', 'purple'],
 }
 
-const DEFAULT_NAMES = ['Player 1', 'Player 2', 'Player 3', 'Player 4']
+const DEFAULT_NAMES = ['Player 1', 'Player 2', 'Player 3', 'Player 4', 'Player 5', 'Player 6']
 
-const HOME_YARD_ORDER: PlayerColor[] = ['red', 'green', 'blue', 'yellow']
+const HOME_YARD_ORDER: ClassicPlayerColor[] = ['red', 'green', 'blue', 'yellow']
 
 type BoardCornerId = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
@@ -355,7 +371,7 @@ function HomeYardFinishBanner({
   name,
   place,
 }: {
-  color: PlayerColor
+  color: ClassicPlayerColor
   name: string
   place: number
 }) {
@@ -385,7 +401,7 @@ function HomeYardFinishBanner({
   )
 }
 
-function HomeYardOverlay({ color, active }: { color: PlayerColor; active: boolean }) {
+function HomeYardOverlay({ color, active }: { color: ClassicPlayerColor; active: boolean }) {
   const yard = HOME_YARDS[color]
 
   return (
@@ -423,7 +439,7 @@ function HomeYardTokens({
   hiddenTokenId,
   onSelect,
 }: {
-  color: PlayerColor
+  color: ClassicPlayerColor
   paintHex: string
   tokens: TokenState[]
   legalMoves: string[]
@@ -444,6 +460,12 @@ function HomeYardTokens({
       <div className="home-yard-tokens__inner">
         {tokens
           .filter((token) => token.progress === -1 && token.id !== hiddenTokenId)
+          .slice()
+          .sort((a, b) => {
+            const slotA = HOME_SLOT_POSITIONS[a.index % HOME_SLOT_POSITIONS.length]
+            const slotB = HOME_SLOT_POSITIONS[b.index % HOME_SLOT_POSITIONS.length]
+            return slotA.y - slotB.y || slotA.x - slotB.x
+          })
           .map((token) => {
             const slot = HOME_SLOT_POSITIONS[token.index % HOME_SLOT_POSITIONS.length]
             const canMoveToken = !disabled && legalMoves.includes(token.id)
@@ -458,6 +480,8 @@ function HomeYardTokens({
                 style={{
                   left: `${slot.x}%`,
                   top: `${slot.y}%`,
+                  // Lower slots (higher y) paint above upper ones when pins overlap.
+                  zIndex: Math.round(slot.y),
                 }}
                 aria-label={`Move ${color} piece to start`}
                 disabled={!canMoveToken}
@@ -500,6 +524,8 @@ function App() {
     green: 1,
     yellow: 1,
     blue: 1,
+    orange: 1,
+    purple: 1,
   })
   const [error, setError] = useState<string | null>(null)
   const [setupStep, setSetupStep] = useState<SetupStep>('count')
@@ -522,7 +548,12 @@ function App() {
   const [editingNameIndex, setEditingNameIndex] = useState<number | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [endGameOpen, setEndGameOpen] = useState(false)
+  const [newGameOpen, setNewGameOpen] = useState(false)
+  const [restartOpen, setRestartOpen] = useState(false)
+  const [withdrawPlayerId, setWithdrawPlayerId] = useState<string | null>(null)
+  const [newGameCount, setNewGameCount] = useState<SetupCount>(4)
   const [autoRollByPlayerId, setAutoRollByPlayerId] = useState<Record<string, boolean>>({})
+  const [autoPlayByPlayerId, setAutoPlayByPlayerId] = useState<Record<string, boolean>>({})
   const [soundVolume, setSoundVolume] = useState(() => getGameSoundVolume())
   const hoppingTokenRef = useRef<HTMLDivElement | null>(null)
   const returningTokenRef = useRef<HTMLDivElement | null>(null)
@@ -601,17 +632,41 @@ function App() {
       green: 0,
       yellow: 0,
       blue: 0,
+      orange: 0,
+      purple: 0,
     }
 
     if (!game) {
       return counts
     }
 
+    const rules = getBoardRules(
+      game.playerCount,
+      game.players.map((player) => player.color),
+    )
+
     for (const player of game.players) {
-      counts[player.color] = player.tokens.filter((token) => token.progress >= FINISH_PROGRESS).length
+      counts[player.color] = player.tokens.filter((token) => token.progress >= rules.finishProgress).length
     }
 
     return counts
+  }, [game])
+
+  const radialLayout = useMemo(() => {
+    if (!game || !isRadialPlayerCount(game.playerCount)) {
+      return null
+    }
+    return buildRadialBoardLayout(game.players.map((player) => player.color))
+  }, [game])
+
+  const boardFinishProgress = useMemo(() => {
+    if (!game) {
+      return FINISH_PROGRESS
+    }
+    return getBoardRules(
+      game.playerCount,
+      game.players.map((player) => player.color),
+    ).finishProgress
   }, [game])
 
   const boardTokenPlacements = useMemo(() => {
@@ -630,6 +685,9 @@ function App() {
 
     const raw: RawPlacement[] = []
     for (const player of game.players) {
+      if (player.withdrawn) {
+        continue
+      }
       for (const token of player.tokens) {
         if (
           token.progress === -1 ||
@@ -702,6 +760,9 @@ function App() {
       })
     }
 
+    // Lower rows paint above upper rows when tall pins overlap across cells.
+    placements.sort((a, b) => a.row - b.row || a.column - b.column || a.stackIndex - b.stackIndex)
+
     return placements
   }, [game, hoppingToken?.tokenId, returningToken?.tokenId])
 
@@ -740,7 +801,8 @@ function App() {
   }, [game])
 
   const currentPlayerFinished =
-    currentPlayer !== null && finishPlaceByPlayerId.has(currentPlayer.id)
+    currentPlayer !== null &&
+    (Boolean(currentPlayer.withdrawn) || finishPlaceByPlayerId.has(currentPlayer.id))
 
   const seatPaintStyle = useMemo(
     () => (game ? seatPaintCssVars(buildSeatPaintMap(game.players)) : undefined),
@@ -921,12 +983,22 @@ function App() {
     const roll = game.pendingRoll
     const fromProgress = movingToken.progress
     const toProgress = fromProgress === -1 ? 0 : fromProgress + roll
-    const path = buildMovePercentPath(
-      movingPlayer.color,
-      fromProgress,
-      toProgress,
-      movingToken.index,
-    )
+    const path =
+      radialLayout != null
+        ? buildRadialMovePercentPath(
+            radialLayout,
+            movingPlayer.color,
+            fromProgress,
+            toProgress,
+            movingToken.index,
+          )
+        : buildMovePercentPath(
+            movingPlayer.color,
+            fromProgress,
+            toProgress,
+            movingToken.index,
+          )
+    const motionAnchorY = 90
 
     const snapshot = game
     hopAbortRef.current?.abort()
@@ -965,6 +1037,7 @@ function App() {
       if (hopElement && path.length >= 2 && !hopAbort.signal.aborted) {
         await animateTokenHops(hopElement, path, {
           signal: hopAbort.signal,
+          anchorYPercent: motionAnchorY,
           onHopStart: (hopIndex) => {
             playHopSound(hopIndex)
           },
@@ -980,7 +1053,7 @@ function App() {
 
       const updated = applyLocalMove(snapshot, tokenId)
       const capturedIds = updated.lastMove?.capturedTokenIds ?? []
-      const movedToFinish = (updated.lastMove?.to ?? -1) >= FINISH_PROGRESS
+      const movedToFinish = (updated.lastMove?.to ?? -1) >= boardFinishProgress
       const placeIndex = updated.finishOrder?.indexOf(movingPlayer.id) ?? -1
       const newlyFinished =
         placeIndex >= 0 && !(snapshot.finishOrder ?? []).includes(movingPlayer.id)
@@ -1015,11 +1088,19 @@ function App() {
           continue
         }
 
-        const returnPath = buildCaptureReturnPercentPath(
-          capturedColor,
-          capturedProgress,
-          capturedIndex,
-        )
+        const returnPath =
+          radialLayout != null
+            ? buildRadialCaptureReturnPercentPath(
+                radialLayout,
+                capturedColor,
+                capturedProgress,
+                capturedIndex,
+              )
+            : buildCaptureReturnPercentPath(
+                capturedColor,
+                capturedProgress,
+                capturedIndex,
+              )
 
         if (returnPath.length < 2) {
           continue
@@ -1040,6 +1121,7 @@ function App() {
         if (returnElement && !hopAbort.signal.aborted) {
           await animateTokenSlide(returnElement, returnPath, {
             signal: hopAbort.signal,
+            anchorYPercent: motionAnchorY,
             onStart: (durationMs) => {
               playCaptureTravelSound(durationMs / 1000)
             },
@@ -1090,7 +1172,7 @@ function App() {
 
   handleMoveRef.current = handleMove
 
-  // Only one legal move — play it automatically (no token click needed).
+  // Auto-move: single legal move always; auto-play also picks a random move.
   useEffect(() => {
     if (!game || loading || busy || dieRolling) {
       return
@@ -1101,7 +1183,16 @@ function App() {
     if (game.status === 'COMPLETED' || game.pendingRoll === null) {
       return
     }
-    if (game.legalMoves.length !== 1) {
+    if (game.legalMoves.length === 0) {
+      return
+    }
+
+    const mover = game.players[game.currentPlayerIndex]
+    if (!mover || mover.withdrawn) {
+      return
+    }
+    const isAutoPlay = Boolean(autoPlayByPlayerId[mover.id])
+    if (game.legalMoves.length !== 1 && !isAutoPlay) {
       return
     }
 
@@ -1111,13 +1202,27 @@ function App() {
     }
 
     autoMovedKeyRef.current = moveKey
-    const tokenId = game.legalMoves[0]
-    void handleMoveRef.current(tokenId)
-  }, [game, loading, busy, dieRolling, hoppingToken, returningToken])
+    const soleMove = game.legalMoves.length === 1 ? game.legalMoves[0] : null
+    const moveChoices = game.legalMoves
+
+    const timer = window.setTimeout(
+      () => {
+        const tokenId =
+          soleMove ?? moveChoices[Math.floor(Math.random() * moveChoices.length)]
+        if (!tokenId) {
+          return
+        }
+        void handleMoveRef.current(tokenId)
+      },
+      isAutoPlay ? 420 : 0,
+    )
+
+    return () => window.clearTimeout(timer)
+  }, [game, loading, busy, dieRolling, hoppingToken, returningToken, autoPlayByPlayerId])
 
   handleRollRef.current = handleRoll
 
-  // Auto-roll when the current player's Match Control checkbox is on.
+  // Auto-roll (die only) or auto-play (roll + move) — both roll when it's time.
   useEffect(() => {
     if (!game || loading || !canRoll || dieRolling || busy) {
       return
@@ -1125,7 +1230,12 @@ function App() {
     if (hoppingToken || returningToken) {
       return
     }
-    if (!currentPlayer || !autoRollByPlayerId[currentPlayer.id]) {
+    if (!currentPlayer || currentPlayer.withdrawn) {
+      return
+    }
+    const shouldAutoRoll =
+      Boolean(autoRollByPlayerId[currentPlayer.id]) || Boolean(autoPlayByPlayerId[currentPlayer.id])
+    if (!shouldAutoRoll) {
       return
     }
 
@@ -1150,10 +1260,102 @@ function App() {
     returningToken,
     currentPlayer,
     autoRollByPlayerId,
+    autoPlayByPlayerId,
   ])
 
   function handleToggleAutoRoll(playerId: string, enabled: boolean): void {
     setAutoRollByPlayerId((prev) => ({ ...prev, [playerId]: enabled }))
+  }
+
+  function handleToggleAutoPlay(playerId: string, enabled: boolean): void {
+    setAutoPlayByPlayerId((prev) => ({ ...prev, [playerId]: enabled }))
+  }
+
+  function handleWithdrawPlayerRequest(playerId: string): void {
+    setWithdrawPlayerId(playerId)
+  }
+
+  function handleConfirmWithdrawPlayer(): void {
+    if (!game || !withdrawPlayerId) {
+      return
+    }
+
+    try {
+      hopAbortRef.current?.abort()
+      hopAbortRef.current = null
+      setHoppingToken(null)
+      setReturningToken(null)
+      setBusy(false)
+      const next = withdrawPlayer(game, withdrawPlayerId)
+      setGame(next)
+      saveGameLocal(next)
+      setAutoRollByPlayerId((prev) => {
+        const updated = { ...prev }
+        delete updated[withdrawPlayerId]
+        return updated
+      })
+      setAutoPlayByPlayerId((prev) => {
+        const updated = { ...prev }
+        delete updated[withdrawPlayerId]
+        return updated
+      })
+      setWithdrawPlayerId(null)
+      setError(null)
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error ? requestError.message : 'Failed to remove player.'
+      setError(message)
+      setWithdrawPlayerId(null)
+    }
+  }
+
+  function handleForceFinishPlayer(playerId: string): void {
+    if (!game) {
+      return
+    }
+
+    try {
+      hopAbortRef.current?.abort()
+      hopAbortRef.current = null
+      setHoppingToken(null)
+      setReturningToken(null)
+      setBusy(false)
+      setDieRolling(false)
+      const next = forceFinishPlayer(game, playerId)
+      setGame(next)
+      saveGameLocal(next)
+      unlockGameSounds()
+      playPlayerWinSound()
+      setError(null)
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error ? requestError.message : 'Failed to force finish.'
+      setError(message)
+    }
+  }
+
+  function handleForceEndGame(): void {
+    if (!game) {
+      return
+    }
+
+    try {
+      hopAbortRef.current?.abort()
+      hopAbortRef.current = null
+      setHoppingToken(null)
+      setReturningToken(null)
+      setBusy(false)
+      setDieRolling(false)
+      const next = forceEndGame(game)
+      setGame(next)
+      saveGameLocal(next)
+      unlockGameSounds()
+      setError(null)
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error ? requestError.message : 'Failed to force end game.'
+      setError(message)
+    }
   }
 
   function handleChangePlayerPaint(playerId: string, paintHex: string): void {
@@ -1209,22 +1411,59 @@ function App() {
     })
   }, [game])
 
-  function handleResetSession(): void {
+  function clearMatchMotionState(): void {
     hopAbortRef.current?.abort()
     hopAbortRef.current = null
     setHoppingToken(null)
     setReturningToken(null)
     setBusy(false)
+    setDieRolling(false)
+    setRollingCorner(null)
     setMenuOpen(false)
     setEndGameOpen(false)
     setAutoRollByPlayerId({})
+    setAutoPlayByPlayerId({})
     endSoundPlayedForRef.current = null
     autoRollKeyRef.current = null
-    clearGameLocal()
-    setGame(null)
+    autoMovedKeyRef.current = null
     setError(null)
     setNameErrors([])
+  }
+
+  function startMatch(count: SetupCount, playerNames: string[]): void {
+    clearMatchMotionState()
+    unlockGameSounds()
+    const nextNames = [...DEFAULT_NAMES]
+    for (let index = 0; index < count; index += 1) {
+      nextNames[index] = playerNames[index]?.trim() || DEFAULT_NAMES[index]
+    }
+    setPlayerCount(count)
+    setNames(nextNames)
     setSetupStep('count')
+    const created = createLocalGame(count, nextNames.slice(0, count))
+    setGame(created)
+    playGameStartSound()
+    setNewGameOpen(false)
+    setRestartOpen(false)
+  }
+
+  function handleOpenNewGame(): void {
+    setNewGameCount((game?.playerCount as SetupCount | undefined) ?? playerCount)
+    setNewGameOpen(true)
+  }
+
+  function handleConfirmNewGame(): void {
+    startMatch(newGameCount, DEFAULT_NAMES.slice(0, newGameCount))
+  }
+
+  function handleConfirmRestart(): void {
+    if (!game) {
+      return
+    }
+    startMatch(
+      game.playerCount as SetupCount,
+      game.players.map((player) => player.name),
+    )
   }
 
   function updateName(index: number, nextValue: string): void {
@@ -1249,7 +1488,7 @@ function App() {
     <LudoPageShell playing={Boolean(game)} seatPaintStyle={seatPaintStyle}>
       <LudoSessionHeader
         showNewSession={Boolean(game)}
-        onNewSession={handleResetSession}
+        onNewSession={handleOpenNewGame}
       />
 
       {loading ? <LudoLoadingPanel /> : null}
@@ -1284,6 +1523,7 @@ function App() {
           error={error}
           menuOpen={menuOpen}
           autoRollByPlayerId={autoRollByPlayerId}
+          autoPlayByPlayerId={autoPlayByPlayerId}
           onMenuOpen={() => setMenuOpen(true)}
           onMenuClose={() => setMenuOpen(false)}
           onRoll={() => void handleRoll()}
@@ -1292,12 +1532,35 @@ function App() {
             setSoundVolume(next)
             setGameSoundVolume(next)
           }}
-          onNewSession={handleResetSession}
+          onRestart={() => setRestartOpen(true)}
+          onNewGame={handleOpenNewGame}
           onToggleAutoRoll={handleToggleAutoRoll}
+          onToggleAutoPlay={handleToggleAutoPlay}
+          onWithdrawPlayer={handleWithdrawPlayerRequest}
+          onForceFinishPlayer={handleForceFinishPlayer}
+          onForceEndGame={handleForceEndGame}
           onChangePlayerPaint={handleChangePlayerPaint}
           onChangePlayerName={handleChangePlayerName}
           board={
           <LudoBoardSurface seatPaintStyle={seatPaintStyle}>
+              {isRadialPlayerCount(game.playerCount) ? (
+                <RadialBoard
+                  game={game}
+                  currentPlayerId={currentPlayer?.id ?? null}
+                  dieValue={currentPlayer ? dieFaces[currentPlayer.color] : 1}
+                  dieRolling={dieRolling}
+                  canRoll={canRoll}
+                  legalMoveIds={new Set(canMove ? game.legalMoves : [])}
+                  hoppingToken={hoppingToken}
+                  returningToken={returningToken}
+                  hoppingTokenRef={hoppingTokenRef}
+                  returningTokenRef={returningTokenRef}
+                  finishPlaceByPlayerId={finishPlaceByPlayerId}
+                  onRoll={() => void handleRoll()}
+                  onSelectToken={(tokenId) => void handleMove(tokenId)}
+                />
+              ) : (
+                <>
               {BOARD_CORNERS.map((corner) => (
                 (() => {
                   const cornerPlayerIndex = game.players.findIndex((entry) => entry.color === corner.color)
@@ -1312,7 +1575,7 @@ function App() {
                   const capturesMade = safeStatCount(cornerPlayer?.capturesMade)
                   const timesCaptured = safeStatCount(cornerPlayer?.timesCaptured)
                   const progressScore = cornerPlayer
-                    ? averageProgressScore(cornerPlayer, game.players)
+                    ? averageProgressScore(cornerPlayer, game.players, game.playerCount)
                     : 0
 
                   return (
@@ -1407,7 +1670,8 @@ function App() {
                         style={{
                           gridRow: placement.row + 1,
                           gridColumn: placement.column + 1,
-                          zIndex: 100 + placement.row * 10 + placement.stackIndex,
+                          // Lower board rows (and later stack peers) paint above upper tokens.
+                          zIndex: 100 + placement.row * 20 + placement.stackIndex,
                           ['--token-scale' as string]: String(placement.scale),
                           ['--stack-anchor' as string]: `${placement.anchorPercent}%`,
                         }}
@@ -1430,6 +1694,9 @@ function App() {
                   const player = game.players.find((entry) => entry.color === color)
                   const isActivePlayer = currentPlayer?.color === color
                   const finishPlace = player ? finishPlaceByPlayerId.get(player.id) : undefined
+                  if (player?.withdrawn) {
+                    return null
+                  }
                   if (finishPlace && game.status !== 'COMPLETED') {
                     return (
                       <HomeYardFinishBanner
@@ -1494,6 +1761,8 @@ function App() {
                   </div>
                 ) : null}
               </div>
+                </>
+              )}
           </LudoBoardSurface>
           }
         />
@@ -1502,10 +1771,33 @@ function App() {
       {game && endGameOpen && game.status === 'COMPLETED' && endGameStandings.length > 0 ? (
         <EndGameCelebration
           standings={endGameStandings}
-          onRestart={handleResetSession}
+          onRestart={() => setRestartOpen(true)}
           onClose={() => setEndGameOpen(false)}
         />
       ) : null}
+
+      <LudoNewGameDialog
+        open={newGameOpen}
+        playerCount={newGameCount}
+        onPlayerCountChange={setNewGameCount}
+        onClose={() => setNewGameOpen(false)}
+        onConfirm={handleConfirmNewGame}
+      />
+
+      <LudoRestartDialog
+        open={restartOpen}
+        onClose={() => setRestartOpen(false)}
+        onConfirm={handleConfirmRestart}
+      />
+
+      <LudoWithdrawPlayerDialog
+        open={Boolean(withdrawPlayerId)}
+        playerName={
+          game?.players.find((player) => player.id === withdrawPlayerId)?.name?.trim() || 'this player'
+        }
+        onClose={() => setWithdrawPlayerId(null)}
+        onConfirm={handleConfirmWithdrawPlayer}
+      />
     </LudoPageShell>
   )
 }

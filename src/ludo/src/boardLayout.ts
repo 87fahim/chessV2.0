@@ -1,5 +1,8 @@
 import type { PlayerColor, TokenState } from './types'
 
+/** Colors used by the classic 15×15 square board only. */
+export type ClassicPlayerColor = 'red' | 'green' | 'yellow' | 'blue'
+
 export type Coordinate = readonly [number, number]
 
 export const BOARD_SIZE = 15
@@ -24,7 +27,7 @@ export interface BoardTile {
   kind: TileKind
   row?: number
   column?: number
-  color?: PlayerColor
+  color?: ClassicPlayerColor
   outerIndex?: number
   laneIndex?: number
   safe: boolean
@@ -38,7 +41,7 @@ export interface BoardCell {
   row: number
   column: number
   type: CellType
-  color?: PlayerColor
+  color?: ClassicPlayerColor
   outerIndex?: number
   laneIndex?: number
   marker?: TileMarker
@@ -48,7 +51,7 @@ export interface BoardCell {
 }
 
 export interface HomeYardDefinition {
-  color: PlayerColor
+  color: ClassicPlayerColor
   rowStart: number
   columnStart: number
   rowSpan: 6
@@ -62,7 +65,7 @@ export const HOME_SLOT_POSITIONS = [
   { x: 72, y: 72 },
 ] as const
 
-export const START_INDEX: Record<PlayerColor, number> = {
+export const START_INDEX: Record<ClassicPlayerColor, number> = {
   red: 0,
   green: 13,
   yellow: 26,
@@ -70,7 +73,7 @@ export const START_INDEX: Record<PlayerColor, number> = {
 }
 
 export const HOME_ENTRY: Record<
-  PlayerColor,
+  ClassicPlayerColor,
   {
     outerIndex: number
     coordinate: Coordinate
@@ -90,18 +93,18 @@ export const FINISH_IDS = {
   blue: 'finish-blue',
 } as const
 
-/** Progress value when a token has reached its center finish tile. */
+/** Progress value when a token has reached its center finish tile (square board). */
 export const FINISH_PROGRESS = 56
 
 /** Per-color finish resting cells (center edges adjacent to the last home-lane tile). */
-export const FINISH_COORDS: Record<PlayerColor, Coordinate> = {
+export const FINISH_COORDS: Record<ClassicPlayerColor, Coordinate> = {
   red: [7, 6],
   green: [6, 7],
   yellow: [7, 8],
   blue: [8, 7],
 }
 
-export const HOME_YARDS: Record<PlayerColor, HomeYardDefinition> = {
+export const HOME_YARDS: Record<ClassicPlayerColor, HomeYardDefinition> = {
   red: { color: 'red', rowStart: 0, columnStart: 0, rowSpan: 6, columnSpan: 6 },
   green: { color: 'green', rowStart: 0, columnStart: 9, rowSpan: 6, columnSpan: 6 },
   blue: { color: 'blue', rowStart: 9, columnStart: 0, rowSpan: 6, columnSpan: 6 },
@@ -163,7 +166,7 @@ export const OUTER_PATH: readonly Coordinate[] = [
   [6, 0],
 ] as const
 
-export const HOME_LANES: Record<PlayerColor, readonly Coordinate[]> = {
+export const HOME_LANES: Record<ClassicPlayerColor, readonly Coordinate[]> = {
   red: [
     [7, 1],
     [7, 2],
@@ -194,7 +197,7 @@ export const HOME_LANES: Record<PlayerColor, readonly Coordinate[]> = {
   ],
 } as const
 
-const HOME_TOKEN_COORDS: Record<PlayerColor, readonly Coordinate[]> = {
+const HOME_TOKEN_COORDS: Record<ClassicPlayerColor, readonly Coordinate[]> = {
   red: [
     [2, 2],
     [4, 2],
@@ -229,7 +232,7 @@ for (let index = 0; index < OUTER_PATH.length; index += 1) {
   OUTER_INDEX_BY_COORD.set(toCellKey(row, column), index)
 }
 
-const HOME_LANE_INDEX_BY_COORD = new Map<string, { color: PlayerColor; laneIndex: number }>()
+const HOME_LANE_INDEX_BY_COORD = new Map<string, { color: ClassicPlayerColor; laneIndex: number }>()
 for (const color of ['red', 'green', 'yellow', 'blue'] as const) {
   HOME_LANES[color].forEach(([row, column], laneIndex) => {
     HOME_LANE_INDEX_BY_COORD.set(toCellKey(row, column), { color, laneIndex })
@@ -245,13 +248,13 @@ function inBounds(row: number, column: number): boolean {
 }
 
 function getDirectionForOuterIndex(outerIndex: number): 'up' | 'down' | 'left' | 'right' | undefined {
-  for (const [color, startIndex] of Object.entries(START_INDEX) as Array<[PlayerColor, number]>) {
+  for (const [color, startIndex] of Object.entries(START_INDEX) as Array<[ClassicPlayerColor, number]>) {
     if (startIndex === outerIndex) {
       return color === 'red' ? 'right' : color === 'green' ? 'down' : color === 'yellow' ? 'left' : 'up'
     }
   }
 
-  for (const [, entry] of Object.entries(HOME_ENTRY) as Array<[PlayerColor, (typeof HOME_ENTRY)[PlayerColor]]>) {
+  for (const [, entry] of Object.entries(HOME_ENTRY) as Array<[ClassicPlayerColor, (typeof HOME_ENTRY)[ClassicPlayerColor]]>) {
     if (entry.outerIndex === outerIndex) {
       return entry.direction
     }
@@ -281,7 +284,7 @@ function buildBoardTiles(): BoardTile[] {
 
   for (let outerIndex = 0; outerIndex < OUTER_PATH.length; outerIndex += 1) {
     const [row, column] = OUTER_PATH[outerIndex]
-    const color = (Object.entries(START_INDEX) as Array<[PlayerColor, number]>).find(([, index]) => index === outerIndex)?.[0]
+    const color = (Object.entries(START_INDEX) as Array<[ClassicPlayerColor, number]>).find(([, index]) => index === outerIndex)?.[0]
 
     tiles.push({
       id: `outer-${outerIndex}`,
@@ -333,7 +336,7 @@ export interface BoardGridCell {
   row: number
   column: number
   type: CellType
-  color?: PlayerColor
+  color?: ClassicPlayerColor
   outerIndex?: number
   laneIndex?: number
   marker?: TileMarker
@@ -453,7 +456,7 @@ function validateConfiguration(): string[] {
     errors.push(`Expected 52 outer tiles, found ${OUTER_PATH.length}.`)
   }
 
-  for (const [color, lane] of Object.entries(HOME_LANES) as Array<[PlayerColor, readonly Coordinate[]]>) {
+  for (const [color, lane] of Object.entries(HOME_LANES) as Array<[ClassicPlayerColor, readonly Coordinate[]]>) {
     if (lane.length !== 5) {
       errors.push(`Expected 5 home-lane tiles for ${color}, found ${lane.length}.`)
     }
@@ -489,7 +492,7 @@ function validateConfiguration(): string[] {
     errors.push('Outer tile 51 does not connect back to tile 0.')
   }
 
-  for (const [color, entry] of Object.entries(HOME_ENTRY) as Array<[PlayerColor, (typeof HOME_ENTRY)[PlayerColor]]>) {
+  for (const [color, entry] of Object.entries(HOME_ENTRY) as Array<[ClassicPlayerColor, (typeof HOME_ENTRY)[ClassicPlayerColor]]>) {
     const firstLane = HOME_LANES[color][0]
     if (!isAdjacent(entry.coordinate, firstLane)) {
       errors.push(`${color} home-entry tile does not touch its first home-lane tile.`)
@@ -516,7 +519,7 @@ function validateConfiguration(): string[] {
     }
   }
 
-  for (const [, lane] of Object.entries(HOME_LANES) as Array<[PlayerColor, readonly Coordinate[]]>) {
+  for (const [, lane] of Object.entries(HOME_LANES) as Array<[ClassicPlayerColor, readonly Coordinate[]]>) {
     for (const [row, column] of lane) {
       if (!inBounds(row, column)) {
         errors.push(`Home-lane coordinate [${row}, ${column}] is out of bounds.`)
@@ -547,10 +550,10 @@ export type RouteStep =
   | {
       type: 'finish'
       step: 56
-      finishId: (typeof FINISH_IDS)[PlayerColor]
+      finishId: (typeof FINISH_IDS)[ClassicPlayerColor]
     }
 
-export function getPlayerRoute(color: PlayerColor): RouteStep[] {
+export function getPlayerRoute(color: ClassicPlayerColor): RouteStep[] {
   const startIndex = START_INDEX[color]
   const outerRoute = Array.from({ length: 51 }, (_, step) => {
     const globalIndex = (startIndex + step) % OUTER_PATH.length
@@ -581,6 +584,10 @@ export function getPlayerRoute(color: PlayerColor): RouteStep[] {
 }
 
 export function getTokenCoord(color: PlayerColor, token: TokenState): Coordinate | null {
+  if (color !== 'red' && color !== 'green' && color !== 'yellow' && color !== 'blue') {
+    return null
+  }
+
   if (token.progress === -1) {
     return HOME_TOKEN_COORDS[color][token.index] ?? null
   }
@@ -606,15 +613,15 @@ export function getTrackCells(): Array<Coordinate> {
   return OUTER_PATH as Coordinate[]
 }
 
-export function getStretchCells(color: PlayerColor): Array<Coordinate> {
+export function getStretchCells(color: ClassicPlayerColor): Array<Coordinate> {
   return HOME_LANES[color] as Coordinate[]
 }
 
-export function getStartTrackCell(color: PlayerColor): Coordinate {
+export function getStartTrackCell(color: ClassicPlayerColor): Coordinate {
   return OUTER_PATH[START_INDEX[color]]
 }
 
-export function getHomeTokenCells(color: PlayerColor): Array<Coordinate> {
+export function getHomeTokenCells(color: ClassicPlayerColor): Array<Coordinate> {
   return HOME_TOKEN_COORDS[color] as Coordinate[]
 }
 

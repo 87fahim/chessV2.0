@@ -1,0 +1,438 @@
+/* Radial 5/6-player boards — logical 1000×1000 SVG, CSS scales the container. */
+
+.radial-board-container {
+  --board-token-size: calc(100cqi / 18);
+  --token-fit: 0.9;
+  --token-scale: 1;
+  box-sizing: border-box;
+  position: relative;
+  width: min(96vw, 96dvh);
+  max-width: 100%;
+  aspect-ratio: 1;
+  margin: 8px auto;
+  padding: 8.5%;
+  container-type: inline-size;
+  touch-action: manipulation;
+  user-select: none;
+  background: transparent;
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.radial-board-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.radial-board {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.radial-board-rim-plate {
+  fill: rgba(248, 251, 255, 0.92);
+  stroke: none;
+}
+
+.radial-board-rim {
+  fill: none;
+  stroke: #5f738c;
+  stroke-width: 7;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.radial-yard-slot {
+  stroke: rgba(122, 138, 157, 0.9);
+  stroke-width: 2.25;
+}
+
+.radial-yard-slot-core {
+  fill: rgba(255, 255, 255, 0.92);
+  stroke: rgba(200, 210, 225, 0.7);
+  stroke-width: 1.25;
+}
+
+.radial-yard-outer {
+  stroke: #5f738c;
+  stroke-width: 2.75;
+  stroke-linejoin: round;
+}
+
+.radial-yard-outer-sheen {
+  fill: rgba(255, 255, 255, 0.14);
+  stroke: none;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+}
+
+.radial-colored-tile__body {
+  stroke: #5f738c;
+  stroke-width: 2.25;
+  stroke-linejoin: round;
+}
+
+/* Path / start / hub — flat color with a barely-there highlight */
+.radial-colored-tile--subtle .radial-colored-tile__sheen {
+  fill: rgba(255, 255, 255, 0.06);
+  stroke: none;
+  pointer-events: none;
+}
+
+.radial-yard-inner {
+  fill: #ffffff;
+  stroke: rgba(174, 186, 208, 0.85);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.65));
+}
+
+.radial-yard-inner-rim {
+  fill: none;
+  stroke: rgba(122, 138, 157, 0.35);
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+  stroke-dasharray: none;
+  pointer-events: none;
+}
+
+.radial-yard--turn-active .radial-yard-outer {
+  animation: radial-yard-turn-flash 1.1s ease-in-out infinite;
+}
+
+@keyframes radial-yard-turn-flash {
+  0%,
+  100% {
+    stroke: #5f738c;
+    stroke-width: 2.75;
+  }
+  50% {
+    stroke: #ffffff;
+    stroke-width: 4.5;
+  }
+}
+
+.radial-home-finish {
+  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: radial-home-finish-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.radial-home-finish__panel {
+  stroke: none;
+}
+
+.radial-home-finish__sheen {
+  fill: rgba(255, 255, 255, 0.22);
+  stroke: none;
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+
+.radial-home-finish__panel-rim {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.82);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.radial-home-finish__orb {
+  pointer-events: none;
+}
+
+.radial-home-finish__place {
+  fill: #ffffff;
+  font-weight: 900;
+  font-family: system-ui, Segoe UI, sans-serif;
+  text-anchor: middle;
+  dominant-baseline: central;
+  paint-order: stroke fill;
+  stroke: rgba(15, 26, 42, 0.28);
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+  letter-spacing: -0.04em;
+}
+
+.radial-home-finish__place--glow {
+  fill: rgba(255, 255, 255, 0.55);
+  stroke: none;
+}
+
+.radial-home-finish--place-1 .radial-home-finish__place {
+  fill: #fff3b0;
+  stroke: rgba(120, 70, 0, 0.35);
+}
+
+.radial-home-finish--place-1 .radial-home-finish__place--glow {
+  fill: rgba(255, 230, 120, 0.65);
+}
+
+.radial-home-finish--place-1 .radial-home-finish__panel-rim {
+  stroke: rgba(255, 236, 170, 0.95);
+  stroke-width: 3.5;
+}
+
+.radial-home-finish--place-1 {
+  animation:
+    radial-home-finish-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both,
+    radial-home-finish-pulse 2.4s ease-in-out 560ms infinite;
+}
+
+.radial-home-finish--place-2 .radial-home-finish__place {
+  fill: #f3f6ff;
+}
+
+.radial-home-finish--place-3 .radial-home-finish__place {
+  fill: #ffe8d4;
+}
+
+@keyframes radial-home-finish-in {
+  from {
+    opacity: 0;
+    transform: scale(0.78);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes radial-home-finish-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.92;
+  }
+}
+
+.radial-seat-label {
+  position: absolute;
+  z-index: 4;
+  min-width: 0;
+  max-width: 180px;
+  padding: 6px 10px;
+  border-radius: 0;
+  background: #ffffff;
+  color: #718096;
+  text-align: center;
+  box-shadow: 0 3px 10px rgba(15, 26, 42, 0.14);
+  border: 2px solid #718096;
+  pointer-events: none;
+  transform-origin: center center;
+}
+
+.radial-seat-label__text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+  white-space: nowrap;
+}
+
+.radial-seat-label--active {
+  color: var(--seat-paint, #2d7ae8);
+  border-color: var(--seat-paint, #2d7ae8);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95), 0 0 0 4px var(--seat-paint, #2d7ae8), 0 4px 12px rgba(15, 26, 42, 0.18);
+}
+
+.radial-seat-label__stats {
+  display: block;
+  font-size: clamp(0.68rem, 2.6cqi, 0.9rem);
+  font-weight: 700;
+  opacity: 0.95;
+  white-space: nowrap;
+}
+
+.radial-center-die {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(1.12);
+  z-index: 20;
+  pointer-events: auto;
+}
+
+.radial-center-die .corner-die {
+  pointer-events: auto;
+  position: relative;
+  z-index: 21;
+}
+
+/* Same die-plate size as classic; shape matches hub (pentagon / hexagon). */
+.radial-center-die .corner-die__plate-wrap {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--die-plate-size);
+  height: var(--die-plate-size);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.radial-center-die .corner-die__plate-wrap.corner-die__plate--red {
+  --die-turn-ring: var(--seat-red, #ef2424);
+}
+
+.radial-center-die .corner-die__plate-wrap.corner-die__plate--green {
+  --die-turn-ring: var(--seat-green, #179949);
+}
+
+.radial-center-die .corner-die__plate-wrap.corner-die__plate--blue {
+  --die-turn-ring: var(--seat-blue, #2d7ae8);
+}
+
+.radial-center-die .corner-die__plate-wrap.corner-die__plate--yellow {
+  --die-turn-ring: var(--seat-yellow, #e6bb00);
+}
+
+.radial-center-die .corner-die__plate-wrap.corner-die__plate--orange {
+  --die-turn-ring: var(--seat-orange, #f07818);
+}
+
+.radial-center-die .corner-die__plate-wrap.corner-die__plate--purple {
+  --die-turn-ring: var(--seat-purple, #8b4fcf);
+}
+
+.radial-center-die .corner-die__plate--hub {
+  left: 0;
+  top: 0;
+  bottom: auto;
+  width: 100%;
+  height: 100%;
+  transform: none;
+  border-radius: 0;
+  border: 0;
+  filter: drop-shadow(0 3px 8px rgba(24, 33, 46, 0.22));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 0 0 1px rgba(174, 186, 208, 0.45);
+}
+
+.radial-center-die .corner-die__plate--turn-active {
+  border-color: transparent;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 0 0 1px rgba(174, 186, 208, 0.36);
+}
+
+.radial-center-die .corner-die__plate-ring {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  overflow: visible;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.radial-center-die .corner-die__plate-ring-path {
+  fill: none;
+  stroke: var(--die-turn-ring, #2d7ae8);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 7 5;
+  animation: die-plate-dash-move 1.1s linear infinite;
+}
+
+/*
+ * left/top = tile center. Container uses classic pin footing so the
+ * token shadow (foot) sits on that point — same as board-hopping-token.
+ */
+.radial-board-container .radial-token.board-token-piece {
+  position: absolute;
+  width: calc(var(--board-token-size) * var(--token-fit, 1));
+  height: calc(var(--board-token-size) * var(--token-fit, 1));
+  margin: 0;
+  transform: translate(-50%, -90%);
+  transform-origin: center bottom;
+  display: grid;
+  place-items: center;
+  z-index: 12;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: default;
+  pointer-events: none;
+}
+
+.radial-board-container .radial-token.board-token-piece--movable {
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 7;
+}
+
+/* Finished tokens: small 2×2 on the hub wedge; keep upright (no rotate). */
+.radial-board-container .radial-token.board-token-piece.radial-token--finished {
+  width: calc(var(--board-token-size) * var(--token-fit, 1) * 0.48);
+  height: calc(var(--board-token-size) * var(--token-fit, 1) * 0.48);
+  z-index: 11;
+  transform: translate(-50%, -90%);
+  transform-origin: center bottom;
+}
+
+.radial-board-container .radial-token.board-token-piece .ludo-token {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: 100%;
+  height: 100%;
+  transform: none;
+  pointer-events: none;
+}
+
+.radial-board-container .radial-token.board-token-piece--movable .ludo-token {
+  pointer-events: auto;
+}
+
+.radial-hop-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.radial-board-container .board-hopping-token {
+  width: calc(var(--board-token-size) * var(--token-fit, 1));
+  height: calc(var(--board-token-size) * var(--token-fit, 1));
+  transform: translate(-50%, -90%);
+  transform-origin: center bottom;
+}
+
+@media (max-width: 1535.95px) {
+  /* Skip classic corner-die height reserve — radial names are on the board. */
+  .app-shell--playing .board-wrap:has(.radial-board-container) {
+    padding: 0;
+  }
+
+  .app-shell--playing .board-frame:has(.radial-board-container) {
+    width: min(100%, 100dvh);
+    margin: 0 auto;
+  }
+
+  .app-shell--playing .radial-board-container {
+    width: min(100%, 100dvh);
+    margin: 0 auto;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1366px) {
+  .app-shell--playing .board-frame:has(.radial-board-container) {
+    width: min(100%, calc(100dvh - var(--play-chrome, 48px)));
+    margin: 0 auto;
+  }
+
+  .app-shell--playing .radial-board-container {
+    width: min(100%, calc(100dvh - var(--play-chrome, 48px)));
+  }
+}

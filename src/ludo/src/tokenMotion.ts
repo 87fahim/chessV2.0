@@ -5,6 +5,7 @@ import {
   HOME_SLOT_POSITIONS,
   HOME_YARDS,
   getTokenCoord,
+  type ClassicPlayerColor,
   type Coordinate,
 } from './boardLayout'
 import type { PlayerColor } from './types'
@@ -16,6 +17,10 @@ const HOP_PAUSE_MS = 0
 
 export type BoardPercent = { left: number; top: number }
 
+function isClassicPlayerColor(color: PlayerColor): color is ClassicPlayerColor {
+  return color === 'red' || color === 'green' || color === 'yellow' || color === 'blue'
+}
+
 export function prefersReducedMotion(): boolean {
   return globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false
 }
@@ -25,6 +30,9 @@ export function getProgressCoord(
   progress: number,
   tokenIndex = 0,
 ): Coordinate | null {
+  if (!isClassicPlayerColor(color)) {
+    return null
+  }
   if (progress >= FINISH_PROGRESS) {
     return FINISH_COORDS[color]
   }
@@ -42,6 +50,9 @@ export function coordToPercent(coord: Coordinate): BoardPercent {
 
 /** Maps a home-yard slot to board percentage, matching `.home-yard-tokens__inner` layout. */
 export function yardSlotToPercent(color: PlayerColor, tokenIndex: number): BoardPercent {
+  if (!isClassicPlayerColor(color)) {
+    return { left: 50, top: 50 }
+  }
   const yard = HOME_YARDS[color]
   const slot = HOME_SLOT_POSITIONS[tokenIndex % HOME_SLOT_POSITIONS.length]
   const yardLeft = (yard.columnStart / BOARD_SIZE) * 100
@@ -124,10 +135,10 @@ function wait(ms: number): Promise<void> {
   })
 }
 
-function placeToken(element: HTMLElement, point: BoardPercent): void {
+function placeToken(element: HTMLElement, point: BoardPercent, anchorYPercent = 90): void {
   element.style.left = `${point.left}%`
   element.style.top = `${point.top}%`
-  element.style.transform = 'translate(-50%, -90%) scale(1)'
+  element.style.transform = `translate(-50%, -${anchorYPercent}%) scale(1)`
 }
 
 async function animateHop(
@@ -135,6 +146,7 @@ async function animateHop(
   from: BoardPercent,
   to: BoardPercent,
   durationMs: number,
+  anchorYPercent = 90,
 ): Promise<void> {
   const frames = 18
   const keyframes: Keyframe[] = []
@@ -148,7 +160,7 @@ async function animateHop(
     keyframes.push({
       left: `${from.left + (to.left - from.left) * eased}%`,
       top: `${from.top + (to.top - from.top) * eased - arc * HOP_LIFT_PERCENT}%`,
-      transform: `translate(-50%, -90%) scale(${scale})`,
+      transform: `translate(-50%, -${anchorYPercent}%) scale(${scale})`,
       offset: t,
     })
   }
@@ -165,7 +177,7 @@ async function animateHop(
     animation.cancel()
   }
 
-  placeToken(element, to)
+  placeToken(element, to, anchorYPercent)
 }
 
 export async function animateTokenHops(
@@ -175,16 +187,19 @@ export async function animateTokenHops(
     hopDurationMs?: number
     signal?: AbortSignal
     onHopStart?: (hopIndex: number) => void
+    /** Vertical translate percent; square pins use 90, hex centered tokens use 50. */
+    anchorYPercent?: number
   },
 ): Promise<void> {
   if (path.length === 0) {
     return
   }
 
-  placeToken(element, path[0])
+  const anchorYPercent = options?.anchorYPercent ?? 90
+  placeToken(element, path[0], anchorYPercent)
 
   if (path.length < 2 || prefersReducedMotion()) {
-    placeToken(element, path[path.length - 1])
+    placeToken(element, path[path.length - 1], anchorYPercent)
     return
   }
 
@@ -192,12 +207,12 @@ export async function animateTokenHops(
 
   for (let index = 0; index < path.length - 1; index += 1) {
     if (options?.signal?.aborted) {
-      placeToken(element, path[path.length - 1])
+      placeToken(element, path[path.length - 1], anchorYPercent)
       return
     }
 
     options?.onHopStart?.(index)
-    await animateHop(element, path[index], path[index + 1], hopDurationMs)
+    await animateHop(element, path[index], path[index + 1], hopDurationMs, anchorYPercent)
     if (index < path.length - 2) {
       await wait(HOP_PAUSE_MS)
     }
@@ -215,24 +230,26 @@ export async function animateTokenSlide(
     signal?: AbortSignal
     onStart?: (durationMs: number) => void
     onComplete?: () => void
+    anchorYPercent?: number
   },
 ): Promise<void> {
   if (path.length === 0) {
     return
   }
 
-  placeToken(element, path[0])
+  const anchorYPercent = options?.anchorYPercent ?? 90
+  placeToken(element, path[0], anchorYPercent)
   element.classList.add('board-returning-token--active')
 
   if (path.length < 2 || prefersReducedMotion()) {
-    placeToken(element, path[path.length - 1])
+    placeToken(element, path[path.length - 1], anchorYPercent)
     element.classList.remove('board-returning-token--active')
     options?.onComplete?.()
     return
   }
 
   if (options?.signal?.aborted) {
-    placeToken(element, path[path.length - 1])
+    placeToken(element, path[path.length - 1], anchorYPercent)
     element.classList.remove('board-returning-token--active')
     return
   }
@@ -247,7 +264,7 @@ export async function animateTokenSlide(
     return {
       left: `${point.left}%`,
       top: `${point.top}%`,
-      transform: `translate(-50%, -90%) scale(${shrink})`,
+      transform: `translate(-50%, -${anchorYPercent}%) scale(${shrink})`,
       offset: t,
       easing: 'ease-in-out',
     }
@@ -273,6 +290,6 @@ export async function animateTokenSlide(
     element.classList.remove('board-returning-token--active')
   }
 
-  placeToken(element, path[path.length - 1])
+  placeToken(element, path[path.length - 1], anchorYPercent)
   options?.onComplete?.()
 }
