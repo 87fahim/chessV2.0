@@ -560,6 +560,7 @@
 .corner-die-slot--bottom-left .corner-die-main,
 .corner-die-slot--bottom-right .corner-die-main {
   flex-direction: column-reverse;
+  gap: calc(var(--die-stats-gap) + var(--die-plate-nudge));
 }
 
 .corner-die-profile {
