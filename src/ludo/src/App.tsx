@@ -460,6 +460,12 @@ function HomeYardTokens({
       <div className="home-yard-tokens__inner">
         {tokens
           .filter((token) => token.progress === -1 && token.id !== hiddenTokenId)
+          .slice()
+          .sort((a, b) => {
+            const slotA = HOME_SLOT_POSITIONS[a.index % HOME_SLOT_POSITIONS.length]
+            const slotB = HOME_SLOT_POSITIONS[b.index % HOME_SLOT_POSITIONS.length]
+            return slotA.y - slotB.y || slotA.x - slotB.x
+          })
           .map((token) => {
             const slot = HOME_SLOT_POSITIONS[token.index % HOME_SLOT_POSITIONS.length]
             const canMoveToken = !disabled && legalMoves.includes(token.id)
@@ -474,6 +480,8 @@ function HomeYardTokens({
                 style={{
                   left: `${slot.x}%`,
                   top: `${slot.y}%`,
+                  // Lower slots (higher y) paint above upper ones when pins overlap.
+                  zIndex: Math.round(slot.y),
                 }}
                 aria-label={`Move ${color} piece to start`}
                 disabled={!canMoveToken}
@@ -751,6 +759,9 @@ function App() {
         })
       })
     }
+
+    // Lower rows paint above upper rows when tall pins overlap across cells.
+    placements.sort((a, b) => a.row - b.row || a.column - b.column || a.stackIndex - b.stackIndex)
 
     return placements
   }, [game, hoppingToken?.tokenId, returningToken?.tokenId])
@@ -1656,7 +1667,8 @@ function App() {
                         style={{
                           gridRow: placement.row + 1,
                           gridColumn: placement.column + 1,
-                          zIndex: 100 + placement.row * 10 + placement.stackIndex,
+                          // Lower board rows (and later stack peers) paint above upper tokens.
+                          zIndex: 100 + placement.row * 20 + placement.stackIndex,
                           ['--token-scale' as string]: String(placement.scale),
                           ['--stack-anchor' as string]: `${placement.anchorPercent}%`,
                         }}

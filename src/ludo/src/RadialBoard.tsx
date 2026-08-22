@@ -48,6 +48,16 @@ function triangleCentroid(points: Point[]): Point {
   }
 }
 
+/** Shrink a triangle toward its centroid (`t` = 0 keeps size, 1 collapses). */
+function insetTriangleByFactor(triangle: Point[], t: number): Point[] {
+  const center = triangleCentroid(triangle)
+  const amount = Math.max(0, Math.min(1, t))
+  return triangle.map((point) => ({
+    x: point.x + (center.x - point.x) * amount,
+    y: point.y + (center.y - point.y) * amount,
+  }))
+}
+
 /** Regular n-gon clip-path (%) — flats face seats (matches outer rim home edges). */
 function regularPolygonClipPath(sides: number): string {
   const points: string[] = []
@@ -236,6 +246,11 @@ export function RadialBoard({
     return placements
   }, [game.players, layout, hoppingToken?.tokenId, returningToken?.tokenId])
 
+  const stackedTokenPlacements = useMemo(() => {
+    // Paint lower tokens (higher `top`) above upper ones when pins overlap.
+    return [...tokenPlacements].sort((a, b) => a.top - b.top || a.left - b.left)
+  }, [tokenPlacements])
+
   return (
     <div
       className="radial-board-container"
@@ -256,21 +271,60 @@ export function RadialBoard({
             <feDropShadow dx="0" dy="8" stdDeviation="10" floodColor="#122038" floodOpacity="0.28" />
             <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#122038" floodOpacity="0.2" />
           </filter>
+          <filter id="radial-finish-glow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="blur" />
+            <feOffset dy="3" result="off" />
+            <feFlood floodColor="#0f1a2a" floodOpacity="0.35" result="color" />
+            <feComposite in="color" in2="off" operator="in" result="shadow" />
+            <feMerge>
+              <feMergeNode in="shadow" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="radial-finish-number-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2.4" result="soft" />
+            <feMerge>
+              <feMergeNode in="soft" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
           {layout.seats.map((seat) => {
             const paint = paintByColor[seat.color]
             return (
-              <linearGradient
-                key={`seat-grad-${seat.seat}`}
-                id={`radial-seat-grad-${seat.seat}`}
-                x1="18%"
-                y1="8%"
-                x2="86%"
-                y2="92%"
-              >
-                <stop offset="0%" stopColor={lightenPaintHex(paint, 0.38)} />
-                <stop offset="42%" stopColor={paint} />
-                <stop offset="100%" stopColor={darkenPaintHex(paint, 0.28)} />
-              </linearGradient>
+              <g key={`seat-grads-${seat.seat}`}>
+                <linearGradient
+                  id={`radial-seat-grad-${seat.seat}`}
+                  x1="18%"
+                  y1="8%"
+                  x2="86%"
+                  y2="92%"
+                >
+                  <stop offset="0%" stopColor={lightenPaintHex(paint, 0.38)} />
+                  <stop offset="42%" stopColor={paint} />
+                  <stop offset="100%" stopColor={darkenPaintHex(paint, 0.28)} />
+                </linearGradient>
+                <linearGradient
+                  id={`radial-finish-grad-${seat.seat}`}
+                  x1="18%"
+                  y1="0%"
+                  x2="82%"
+                  y2="100%"
+                >
+                  <stop offset="0%" stopColor={lightenPaintHex(paint, 0.55)} />
+                  <stop offset="38%" stopColor={lightenPaintHex(paint, 0.12)} />
+                  <stop offset="100%" stopColor={darkenPaintHex(paint, 0.38)} />
+                </linearGradient>
+                <radialGradient
+                  id={`radial-finish-orb-${seat.seat}`}
+                  cx="50%"
+                  cy="42%"
+                  r="58%"
+                >
+                  <stop offset="0%" stopColor="#ffffff" stopOpacity="0.55" />
+                  <stop offset="45%" stopColor={lightenPaintHex(paint, 0.35)} stopOpacity="0.28" />
+                  <stop offset="100%" stopColor={paint} stopOpacity="0" />
+                </radialGradient>
+              </g>
             )
           })}
         </defs>
@@ -415,22 +469,56 @@ export function RadialBoard({
           if (loserPlayerId && player.id === loserPlayerId) {
             return null
           }
-          const center = triangleCentroid(seat.homeTriangle)
-          const fontSize = Math.max(42, layout.measurements.tileSize * 1.15)
+
+          // Large inset card — leaves a thin colored rim, number only.
+          const panel = insetTriangleByFactor(seat.homeTriangle, 0.16)
+          const sheen = insetTriangleByFactor(seat.homeTriangle, 0.22)
+          const center = triangleCentroid(panel)
+          const tile = layout.measurements.tileSize
+          const placeSize = Math.max(36, tile * 1.05)
+          const orbR = Math.max(22, tile * 0.62)
+
           return (
-            <g key={`finish-banner-${seat.seat}`} className="radial-home-finish">
+            <g
+              key={`finish-banner-${seat.seat}`}
+              className={`radial-home-finish radial-home-finish--place-${place}`}
+              aria-label={`${player.name} finished in place ${place}`}
+            >
               <polygon
-                points={pointsToSvg(seat.homeTriangle)}
-                fill={paintByColor[seat.color]}
-                stroke="rgba(255,255,255,0.7)"
-                strokeWidth={4}
+                points={pointsToSvg(panel)}
+                fill={`url(#radial-finish-grad-${seat.seat})`}
+                className="radial-home-finish__panel"
+                filter="url(#radial-finish-glow)"
+              />
+              <polygon
+                points={pointsToSvg(sheen)}
+                className="radial-home-finish__sheen"
+              />
+              <polygon
+                points={pointsToSvg(panel)}
+                className="radial-home-finish__panel-rim"
+              />
+              <circle
+                cx={center.x}
+                cy={center.y}
+                r={orbR}
+                fill={`url(#radial-finish-orb-${seat.seat})`}
+                className="radial-home-finish__orb"
               />
               <text
                 x={center.x}
                 y={center.y}
+                className="radial-home-finish__place radial-home-finish__place--glow"
+                style={{ fontSize: placeSize }}
+                filter="url(#radial-finish-number-glow)"
+              >
+                {place}
+              </text>
+              <text
+                x={center.x}
+                y={center.y}
                 className="radial-home-finish__place"
-                style={{ fontSize }}
-                aria-label={`${player.name} finished in place ${place}`}
+                style={{ fontSize: placeSize }}
               >
                 {place}
               </text>
@@ -468,13 +556,18 @@ export function RadialBoard({
               transform: `translate(-50%, -50%) rotate(${seat.labelRotationDeg}deg)`,
               ['--seat-paint' as string]: paintByColor[seat.color],
             }}
-            title={name}
+            title={`${name} — Captured ${capturesMade}, Lost ${timesCaptured}`}
           >
-            <span className="radial-seat-label__name">{name}</span>
-            <span className="radial-seat-label__stats">
-              C {capturesMade} · L {timesCaptured}
-              {place ? ` · #${place}` : ''}
-            </span>
+            <div
+              className="radial-seat-label__text"
+              style={{
+                transform: `rotate(${seat.labelTextRotationDeg - seat.labelRotationDeg}deg)`,
+              }}
+            >
+              <span className="radial-seat-label__stats">
+                Captured {capturesMade} · Lost {timesCaptured}
+              </span>
+            </div>
           </div>
         )
       })}
@@ -547,7 +640,7 @@ export function RadialBoard({
         </button>
       </div>
 
-      {tokenPlacements.map((placement) => {
+      {stackedTokenPlacements.map((placement) => {
         const movable = legalMoveIds.has(placement.token.id)
         const className = [
           'radial-token',
@@ -557,6 +650,8 @@ export function RadialBoard({
         ]
           .filter(Boolean)
           .join(' ')
+        // Base keeps tokens above the SVG board; vertical position decides overlap order.
+        const zIndex = (movable ? 90 : placement.finished ? 55 : 40) + Math.round(placement.top)
         return (
           <button
             key={placement.token.id}
@@ -565,6 +660,7 @@ export function RadialBoard({
             style={{
               left: `${placement.left}%`,
               top: `${placement.top}%`,
+              zIndex,
               ['--token-paint' as string]: placement.paintHex,
             }}
             disabled={!movable}

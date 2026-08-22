@@ -38,6 +38,8 @@ export interface RadialSeatLayout {
   labelPosition: Point
   /** Degrees; aligns the name chip with the home-triangle outer edge. */
   labelRotationDeg: number
+  /** Absolute degrees; tops of letters face the board center (aligned with card). */
+  labelTextRotationDeg: number
   finishCenter: Point
   /** Colored finish triangle in the center hub (pie slice). */
   centerWedge: Point[]
@@ -390,15 +392,20 @@ export function buildRadialBoardLayout(seatColors: PlayerColor[]): RadialBoardLa
     finishIds[color] = `seat-${seat}-finish`
 
     const midAngle = angle + measurements.sectorAngle / 2
-    const labelRadial = OUTER_RADIUS + measurements.tileSize * 1.15
-    // Text runs along the triangle’s outer edge (tangent to the sector midline).
+    const labelRadial = OUTER_RADIUS + measurements.tileSize * 0.55
+    // Label card runs along the triangle’s outer edge (tangent to the sector midline).
     let labelRotationDeg = ((midAngle * 180) / Math.PI + 90) % 360
     if (labelRotationDeg < 0) {
       labelRotationDeg += 360
     }
-    // Keep names readable (not upside-down) on the far side of the board.
+    // Keep the card readable (not upside-down) on the far side of the board.
     if (labelRotationDeg > 90 && labelRotationDeg < 270) {
       labelRotationDeg = (labelRotationDeg + 180) % 360
+    }
+    // Text stays aligned with the card; tops of letters face the board center.
+    let labelTextRotationDeg = ((midAngle * 180) / Math.PI - 90) % 360
+    if (labelTextRotationDeg < 0) {
+      labelTextRotationDeg += 360
     }
 
     const centerWedge = createCenterWedge(seat, playerCount)
@@ -414,6 +421,7 @@ export function buildRadialBoardLayout(seatColors: PlayerColor[]): RadialBoardLa
       yardSlots: yardSlotsInTriangle(homeTriangleInner),
       labelPosition: positionInSector(midAngle, labelRadial, 0),
       labelRotationDeg,
+      labelTextRotationDeg,
       centerWedge,
       finishSlots,
       finishCenter: finishSlots[3] ?? finishSlots[0]!,
