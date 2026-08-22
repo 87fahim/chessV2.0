@@ -441,12 +441,12 @@
   --token-scale: 1;
   --die-size: calc(var(--tile-size) * 1.66);
   --die-plate-size: calc(var(--tile-size) * 2.2);
-  --die-profile-width: var(--die-plate-size);
+  --die-profile-width: calc(var(--tile-size) * 3.4);
   --die-profile-height: calc(var(--tile-size) * 0.82);
   --die-gap: calc(var(--tile-size) * 0.7);
   --die-slot-gap: calc(var(--tile-size) * 0.12);
   --die-profile-clearance: calc(var(--tile-size) * 0.18);
-  --die-stats-gap: calc(var(--tile-size) * 0.08);
+  --die-stats-gap: calc(var(--tile-size) * 0.22);
   --die-stats-height: calc(var(--tile-size) * 1.15);
   --die-cube-size: calc(var(--die-size) * 0.7857);
   --die-half: calc(var(--die-cube-size) / 2);
@@ -509,24 +509,24 @@
   transform: translate(calc(100% + var(--die-gap)), -50%);
 }
 
+/* Bottom seats: die above name */
 .corner-die-slot--bottom-left,
 .corner-die-slot--bottom-right {
-  /* Die above, player name below */
   flex-direction: column-reverse;
 }
 
-.corner-die-slot--top-left .corner-die-player,
-.corner-die-slot--top-right .corner-die-player {
+.corner-die-slot--top-left .corner-die-main,
+.corner-die-slot--top-right .corner-die-main {
   /* Plate sits taller than the die hit-box and sticks above it — clear that + a small gap */
-  margin-bottom: calc(
+  margin-top: calc(
     var(--die-plate-size) - var(--die-size) - var(--die-plate-nudge) + var(--die-profile-clearance)
   );
 }
 
-.corner-die-slot--bottom-left .corner-die-player,
-.corner-die-slot--bottom-right .corner-die-player {
+.corner-die-slot--bottom-left .corner-die-main,
+.corner-die-slot--bottom-right .corner-die-main {
   /* Plate overhangs under the die — clear that + a small gap */
-  margin-top: calc(var(--die-plate-nudge) + var(--die-profile-clearance));
+  margin-bottom: calc(var(--die-plate-nudge) + var(--die-profile-clearance));
 }
 
 .corner-die-slot--bottom-left {
@@ -541,16 +541,31 @@
   transform: translate(calc(100% + var(--die-gap)), -50%);
 }
 
-.corner-die-player {
-  width: var(--die-profile-width);
+.corner-die-main {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   gap: var(--die-stats-gap);
+}
+
+/* Top seats: stats below the die (DOM order die → stats) */
+.corner-die-slot--top-left .corner-die-main,
+.corner-die-slot--top-right .corner-die-main {
+  flex-direction: column;
+  /* Clear the plate that hangs under the die before the labels */
+  gap: calc(var(--die-stats-gap) + var(--die-plate-nudge));
+}
+
+/* Bottom seats: stats above the die */
+.corner-die-slot--bottom-left .corner-die-main,
+.corner-die-slot--bottom-right .corner-die-main {
+  flex-direction: column-reverse;
+  gap: calc(var(--die-stats-gap) + var(--die-plate-nudge));
 }
 
 .corner-die-profile {
   width: 100%;
+  min-width: 0;
   height: var(--die-profile-height);
   border-radius: calc(var(--tile-size) * 0.24);
   border: 2px solid rgba(255, 255, 255, 0.85);
@@ -560,6 +575,13 @@
   place-items: center;
   box-sizing: border-box;
   pointer-events: none;
+  overflow: hidden;
+}
+
+.corner-die-profile--empty {
+  opacity: 0;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .corner-die-stats {
@@ -570,7 +592,7 @@
   min-height: var(--die-stats-height);
   padding: 2px 0;
   color: #31425f;
-  font-size: clamp(0.52rem, calc(var(--tile-size) * 0.28), 0.72rem);
+  font-size: clamp(0.48rem, calc(var(--tile-size) * 0.24), 0.68rem);
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: 0.01em;
@@ -600,16 +622,19 @@
 }
 
 .corner-die-profile__name {
+  display: block;
+  width: 100%;
+  min-width: 0;
   color: #ffffff;
-  font-size: clamp(0.62rem, calc(var(--tile-size) * 0.38), 0.95rem);
+  font-size: clamp(0.58rem, calc(var(--tile-size) * 0.34), 0.9rem);
   font-weight: 800;
-  letter-spacing: 0.02em;
-  line-height: 1;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
   text-shadow: 0 1px 1px rgba(15, 26, 42, 0.25);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
+  text-align: center;
 }
 
 .corner-die-profile--active {
@@ -2153,7 +2178,7 @@
   }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1366px) {
   .app-shell--playing {
     padding: 0;
     height: 100dvh;
@@ -2308,6 +2333,54 @@
     right: auto;
     transform: translate(-50%, calc(100% + var(--die-gap)));
   }
+
+  /* Above/below board: stats beside the die (right of left seats, left of right seats). */
+  .app-shell--playing .corner-die-slot--top-left .corner-die-main,
+  .app-shell--playing .corner-die-slot--bottom-left .corner-die-main {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .app-shell--playing .corner-die-slot--top-right .corner-die-main,
+  .app-shell--playing .corner-die-slot--bottom-right .corner-die-main {
+    flex-direction: row-reverse;
+    align-items: center;
+  }
+
+  .app-shell--playing .corner-die-stats {
+    align-items: flex-start;
+    text-align: left;
+    min-height: 0;
+  }
+
+  .app-shell--playing .corner-die-slot--top-right .corner-die-stats,
+  .app-shell--playing .corner-die-slot--bottom-right .corner-die-stats {
+    align-items: flex-end;
+    text-align: right;
+  }
+}
+
+/* iPad / tablet only: kill the empty top gap (phones stay centered). */
+@media (min-width: 768px) and (max-width: 1366px) {
+  .app-shell--playing {
+    /* Chess dense AppBar is already above this page. */
+    --play-chrome: 48px;
+    height: calc(100dvh - var(--play-chrome));
+    min-height: calc(100dvh - var(--play-chrome));
+    max-height: calc(100dvh - var(--play-chrome));
+  }
+
+  .app-shell--playing .board-wrap {
+    place-items: start center;
+    align-content: start;
+  }
+
+  .app-shell--playing .board-frame {
+    width: min(100%, calc((100dvh - var(--play-chrome)) / (1 + 2 * var(--vertical-die-ratio))));
+    /* Less top band than bottom so the stack sits higher. */
+    margin-top: calc(var(--vertical-die-space) * 0.65);
+    margin-bottom: var(--vertical-die-space);
+  }
 }
 
 @media (max-width: 960px) {
@@ -2357,5 +2430,29 @@
     left: 82%;
     right: auto;
     transform: translate(-50%, calc(100% + var(--die-gap)));
+  }
+
+  .corner-die-slot--top-left .corner-die-main,
+  .corner-die-slot--bottom-left .corner-die-main {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .corner-die-slot--top-right .corner-die-main,
+  .corner-die-slot--bottom-right .corner-die-main {
+    flex-direction: row-reverse;
+    align-items: center;
+  }
+
+  .corner-die-stats {
+    align-items: flex-start;
+    text-align: left;
+    min-height: 0;
+  }
+
+  .corner-die-slot--top-right .corner-die-stats,
+  .corner-die-slot--bottom-right .corner-die-stats {
+    align-items: flex-end;
+    text-align: right;
   }
 }

@@ -9,6 +9,7 @@ import {
   repairStuckTurn,
   saveGameLocal,
   setPlayerPaintHex,
+  setPlayerName,
 } from './localGameEngine'
 import {
   getGameSoundVolume,
@@ -89,7 +90,6 @@ function CornerDie({
   corner,
   color,
   profileName,
-  shortLabel,
   highlighted,
   turnActive,
   capturesMade,
@@ -103,7 +103,6 @@ function CornerDie({
   corner: BoardCornerId
   color: PlayerColor
   profileName: string
-  shortLabel: string
   highlighted: boolean
   turnActive: boolean
   capturesMade: number
@@ -121,78 +120,82 @@ function CornerDie({
 
   return (
     <div className={`corner-die-slot corner-die-slot--${corner}`}>
-      <div className="corner-die-player">
-        <div
-          className={
-            highlighted
+      <div
+        className={
+          !profileName
+            ? `corner-die-profile corner-die-profile--empty corner-die-profile--${color}`
+            : highlighted
               ? `corner-die-profile corner-die-profile--active corner-die-profile--${color}`
               : `corner-die-profile corner-die-profile--${color}`
-          }
-          title={profileName}
-          aria-label={profileName}
+        }
+        title={profileName || undefined}
+        aria-label={profileName || undefined}
+        aria-hidden={profileName ? undefined : true}
+      >
+        <span className="corner-die-profile__name">{profileName || ''}</span>
+      </div>
+
+      <div className="corner-die-main">
+        <button
+          type="button"
+          className="corner-die"
+          aria-label={`Roll ${corner} die for ${profileName}. Current value ${value}`}
+          onClick={onRoll}
+          disabled={disabled}
         >
-          <span className="corner-die-profile__name">{shortLabel}</span>
-        </div>
+          <span className={plateClassName} aria-hidden="true">
+            <span className={shadowClassName} />
+            {turnActive ? (
+              <svg className="corner-die__plate-ring" viewBox="0 0 100 100" focusable="false">
+                <rect
+                  className="corner-die__plate-ring-path"
+                  x="3"
+                  y="3"
+                  width="94"
+                  height="94"
+                  rx="14"
+                  ry="14"
+                  pathLength={100}
+                />
+              </svg>
+            ) : null}
+          </span>
+          <span
+            className={rolling ? 'corner-die__cube corner-die__cube--rolling' : 'corner-die__cube'}
+            style={{
+              ['--die-rx' as string]: orientation.rx,
+              ['--die-ry' as string]: orientation.ry,
+              ['--die-rz' as string]: orientation.rz,
+            }}
+          >
+            {DIE_VALUES.map((face) => (
+              <span key={face} className={`die-face die-face--${face}`}>
+                {DIE_PIP_LAYOUTS[face].map(([row, column], index) => (
+                  <span
+                    key={`${face}-${index}`}
+                    className="die-pip"
+                    style={{
+                      ['--pip-row' as string]: row,
+                      ['--pip-column' as string]: column,
+                    }}
+                  />
+                ))}
+              </span>
+            ))}
+          </span>
+        </button>
+
         <div
           className="corner-die-stats"
-          aria-label={`${profileName} stats: captured ${capturesMade}, was captured ${timesCaptured}, progress ${progressScore}%`}
+          aria-label={`${profileName} stats: captured ${capturesMade}, lost ${timesCaptured}, score ${progressScore}%`}
         >
-          <span title="Pieces captured">C {capturesMade}</span>
-          <span title="Pieces lost">L {timesCaptured}</span>
+          <span title="Pieces captured">Captured {capturesMade}</span>
+          <span title="Pieces lost">Lost {timesCaptured}</span>
           <span title="Average progress (exact-finish, home-yard, and behind-threat adjusted)">
-            S {progressScore}%
+            Score {progressScore}%
           </span>
         </div>
       </div>
-
-      <button
-        type="button"
-        className="corner-die"
-        aria-label={`Roll ${corner} die for ${profileName}. Current value ${value}`}
-        onClick={onRoll}
-        disabled={disabled}
-      >
-        <span className={plateClassName} aria-hidden="true">
-          <span className={shadowClassName} />
-          {turnActive ? (
-            <svg className="corner-die__plate-ring" viewBox="0 0 100 100" focusable="false">
-              <rect
-                className="corner-die__plate-ring-path"
-                x="3"
-                y="3"
-                width="94"
-                height="94"
-                rx="14"
-                ry="14"
-                pathLength={100}
-              />
-            </svg>
-          ) : null}
-        </span>
-        <span
-          className={rolling ? 'corner-die__cube corner-die__cube--rolling' : 'corner-die__cube'}
-          style={{
-            ['--die-rx' as string]: orientation.rx,
-            ['--die-ry' as string]: orientation.ry,
-            ['--die-rz' as string]: orientation.rz,
-          }}
-        >
-          {DIE_VALUES.map((face) => (
-            <span key={face} className={`die-face die-face--${face}`}>
-              {DIE_PIP_LAYOUTS[face].map(([row, column], index) => (
-                <span
-                  key={`${face}-${index}`}
-                  className="die-pip"
-                  style={{
-                    ['--pip-row' as string]: row,
-                    ['--pip-column' as string]: column,
-                  }}
-                />
-              ))}
-            </span>
-          ))}
-        </span>
-      </button>
     </div>
   )
 }
@@ -1170,6 +1173,23 @@ function App() {
     }
   }
 
+  function handleChangePlayerName(playerId: string, name: string): void {
+    if (!game) {
+      return
+    }
+
+    try {
+      const next = setPlayerName(game, playerId, name)
+      setGame(next)
+      saveGameLocal(next)
+      setError(null)
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error ? requestError.message : 'Failed to change name.'
+      setError(message)
+    }
+  }
+
   const endGameStandings = useMemo(() => {
     if (!game?.finishOrder?.length) {
       return []
@@ -1228,15 +1248,6 @@ function App() {
   return (
     <LudoPageShell playing={Boolean(game)} seatPaintStyle={seatPaintStyle}>
       <LudoSessionHeader
-        currentPlayer={
-          currentPlayer
-            ? {
-                name: currentPlayer.name,
-                color: currentPlayer.color,
-                paintHex: resolvePlayerPaintHex(currentPlayer),
-              }
-            : null
-        }
         showNewSession={Boolean(game)}
         onNewSession={handleResetSession}
       />
@@ -1284,6 +1295,7 @@ function App() {
           onNewSession={handleResetSession}
           onToggleAutoRoll={handleToggleAutoRoll}
           onChangePlayerPaint={handleChangePlayerPaint}
+          onChangePlayerName={handleChangePlayerName}
           board={
           <LudoBoardSurface seatPaintStyle={seatPaintStyle}>
               {BOARD_CORNERS.map((corner) => (
@@ -1294,8 +1306,9 @@ function App() {
                   const cornerFinished = cornerPlayer
                     ? finishPlaceByPlayerId.has(cornerPlayer.id)
                     : false
-                  const profileName = cornerPlayer?.name ?? `${corner.color.toUpperCase()} Seat`
-                  const shortLabel = cornerPlayer ? `P${cornerPlayerIndex + 1}` : '—'
+                  const profileName = cornerPlayer
+                    ? cornerPlayer.name.trim() || `Player ${cornerPlayerIndex + 1}`
+                    : ''
                   const capturesMade = safeStatCount(cornerPlayer?.capturesMade)
                   const timesCaptured = safeStatCount(cornerPlayer?.timesCaptured)
                   const progressScore = cornerPlayer
@@ -1311,7 +1324,6 @@ function App() {
                       corner={corner.id}
                       color={corner.color}
                       profileName={profileName}
-                      shortLabel={shortLabel}
                       highlighted={isCurrentCorner && !cornerFinished}
                       turnActive={
                         isCurrentCorner &&
