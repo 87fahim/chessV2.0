@@ -3,7 +3,6 @@ import {
   getBoardRules,
   getTrackIndexForRules,
   isRadialPlayerCount,
-  RADIAL_CELLS_PER_SEAT,
   type BoardRules,
   type RadialPlayerCount,
 } from './boardRules'

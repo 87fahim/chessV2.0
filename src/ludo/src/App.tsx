@@ -1202,13 +1202,16 @@ function App() {
     }
 
     autoMovedKeyRef.current = moveKey
-    const tokenId =
-      game.legalMoves.length === 1
-        ? game.legalMoves[0]
-        : game.legalMoves[Math.floor(Math.random() * game.legalMoves.length)]
+    const soleMove = game.legalMoves.length === 1 ? game.legalMoves[0] : null
+    const moveChoices = game.legalMoves
 
     const timer = window.setTimeout(
       () => {
+        const tokenId =
+          soleMove ?? moveChoices[Math.floor(Math.random() * moveChoices.length)]
+        if (!tokenId) {
+          return
+        }
         void handleMoveRef.current(tokenId)
       },
       isAutoPlay ? 420 : 0,

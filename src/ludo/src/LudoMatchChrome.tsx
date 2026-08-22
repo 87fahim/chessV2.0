@@ -486,7 +486,6 @@ function MatchControlBody({
   canRoll,
   soundVolume,
   finishPlaceByPlayerId,
-  finishedCounts,
   error,
   autoRollByPlayerId,
   autoPlayByPlayerId,
