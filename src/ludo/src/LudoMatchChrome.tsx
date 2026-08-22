@@ -3,9 +3,11 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   Divider,
   Drawer,
+  FormControlLabel,
   IconButton,
   Paper,
   Slider,
@@ -13,6 +15,7 @@ import {
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
@@ -27,6 +30,8 @@ import { LudoToken } from './LudoToken';
 
 type SetupCount = 2 | 3 | 4;
 type SetupStep = 'count' | 'names';
+
+const SEAT_COLORS: PlayerColor[] = ['red', 'green', 'yellow', 'blue'];
 
 const COLOR_HEX: Record<PlayerColor, string> = {
   red: '#ef2424',
@@ -380,9 +385,13 @@ function MatchControlBody({
   finishPlaceByPlayerId,
   finishedCounts,
   error,
+  autoRollByPlayerId,
+  colorChangeDisabled,
   onRoll,
   onSoundVolumeChange,
   onNewSession,
+  onToggleAutoRoll,
+  onChangePlayerColor,
   onClose,
   showClose,
 }: {
@@ -393,9 +402,13 @@ function MatchControlBody({
   finishPlaceByPlayerId: Map<string, number>;
   finishedCounts: Record<PlayerColor, number>;
   error: string | null;
+  autoRollByPlayerId: Record<string, boolean>;
+  colorChangeDisabled: boolean;
   onRoll: () => void;
   onSoundVolumeChange: (value: number) => void;
   onNewSession: () => void;
+  onToggleAutoRoll: (playerId: string, enabled: boolean) => void;
+  onChangePlayerColor: (playerId: string, color: PlayerColor) => void;
   onClose?: () => void;
   showClose: boolean;
 }) {
@@ -472,31 +485,92 @@ function MatchControlBody({
       <Divider />
 
       <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-        Progress
+        Players
       </Typography>
-      <Stack spacing={1}>
+      <Stack spacing={1.25}>
         {game.players.map((player) => {
           const place = finishPlaceByPlayerId.get(player.id);
+          const autoRoll = Boolean(autoRollByPlayerId[player.id]);
+
           return (
             <Paper
               key={player.id}
               variant="outlined"
               sx={{
                 px: 1.25,
-                py: 1,
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: 1,
+                py: 1.25,
                 borderLeft: 4,
                 borderLeftColor: COLOR_HEX[player.color],
               }}
             >
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                {player.name}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {place ? `#${place}` : `${finishedCounts[player.color]}/4 home`}
-              </Typography>
+              <Stack spacing={1}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    {player.name}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {place ? `#${place}` : `${finishedCounts[player.color]}/4 home`}
+                  </Typography>
+                </Stack>
+
+                <FormControlLabel
+                  sx={{ m: 0, ml: -0.5 }}
+                  control={
+                    <Checkbox
+                      size="small"
+                      checked={autoRoll}
+                      onChange={(event) => onToggleAutoRoll(player.id, event.target.checked)}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2">Auto roll</Typography>
+                  }
+                />
+
+                <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
+                    Seat
+                  </Typography>
+                  {SEAT_COLORS.map((color) => {
+                    const selected = player.color === color;
+                    const occupiedByOther = game.players.some(
+                      (entry) => entry.id !== player.id && entry.color === color,
+                    );
+                    return (
+                      <Tooltip
+                        key={color}
+                        title={
+                          colorChangeDisabled
+                            ? 'Finish the current roll first'
+                            : occupiedByOther
+                              ? `Swap with ${color}`
+                              : `Use ${color}`
+                        }
+                      >
+                        <span>
+                          <IconButton
+                            size="small"
+                            aria-label={`Set ${player.name} seat to ${color}`}
+                            aria-pressed={selected}
+                            disabled={colorChangeDisabled || selected}
+                            onClick={() => onChangePlayerColor(player.id, color)}
+                            sx={{
+                              width: 28,
+                              height: 28,
+                              bgcolor: COLOR_HEX[color],
+                              border: selected ? '2px solid' : '2px solid transparent',
+                              borderColor: selected ? 'text.primary' : 'transparent',
+                              opacity: colorChangeDisabled ? 0.45 : 1,
+                              '&:hover': { bgcolor: COLOR_HEX[color] },
+                              '&.Mui-disabled': { bgcolor: COLOR_HEX[color], opacity: selected ? 1 : 0.45 },
+                            }}
+                          />
+                        </span>
+                      </Tooltip>
+                    );
+                  })}
+                </Stack>
+              </Stack>
             </Paper>
           );
         })}
@@ -521,12 +595,16 @@ export function LudoMatchLayout({
   finishPlaceByPlayerId,
   finishedCounts,
   error,
+  autoRollByPlayerId,
+  colorChangeDisabled,
   menuOpen,
   onMenuOpen,
   onMenuClose,
   onRoll,
   onSoundVolumeChange,
   onNewSession,
+  onToggleAutoRoll,
+  onChangePlayerColor,
   board,
 }: {
   game: GameState;
@@ -536,12 +614,16 @@ export function LudoMatchLayout({
   finishPlaceByPlayerId: Map<string, number>;
   finishedCounts: Record<PlayerColor, number>;
   error: string | null;
+  autoRollByPlayerId: Record<string, boolean>;
+  colorChangeDisabled: boolean;
   menuOpen: boolean;
   onMenuOpen: () => void;
   onMenuClose: () => void;
   onRoll: () => void;
   onSoundVolumeChange: (value: number) => void;
   onNewSession: () => void;
+  onToggleAutoRoll: (playerId: string, enabled: boolean) => void;
+  onChangePlayerColor: (playerId: string, color: PlayerColor) => void;
   board: React.ReactNode;
 }) {
   const theme = useTheme();
@@ -555,9 +637,13 @@ export function LudoMatchLayout({
     finishPlaceByPlayerId,
     finishedCounts,
     error,
+    autoRollByPlayerId,
+    colorChangeDisabled,
     onRoll,
     onSoundVolumeChange,
     onNewSession,
+    onToggleAutoRoll,
+    onChangePlayerColor,
   };
 
   return (

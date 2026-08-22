@@ -368,6 +368,7 @@ export function applyLocalRoll(game: GameState, clientRoll: number): GameState {
 }
 
 export function applyLocalMove(game: GameState, tokenId: string): GameState {
+
   const next = structuredClone(game)
   ensureFinishOrder(next)
 
@@ -521,6 +522,60 @@ function normalizeLoadedGame(game: GameState): GameState {
 
   game.status = 'ACTIVE'
   return game
+}
+
+const ALL_SEAT_COLORS: PlayerColor[] = ['red', 'green', 'yellow', 'blue']
+
+function remapTokensToColor(tokens: TokenState[], color: PlayerColor): TokenState[] {
+  return tokens.map((token, index) => ({
+    ...token,
+    id: `${color}-${(token.index ?? index) + 1}`,
+    index: token.index ?? index,
+  }))
+}
+
+/**
+ * Reassign a player's board seat color. If another player already has that color,
+ * the two seats are swapped (tokens keep progress; ids remap to the new color).
+ * Only safe when no dice roll is pending mid-turn.
+ */
+export function reassignPlayerColor(game: GameState, playerId: string, nextColor: PlayerColor): GameState {
+  if (!ALL_SEAT_COLORS.includes(nextColor)) {
+    throw new Error('Invalid seat color.')
+  }
+  if (game.pendingRoll !== null) {
+    throw new Error('Finish the current roll before changing seat colors.')
+  }
+  if (game.status === 'COMPLETED') {
+    throw new Error('Match is over; seat colors are locked.')
+  }
+
+  const next = structuredClone(game)
+  const player = next.players.find((entry) => entry.id === playerId)
+  if (!player) {
+    throw new Error('Player not found.')
+  }
+  if (player.color === nextColor) {
+    return next
+  }
+
+  const occupant = next.players.find((entry) => entry.id !== playerId && entry.color === nextColor)
+  if (occupant) {
+    const previousColor = player.color
+    player.color = nextColor
+    player.tokens = remapTokensToColor(player.tokens, nextColor)
+    occupant.color = previousColor
+    occupant.tokens = remapTokensToColor(occupant.tokens, previousColor)
+  } else {
+    player.color = nextColor
+    player.tokens = remapTokensToColor(player.tokens, nextColor)
+  }
+
+  next.legalMoves = []
+  next.revision += 1
+  next.updatedAt = nowIso()
+  next.message = `${player.name} is now on ${player.color}.`
+  return next
 }
 
 /** Returns a repaired copy when the turn is stuck on a finished player; ignores real race endings. */

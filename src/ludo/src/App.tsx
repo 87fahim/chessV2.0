@@ -7,6 +7,7 @@ import {
   createLocalGame,
   loadGameLocal,
   repairStuckTurn,
+  reassignPlayerColor,
   saveGameLocal,
 } from './localGameEngine'
 import {
@@ -510,6 +511,7 @@ function App() {
   const [editingNameIndex, setEditingNameIndex] = useState<number | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [endGameOpen, setEndGameOpen] = useState(false)
+  const [autoRollByPlayerId, setAutoRollByPlayerId] = useState<Record<string, boolean>>({})
   const [soundVolume, setSoundVolume] = useState(() => getGameSoundVolume())
   const hoppingTokenRef = useRef<HTMLDivElement | null>(null)
   const returningTokenRef = useRef<HTMLDivElement | null>(null)
@@ -517,7 +519,9 @@ function App() {
   const gameRef = useRef<GameState | null>(null)
   const endSoundPlayedForRef = useRef<string | null>(null)
   const autoMovedKeyRef = useRef<string | null>(null)
+  const autoRollKeyRef = useRef<string | null>(null)
   const handleMoveRef = useRef<(tokenId: string) => Promise<void>>(async () => {})
+  const handleRollRef = useRef<() => Promise<GameState | null>>(async () => null)
   gameRef.current = game
 
   const motionHiddenTokenId = returningToken?.tokenId ?? hoppingToken?.tokenId ?? null
@@ -1084,6 +1088,73 @@ function App() {
     void handleMoveRef.current(tokenId)
   }, [game, loading, busy, dieRolling, hoppingToken, returningToken])
 
+  handleRollRef.current = handleRoll
+
+  const colorChangeDisabled =
+    game === null ||
+    busy ||
+    dieRolling ||
+    hoppingToken !== null ||
+    returningToken !== null ||
+    game.pendingRoll !== null ||
+    game.status === 'COMPLETED'
+
+  // Auto-roll when the current player's Match Control checkbox is on.
+  useEffect(() => {
+    if (!game || loading || !canRoll || dieRolling || busy) {
+      return
+    }
+    if (hoppingToken || returningToken) {
+      return
+    }
+    if (!currentPlayer || !autoRollByPlayerId[currentPlayer.id]) {
+      return
+    }
+
+    const rollKey = `${game.gameId}:${game.revision}:${currentPlayer.id}`
+    if (autoRollKeyRef.current === rollKey) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      autoRollKeyRef.current = rollKey
+      void handleRollRef.current()
+    }, 450)
+
+    return () => window.clearTimeout(timer)
+  }, [
+    game,
+    loading,
+    canRoll,
+    dieRolling,
+    busy,
+    hoppingToken,
+    returningToken,
+    currentPlayer,
+    autoRollByPlayerId,
+  ])
+
+  function handleToggleAutoRoll(playerId: string, enabled: boolean): void {
+    setAutoRollByPlayerId((prev) => ({ ...prev, [playerId]: enabled }))
+  }
+
+  function handleChangePlayerColor(playerId: string, color: PlayerColor): void {
+    if (!game || colorChangeDisabled) {
+      return
+    }
+
+    try {
+      const next = reassignPlayerColor(game, playerId, color)
+      setGame(next)
+      saveGameLocal(next)
+      setError(null)
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error ? requestError.message : 'Failed to change seat color.'
+      setError(message)
+    }
+  }
+
   const endGameStandings = useMemo(() => {
     if (!game?.finishOrder?.length) {
       return []
@@ -1111,7 +1182,9 @@ function App() {
     setBusy(false)
     setMenuOpen(false)
     setEndGameOpen(false)
+    setAutoRollByPlayerId({})
     endSoundPlayedForRef.current = null
+    autoRollKeyRef.current = null
     clearGameLocal()
     setGame(null)
     setError(null)
@@ -1176,6 +1249,8 @@ function App() {
           finishedCounts={finishedCounts}
           error={error}
           menuOpen={menuOpen}
+          autoRollByPlayerId={autoRollByPlayerId}
+          colorChangeDisabled={colorChangeDisabled}
           onMenuOpen={() => setMenuOpen(true)}
           onMenuClose={() => setMenuOpen(false)}
           onRoll={() => void handleRoll()}
@@ -1185,6 +1260,8 @@ function App() {
             setGameSoundVolume(next)
           }}
           onNewSession={handleResetSession}
+          onToggleAutoRoll={handleToggleAutoRoll}
+          onChangePlayerColor={handleChangePlayerColor}
           board={
           <LudoBoardSurface>
               {BOARD_CORNERS.map((corner) => (
