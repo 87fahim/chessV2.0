@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { PlayerColor } from './types'
 
-export const SEAT_COLORS: PlayerColor[] = ['red', 'green', 'yellow', 'blue']
+export const SEAT_COLORS: PlayerColor[] = ['red', 'green', 'yellow', 'blue', 'orange', 'purple']
 
 /** Defaults match board CSS seat colors. */
 export const DEFAULT_PAINT_BY_SEAT: Record<PlayerColor, string> = {
@@ -9,6 +9,8 @@ export const DEFAULT_PAINT_BY_SEAT: Record<PlayerColor, string> = {
   green: '#179949',
   yellow: '#e6bb00',
   blue: '#2d7ae8',
+  orange: '#f07818',
+  purple: '#8b4fcf',
 }
 
 /** Normalize #rgb / #rrggbb to lowercase #rrggbb, or null if invalid. */

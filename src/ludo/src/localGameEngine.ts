@@ -1,13 +1,19 @@
-import { FINISH_PROGRESS, SAFE_OUTER_INDEXES, START_INDEX } from './boardLayout'
+import { getBoardRules, getTrackIndexForRules, type BoardRules, type PlayerCount } from './boardRules'
 import { DEFAULT_PAINT_BY_SEAT, normalizePaintHex } from './playerPaint'
 import type { GameState, MoveSummary, PlayerColor, PlayerState, TokenState } from './types'
 
 const STORAGE_KEY = 'ludo.activeGame'
 
-const PLAYER_COLORS_BY_COUNT: Record<2 | 3 | 4, PlayerColor[]> = {
+const PLAYER_COLORS_BY_COUNT: Record<PlayerCount, PlayerColor[]> = {
   2: ['blue', 'green'],
   3: ['blue', 'red', 'green'],
   4: ['blue', 'red', 'green', 'yellow'],
+  5: ['blue', 'orange', 'green', 'red', 'yellow'],
+  6: ['blue', 'orange', 'green', 'red', 'yellow', 'purple'],
+}
+
+function rulesForGame(game: Pick<GameState, 'playerCount' | 'players'>): BoardRules {
+  return getBoardRules(game.playerCount, game.players.map((player) => player.color))
 }
 
 function nowIso(): string {
@@ -23,6 +29,20 @@ function normalizeName(name: string, fallback: string): string {
   return trimmed.length > 0 ? trimmed.slice(0, 24) : fallback
 }
 
+/** Uniform index in `[0, length)` for picking who starts (all player counts). */
+function randomPlayerIndex(length: number): number {
+  if (length <= 1) {
+    return 0
+  }
+  const cryptoObj = globalThis.crypto
+  if (cryptoObj?.getRandomValues) {
+    const buffer = new Uint32Array(1)
+    cryptoObj.getRandomValues(buffer)
+    return buffer[0]! % length
+  }
+  return Math.floor(Math.random() * length)
+}
+
 function createTokens(color: PlayerColor): TokenState[] {
   return Array.from({ length: 4 }, (_, index) => ({
     id: `${color}-${index + 1}`,
@@ -31,31 +51,24 @@ function createTokens(color: PlayerColor): TokenState[] {
   }))
 }
 
-function getTrackIndex(color: PlayerColor, progress: number): number {
-  return (START_INDEX[color] + progress) % 52
-}
-
-function canMoveToken(token: TokenState, roll: number): boolean {
-  // Yard exit only on 6.
+function canMoveToken(token: TokenState, roll: number, finishProgress: number): boolean {
   if (token.progress === -1) {
     return roll === 6
   }
 
-  // Finished tokens are out of play — never movable and never highlighted.
-  if (token.progress >= FINISH_PROGRESS) {
+  if (token.progress >= finishProgress) {
     return false
   }
 
-  // Exact / no-overshoot: may only move if the roll lands on or before the finish tile.
-  return token.progress + roll <= FINISH_PROGRESS
+  return token.progress + roll <= finishProgress
 }
 
-function getLegalMovesForRoll(player: PlayerState, roll: number): string[] {
-  return player.tokens.filter((token) => canMoveToken(token, roll)).map((token) => token.id)
+function getLegalMovesForRoll(player: PlayerState, roll: number, finishProgress: number): string[] {
+  return player.tokens.filter((token) => canMoveToken(token, roll, finishProgress)).map((token) => token.id)
 }
 
-function isWinner(player: PlayerState): boolean {
-  return player.tokens.every((token) => token.progress >= FINISH_PROGRESS)
+function isWinner(player: PlayerState, finishProgress: number): boolean {
+  return player.tokens.every((token) => token.progress >= finishProgress)
 }
 
 function ensureFinishOrder(game: GameState): string[] {
@@ -66,7 +79,17 @@ function ensureFinishOrder(game: GameState): string[] {
 }
 
 function playerHasFinished(game: GameState, player: PlayerState): boolean {
-  return ensureFinishOrder(game).includes(player.id) || isWinner(player)
+  const rules = rulesForGame(game)
+  return ensureFinishOrder(game).includes(player.id) || isWinner(player, rules.finishProgress)
+}
+
+function playerIsWithdrawn(player: PlayerState): boolean {
+  return Boolean(player.withdrawn)
+}
+
+/** Still in the turn rotation (not finished, not removed). */
+function playerIsActive(game: GameState, player: PlayerState): boolean {
+  return !playerIsWithdrawn(player) && !playerHasFinished(game, player)
 }
 
 function gameIsComplete(game: GameState): boolean {
@@ -78,7 +101,7 @@ function nextActivePlayerIndex(game: GameState, fromIndex: number): number {
   let index = fromIndex
   for (let step = 0; step < count; step += 1) {
     index = (index + 1) % count
-    if (!playerHasFinished(game, game.players[index])) {
+    if (playerIsActive(game, game.players[index])) {
       return index
     }
   }
@@ -88,12 +111,30 @@ function nextActivePlayerIndex(game: GameState, fromIndex: number): number {
 function finalizeIfRaceOver(game: GameState): boolean {
   const order = ensureFinishOrder(game)
   if (order.length === 0) {
+    // Still allow ending when only withdrawn players remain beside one active.
+    const active = game.players.filter((player) => playerIsActive(game, player))
+    if (active.length <= 1 && game.players.some((player) => playerIsWithdrawn(player))) {
+      if (active[0]) {
+        if (!order.includes(active[0].id)) {
+          order.push(active[0].id)
+        }
+        if (!game.winnerPlayerId) {
+          game.winnerPlayerId = active[0].id
+        }
+      }
+      game.status = 'COMPLETED'
+      game.pendingRoll = null
+      game.legalMoves = []
+      return true
+    }
     return false
   }
 
-  const remaining = game.players.filter((player) => !order.includes(player.id))
+  const remaining = game.players.filter(
+    (player) => !playerIsWithdrawn(player) && !order.includes(player.id),
+  )
   // End when only the last player is left unfinished (e.g. 3 of 4 have finished).
-  if (remaining.length <= 1 && order.length >= game.players.length - 1) {
+  if (remaining.length <= 1 && order.length >= game.players.filter((p) => !playerIsWithdrawn(p)).length - 1) {
     for (const player of remaining) {
       if (!order.includes(player.id)) {
         order.push(player.id)
@@ -116,7 +157,7 @@ function advanceToNextActivePlayer(game: GameState): void {
     return
   }
 
-  const unfinished = game.players.filter((player) => !playerHasFinished(game, player))
+  const unfinished = game.players.filter((player) => playerIsActive(game, player))
   if (unfinished.length === 0) {
     game.status = 'COMPLETED'
     return
@@ -124,8 +165,8 @@ function advanceToNextActivePlayer(game: GameState): void {
 
   const nextIndex = nextActivePlayerIndex(game, game.currentPlayerIndex)
   const nextPlayer = game.players[nextIndex]
-  if (!nextPlayer || playerHasFinished(game, nextPlayer)) {
-    const fallbackIndex = game.players.findIndex((player) => !playerHasFinished(game, player))
+  if (!nextPlayer || !playerIsActive(game, nextPlayer)) {
+    const fallbackIndex = game.players.findIndex((player) => playerIsActive(game, player))
     game.currentPlayerIndex = fallbackIndex >= 0 ? fallbackIndex : game.currentPlayerIndex
   } else {
     game.currentPlayerIndex = nextIndex
@@ -165,14 +206,14 @@ function placeLabel(place: number, isLast: boolean): string {
 
 type TrackOccupant = { player: PlayerState; token: TokenState }
 
-function getTokensOnTrack(game: GameState, trackIndex: number): TrackOccupant[] {
+function getTokensOnTrack(game: GameState, rules: BoardRules, trackIndex: number): TrackOccupant[] {
   const occupants: TrackOccupant[] = []
   for (const otherPlayer of game.players) {
     for (const otherToken of otherPlayer.tokens) {
-      if (otherToken.progress < 0 || otherToken.progress > 50) {
+      if (otherToken.progress < 0 || otherToken.progress > rules.lastOuterProgress) {
         continue
       }
-      if (getTrackIndex(otherPlayer.color, otherToken.progress) === trackIndex) {
+      if (getTrackIndexForRules(rules, otherPlayer.color, otherToken.progress) === trackIndex) {
         occupants.push({ player: otherPlayer, token: otherToken })
       }
     }
@@ -195,21 +236,23 @@ function applyMoveAndCapture(
   player: PlayerState,
   token: TokenState,
   roll: number,
+  rules: BoardRules,
 ): MoveSummary {
   const from = token.progress
   const to = from === -1 ? 0 : from + roll
-  const fromTrack = from >= 0 && from <= 50 ? getTrackIndex(player.color, from) : null
+  const fromTrack =
+    from >= 0 && from <= rules.lastOuterProgress
+      ? getTrackIndexForRules(rules, player.color, from)
+      : null
 
   token.progress = to
 
   const capturedTokenIds: string[] = []
 
-  // Captures only on the shared outer track. Safe tiles never capture.
-  // 2+ tokens of the same player protect each other from a landing capture.
-  if (to >= 0 && to <= 50) {
-    const destinationTrack = getTrackIndex(player.color, to)
-    if (!SAFE_OUTER_INDEXES.has(destinationTrack)) {
-      const groups = groupOccupantsByPlayer(getTokensOnTrack(game, destinationTrack))
+  if (to >= 0 && to <= rules.lastOuterProgress) {
+    const destinationTrack = getTrackIndexForRules(rules, player.color, to)
+    if (!rules.safeOuterIndexes.has(destinationTrack)) {
+      const groups = groupOccupantsByPlayer(getTokensOnTrack(game, rules, destinationTrack))
       for (const [otherPlayerId, group] of groups) {
         if (otherPlayerId === player.id) {
           continue
@@ -222,12 +265,13 @@ function applyMoveAndCapture(
     }
   }
 
-  // Leaving a non-safe tile with exactly one of your tokens left beside an enemy
-  // captures that leftover token.
-  if (fromTrack !== null && !SAFE_OUTER_INDEXES.has(fromTrack)) {
-    const destinationTrack = to >= 0 && to <= 50 ? getTrackIndex(player.color, to) : null
+  if (fromTrack !== null && !rules.safeOuterIndexes.has(fromTrack)) {
+    const destinationTrack =
+      to >= 0 && to <= rules.lastOuterProgress
+        ? getTrackIndexForRules(rules, player.color, to)
+        : null
     if (destinationTrack !== fromTrack) {
-      const groups = groupOccupantsByPlayer(getTokensOnTrack(game, fromTrack))
+      const groups = groupOccupantsByPlayer(getTokensOnTrack(game, rules, fromTrack))
       const leftovers = groups.get(player.id) ?? []
       const enemyPresent = [...groups.keys()].some((id) => id !== player.id)
       if (leftovers.length === 1 && enemyPresent) {
@@ -265,7 +309,7 @@ function recordCaptureStats(game: GameState, moverId: string, capturedTokenIds: 
   }
 }
 
-export function createLocalGame(playerCount: 2 | 3 | 4, playerNames: string[]): GameState {
+export function createLocalGame(playerCount: PlayerCount, playerNames: string[]): GameState {
   const id = makeId()
   const createdAt = nowIso()
   const colors = PLAYER_COLORS_BY_COUNT[playerCount]
@@ -279,9 +323,10 @@ export function createLocalGame(playerCount: 2 | 3 | 4, playerNames: string[]): 
     tokens: createTokens(color),
     capturesMade: 0,
     timesCaptured: 0,
+    withdrawn: false,
   }))
 
-  const startingPlayerIndex = Math.floor(Math.random() * players.length)
+  const startingPlayerIndex = randomPlayerIndex(players.length)
   const startingPlayer = players[startingPlayerIndex]
 
   return {
@@ -331,16 +376,16 @@ export function applyLocalRoll(game: GameState, clientRoll: number): GameState {
   }
 
   let player = next.players[next.currentPlayerIndex]
-  if (playerHasFinished(next, player)) {
+  if (!player || !playerIsActive(next, player)) {
     advanceToNextActivePlayer(next)
     player = next.players[next.currentPlayerIndex]
-    if (!player || playerHasFinished(next, player) || gameIsComplete(next)) {
+    if (!player || !playerIsActive(next, player) || gameIsComplete(next)) {
       next.status = 'COMPLETED'
       throw new Error('Game is complete. Start a new game.')
     }
   }
 
-  const legalMoves = getLegalMovesForRoll(player, clientRoll)
+  const legalMoves = getLegalMovesForRoll(player, clientRoll, rulesForGame(next).finishProgress)
   const updatedAt = nowIso()
 
   next.pendingRoll = clientRoll
@@ -394,7 +439,8 @@ export function applyLocalMove(game: GameState, tokenId: string): GameState {
   }
 
   const roll = next.pendingRoll
-  const summary = applyMoveAndCapture(next, player, token, roll)
+  const rules = rulesForGame(next)
+  const summary = applyMoveAndCapture(next, player, token, roll, rules)
   recordCaptureStats(next, player.id, summary.capturedTokenIds)
   const updatedAt = nowIso()
 
@@ -405,7 +451,7 @@ export function applyLocalMove(game: GameState, tokenId: string): GameState {
   next.updatedAt = updatedAt
   next.revision += 1
 
-  if (isWinner(player)) {
+  if (isWinner(player, rules.finishProgress)) {
     const place = recordPlayerFinish(next, player)
     const isLast = place === next.players.length
     const title = placeLabel(place, isLast)
@@ -432,7 +478,7 @@ export function applyLocalMove(game: GameState, tokenId: string): GameState {
     return next
   }
 
-  const reachedFinish = summary.to >= FINISH_PROGRESS
+  const reachedFinish = summary.to >= rules.finishProgress
   const earnedExtraTurn =
     roll === 6 || summary.capturedTokenIds.length > 0 || reachedFinish
 
@@ -467,8 +513,10 @@ export function applyLocalMove(game: GameState, tokenId: string): GameState {
 
 function normalizeLoadedGame(game: GameState): GameState {
   ensureFinishOrder(game)
+  const rules = rulesForGame(game)
 
   for (const player of game.players) {
+    player.withdrawn = Boolean(player.withdrawn)
     player.capturesMade =
       typeof player.capturesMade === 'number' && Number.isFinite(player.capturesMade)
         ? Math.max(0, Math.floor(player.capturesMade))
@@ -479,11 +527,15 @@ function normalizeLoadedGame(game: GameState): GameState {
         : 0
     player.paintHex = normalizePaintHex(player.paintHex) ?? DEFAULT_PAINT_BY_SEAT[player.color]
     for (const token of player.tokens) {
-      if (token.progress > FINISH_PROGRESS) {
-        token.progress = FINISH_PROGRESS
+      if (token.progress > rules.finishProgress) {
+        token.progress = rules.finishProgress
       }
     }
-    if (isWinner(player) && !game.finishOrder.includes(player.id)) {
+    if (
+      !playerIsWithdrawn(player) &&
+      isWinner(player, rules.finishProgress) &&
+      !game.finishOrder.includes(player.id)
+    ) {
       game.finishOrder.push(player.id)
       if (!game.winnerPlayerId) {
         game.winnerPlayerId = player.id
@@ -495,7 +547,7 @@ function normalizeLoadedGame(game: GameState): GameState {
     return game
   }
 
-  const unfinished = game.players.filter((player) => !playerHasFinished(game, player))
+  const unfinished = game.players.filter((player) => playerIsActive(game, player))
   if (unfinished.length === 0) {
     game.status = 'COMPLETED'
     game.pendingRoll = null
@@ -503,22 +555,23 @@ function normalizeLoadedGame(game: GameState): GameState {
     return game
   }
 
-  // Repair stuck turns: never leave a finished player as the current player.
+  // Repair stuck turns: never leave a finished/withdrawn player as the current player.
   const current = game.players[game.currentPlayerIndex]
-  if (!current || playerHasFinished(game, current)) {
+  if (!current || !playerIsActive(game, current)) {
     game.pendingRoll = null
     game.legalMoves = []
 
-    const blueIndex = game.players.findIndex(
-      (player) => player.color === 'blue' && !playerHasFinished(game, player),
-    )
-    if (blueIndex >= 0) {
-      game.currentPlayerIndex = blueIndex
-      game.currentPlayerId = game.players[blueIndex].id
+    if (current) {
+      // Mid-game: advance past the inactive seat (do not prefer blue).
+      advanceToNextActivePlayer(game)
     } else {
-      const fallbackIndex = game.players.findIndex((player) => !playerHasFinished(game, player))
-      game.currentPlayerIndex = fallbackIndex
-      game.currentPlayerId = game.players[fallbackIndex]?.id ?? ''
+      // Invalid index: pick a random active seat so loads do not always favor seat 0.
+      const activeIndices = game.players
+        .map((player, index) => (playerIsActive(game, player) ? index : -1))
+        .filter((index) => index >= 0)
+      const pick = activeIndices[randomPlayerIndex(activeIndices.length)] ?? 0
+      game.currentPlayerIndex = pick
+      game.currentPlayerId = game.players[pick]?.id ?? ''
     }
     game.message = `${game.players[game.currentPlayerIndex]?.name ?? 'Next player'}'s turn.`
   }
@@ -563,13 +616,202 @@ export function setPlayerPaintHex(game: GameState, playerId: string, paintHex: s
   return next
 }
 
+/**
+ * Remove a player mid-match: tokens leave the board, they skip all turns.
+ * If it was their turn, advance to the next active player.
+ */
+export function withdrawPlayer(game: GameState, playerId: string): GameState {
+  const next = structuredClone(game)
+  ensureFinishOrder(next)
+
+  if (next.status === 'COMPLETED') {
+    throw new Error('Game is complete. Start a new game.')
+  }
+
+  const player = next.players.find((entry) => entry.id === playerId)
+  if (!player) {
+    throw new Error('Player not found.')
+  }
+  if (playerIsWithdrawn(player)) {
+    return next
+  }
+  if (playerHasFinished(next, player)) {
+    throw new Error('Finished players cannot be removed.')
+  }
+
+  const wasCurrent = next.currentPlayerId === playerId
+  player.withdrawn = true
+  for (const token of player.tokens) {
+    token.progress = -1
+  }
+
+  if (wasCurrent) {
+    next.pendingRoll = null
+    next.legalMoves = []
+    next.lastDiceRoll = null
+  }
+
+  const stillActive = next.players.filter((entry) => playerIsActive(next, entry))
+  if (stillActive.length <= 1) {
+    if (stillActive[0]) {
+      if (!next.finishOrder.includes(stillActive[0].id)) {
+        next.finishOrder.push(stillActive[0].id)
+      }
+      if (!next.winnerPlayerId) {
+        next.winnerPlayerId = stillActive[0].id
+      }
+      next.message = `${stillActive[0].name} wins — ${player.name} left the game.`
+    } else {
+      next.message = 'Game over — no players remain.'
+    }
+    next.status = 'COMPLETED'
+    next.pendingRoll = null
+    next.legalMoves = []
+  } else if (wasCurrent) {
+    advanceToNextActivePlayer(next)
+    const nextPlayer = next.players[next.currentPlayerIndex]
+    next.message = `${player.name} left. ${nextPlayer?.name ?? 'Next player'}'s turn.`
+  } else {
+    next.message = `${player.name} left the game.`
+  }
+
+  next.revision += 1
+  next.updatedAt = nowIso()
+  next.lastAction = {
+    type: 'WITHDRAW',
+    at: next.updatedAt,
+    playerId: player.id,
+    playerName: player.name,
+    message: next.message,
+  }
+  return next
+}
+
+/**
+ * Test helper: send all of one player's tokens home and record their place.
+ * Ends the match when only one unfinished seat remains.
+ */
+export function forceFinishPlayer(game: GameState, playerId: string): GameState {
+  const next = structuredClone(game)
+  ensureFinishOrder(next)
+
+  if (next.status === 'COMPLETED') {
+    throw new Error('Game is already complete.')
+  }
+
+  const player = next.players.find((entry) => entry.id === playerId)
+  if (!player) {
+    throw new Error('Player not found.')
+  }
+  if (playerIsWithdrawn(player)) {
+    throw new Error('Withdrawn players cannot finish.')
+  }
+  if (playerHasFinished(next, player)) {
+    throw new Error('Player has already finished.')
+  }
+
+  const rules = rulesForGame(next)
+  for (const token of player.tokens) {
+    token.progress = rules.finishProgress
+  }
+
+  next.pendingRoll = null
+  next.legalMoves = []
+  next.lastDiceRoll = null
+
+  const place = recordPlayerFinish(next, player)
+  const activeCount = next.players.filter((entry) => !playerIsWithdrawn(entry)).length
+  const isLast = place === activeCount
+  const title = placeLabel(place, isLast)
+  const updatedAt = nowIso()
+
+  if (gameIsComplete(next)) {
+    next.message = `Game over! Final standings are in — ${player.name} placed #${place}.`
+  } else {
+    const currentSeat = next.players[next.currentPlayerIndex]
+    if (
+      currentSeat?.id === playerId ||
+      !currentSeat ||
+      !playerIsActive(next, currentSeat)
+    ) {
+      advanceToNextActivePlayer(next)
+    }
+    if (gameIsComplete(next)) {
+      next.message = `Game over! Final standings are in — ${player.name} placed #${place}.`
+    } else {
+      const nextPlayer = next.players[next.currentPlayerIndex]
+      next.message = `${player.name} finishes #${place} — ${title}! ${nextPlayer?.name ?? 'Next player'}'s turn.`
+    }
+  }
+
+  next.revision += 1
+  next.updatedAt = updatedAt
+  next.lastAction = {
+    type: 'MOVE',
+    at: updatedAt,
+    playerId: player.id,
+    playerName: player.name,
+    message: next.message,
+  }
+  return next
+}
+
+/**
+ * Test helper: finish every remaining seat (preserving existing places) and complete the match.
+ */
+export function forceEndGame(game: GameState): GameState {
+  const next = structuredClone(game)
+  ensureFinishOrder(next)
+
+  if (next.status === 'COMPLETED') {
+    throw new Error('Game is already complete.')
+  }
+
+  const rules = rulesForGame(next)
+  next.pendingRoll = null
+  next.legalMoves = []
+  next.lastDiceRoll = null
+
+  for (const player of next.players) {
+    if (playerIsWithdrawn(player)) {
+      continue
+    }
+    for (const token of player.tokens) {
+      token.progress = rules.finishProgress
+    }
+    if (!next.finishOrder.includes(player.id)) {
+      next.finishOrder.push(player.id)
+    }
+  }
+
+  next.status = 'COMPLETED'
+  if (!next.winnerPlayerId && next.finishOrder[0]) {
+    next.winnerPlayerId = next.finishOrder[0]
+  }
+
+  const updatedAt = nowIso()
+  const winnerName = next.players.find((entry) => entry.id === next.winnerPlayerId)?.name
+  next.message = 'Game over! Final standings are in (forced).'
+  next.revision += 1
+  next.updatedAt = updatedAt
+  next.lastAction = {
+    type: 'MOVE',
+    at: updatedAt,
+    playerId: next.winnerPlayerId ?? undefined,
+    playerName: winnerName,
+    message: next.message,
+  }
+  return next
+}
+
 /** Returns a repaired copy when the turn is stuck on a finished player; ignores real race endings. */
 export function repairStuckTurn(game: GameState): GameState | null {
   ensureFinishOrder(game)
 
+  const activeCount = game.players.filter((player) => !playerIsWithdrawn(player)).length
   // Real end-game: enough finishers that only a loser remains (or none).
-  if (game.finishOrder.length >= Math.max(1, game.players.length - 1)) {
-    if (game.status !== 'COMPLETED' || game.finishOrder.length < game.players.length) {
+  if (game.finishOrder.length >= Math.max(1, activeCount - 1)) {
+    if (game.status !== 'COMPLETED' || game.finishOrder.length < activeCount) {
       const next = structuredClone(game)
       finalizeIfRaceOver(next)
       return next.status === 'COMPLETED' ? next : null
@@ -578,8 +820,8 @@ export function repairStuckTurn(game: GameState): GameState | null {
   }
 
   const current = game.players[game.currentPlayerIndex]
-  const stuckOnFinished = Boolean(current && playerHasFinished(game, current))
-  if (!stuckOnFinished) {
+  const stuck = Boolean(current && !playerIsActive(game, current))
+  if (!stuck) {
     return null
   }
 
@@ -614,7 +856,13 @@ function isGameStateShape(value: unknown): value is GameState {
   if (typeof game.id !== 'string' || typeof game.gameId !== 'string') {
     return false
   }
-  if (game.playerCount !== 2 && game.playerCount !== 3 && game.playerCount !== 4) {
+  if (
+    game.playerCount !== 2 &&
+    game.playerCount !== 3 &&
+    game.playerCount !== 4 &&
+    game.playerCount !== 5 &&
+    game.playerCount !== 6
+  ) {
     return false
   }
   if (!Array.isArray(game.players) || game.players.length !== game.playerCount) {
@@ -627,6 +875,12 @@ function isGameStateShape(value: unknown): value is GameState {
     return false
   }
 
+  const allowedColors = new Set(['red', 'green', 'yellow', 'blue', 'orange', 'purple'])
+  const finishCap = getBoardRules(
+    game.playerCount as PlayerCount,
+    (game.players as PlayerState[]).map((player) => player.color),
+  ).finishProgress
+
   for (const player of game.players) {
     if (!player || typeof player !== 'object') {
       return false
@@ -635,7 +889,7 @@ function isGameStateShape(value: unknown): value is GameState {
     if (typeof entry.id !== 'string' || typeof entry.name !== 'string') {
       return false
     }
-    if (entry.color !== 'red' && entry.color !== 'green' && entry.color !== 'yellow' && entry.color !== 'blue') {
+    if (typeof entry.color !== 'string' || !allowedColors.has(entry.color)) {
       return false
     }
     if (!Array.isArray(entry.tokens) || entry.tokens.length !== 4) {
@@ -649,7 +903,7 @@ function isGameStateShape(value: unknown): value is GameState {
       if (typeof piece.id !== 'string' || typeof piece.index !== 'number' || typeof piece.progress !== 'number') {
         return false
       }
-      if (!Number.isFinite(piece.progress) || piece.progress < -1 || piece.progress > FINISH_PROGRESS + 8) {
+      if (!Number.isFinite(piece.progress) || piece.progress < -1 || piece.progress > finishCap + 8) {
         return false
       }
     }
