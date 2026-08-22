@@ -389,12 +389,14 @@ function MatchControlBody({
   currentPlayerName,
   canRoll,
   soundVolume,
+  tileRadiusPx,
   finishPlaceByPlayerId,
   finishedCounts,
   error,
   autoRollByPlayerId,
   onRoll,
   onSoundVolumeChange,
+  onTileRadiusChange,
   onNewSession,
   onToggleAutoRoll,
   onChangePlayerPaint,
@@ -405,12 +407,14 @@ function MatchControlBody({
   currentPlayerName: string;
   canRoll: boolean;
   soundVolume: number;
+  tileRadiusPx: number;
   finishPlaceByPlayerId: Map<string, number>;
   finishedCounts: Record<PlayerColor, number>;
   error: string | null;
   autoRollByPlayerId: Record<string, boolean>;
   onRoll: () => void;
   onSoundVolumeChange: (value: number) => void;
+  onTileRadiusChange: (value: number) => void;
   onNewSession: () => void;
   onToggleAutoRoll: (playerId: string, enabled: boolean) => void;
   onChangePlayerPaint: (playerId: string, paintHex: string) => void;
@@ -472,6 +476,26 @@ function MatchControlBody({
           />
           <Typography variant="caption" sx={{ minWidth: 36, textAlign: 'right', fontWeight: 700 }}>
             {Math.round(soundVolume * 100)}%
+          </Typography>
+        </Stack>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ px: 1.5, py: 1, bgcolor: 'action.hover' }}>
+        <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+          Tile corners
+        </Typography>
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+          <Slider
+            size="small"
+            min={0}
+            max={14}
+            step={1}
+            value={tileRadiusPx}
+            aria-label="Tile border radius"
+            onChange={(_event, value) => onTileRadiusChange(value as number)}
+          />
+          <Typography variant="caption" sx={{ minWidth: 36, textAlign: 'right', fontWeight: 700 }}>
+            {tileRadiusPx}px
           </Typography>
         </Stack>
       </Paper>
@@ -590,6 +614,7 @@ export function LudoMatchLayout({
   currentPlayerName,
   canRoll,
   soundVolume,
+  tileRadiusPx,
   finishPlaceByPlayerId,
   finishedCounts,
   error,
@@ -599,6 +624,7 @@ export function LudoMatchLayout({
   onMenuClose,
   onRoll,
   onSoundVolumeChange,
+  onTileRadiusChange,
   onNewSession,
   onToggleAutoRoll,
   onChangePlayerPaint,
@@ -608,6 +634,7 @@ export function LudoMatchLayout({
   currentPlayerName: string;
   canRoll: boolean;
   soundVolume: number;
+  tileRadiusPx: number;
   finishPlaceByPlayerId: Map<string, number>;
   finishedCounts: Record<PlayerColor, number>;
   error: string | null;
@@ -617,6 +644,7 @@ export function LudoMatchLayout({
   onMenuClose: () => void;
   onRoll: () => void;
   onSoundVolumeChange: (value: number) => void;
+  onTileRadiusChange: (value: number) => void;
   onNewSession: () => void;
   onToggleAutoRoll: (playerId: string, enabled: boolean) => void;
   onChangePlayerPaint: (playerId: string, paintHex: string) => void;
@@ -630,12 +658,14 @@ export function LudoMatchLayout({
     currentPlayerName,
     canRoll,
     soundVolume,
+    tileRadiusPx,
     finishPlaceByPlayerId,
     finishedCounts,
     error,
     autoRollByPlayerId,
     onRoll,
     onSoundVolumeChange,
+    onTileRadiusChange,
     onNewSession,
     onToggleAutoRoll,
     onChangePlayerPaint,

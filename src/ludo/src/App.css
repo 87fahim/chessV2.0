@@ -852,6 +852,17 @@
   border: 0;
 }
 
+/* Small path / start / safe tiles only — not blank fillers, center, or home yards. */
+.cell--track,
+.cell--safe,
+.cell--start,
+.cell--red-path,
+.cell--green-path,
+.cell--yellow-path,
+.cell--blue-path {
+  border-radius: var(--tile-radius, 0px);
+}
+
 .cell--blank {
   background: #ffffff;
 }

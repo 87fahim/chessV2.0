@@ -519,6 +519,18 @@ function App() {
   const [endGameOpen, setEndGameOpen] = useState(false)
   const [autoRollByPlayerId, setAutoRollByPlayerId] = useState<Record<string, boolean>>({})
   const [soundVolume, setSoundVolume] = useState(() => getGameSoundVolume())
+  const [tileRadiusPx, setTileRadiusPx] = useState(() => {
+    try {
+      const raw = localStorage.getItem('ludo.tileRadiusPx')
+      if (!raw) {
+        return 0
+      }
+      const parsed = Number.parseInt(raw, 10)
+      return Number.isFinite(parsed) ? Math.max(0, Math.min(14, parsed)) : 0
+    } catch {
+      return 0
+    }
+  })
   const hoppingTokenRef = useRef<HTMLDivElement | null>(null)
   const returningTokenRef = useRef<HTMLDivElement | null>(null)
   const hopAbortRef = useRef<AbortController | null>(null)
@@ -741,6 +753,14 @@ function App() {
     () => (game ? seatPaintCssVars(buildSeatPaintMap(game.players)) : undefined),
     [game],
   )
+
+  const boardChromeStyle = useMemo(() => {
+    const paint = seatPaintStyle ?? {}
+    return {
+      ...paint,
+      ['--tile-radius' as string]: `${tileRadiusPx}px`,
+    }
+  }, [seatPaintStyle, tileRadiusPx])
 
   const canRoll =
     game !== null &&
@@ -1224,7 +1244,7 @@ function App() {
   }
 
   return (
-    <LudoPageShell playing={Boolean(game)} seatPaintStyle={seatPaintStyle}>
+    <LudoPageShell playing={Boolean(game)} seatPaintStyle={boardChromeStyle}>
       <LudoSessionHeader
         currentPlayer={
           currentPlayer
@@ -1266,6 +1286,7 @@ function App() {
           currentPlayerName={currentPlayer?.name ?? '-'}
           canRoll={canRoll}
           soundVolume={soundVolume}
+          tileRadiusPx={tileRadiusPx}
           finishPlaceByPlayerId={finishPlaceByPlayerId}
           finishedCounts={finishedCounts}
           error={error}
@@ -1279,11 +1300,19 @@ function App() {
             setSoundVolume(next)
             setGameSoundVolume(next)
           }}
+          onTileRadiusChange={(next) => {
+            setTileRadiusPx(next)
+            try {
+              localStorage.setItem('ludo.tileRadiusPx', String(next))
+            } catch {
+              /* ignore quota / private mode */
+            }
+          }}
           onNewSession={handleResetSession}
           onToggleAutoRoll={handleToggleAutoRoll}
           onChangePlayerPaint={handleChangePlayerPaint}
           board={
-          <LudoBoardSurface seatPaintStyle={seatPaintStyle}>
+          <LudoBoardSurface seatPaintStyle={boardChromeStyle}>
               {BOARD_CORNERS.map((corner) => (
                 (() => {
                   const cornerPlayerIndex = game.players.findIndex((entry) => entry.color === corner.color)
