@@ -512,7 +512,9 @@ function MatchControlBody({
                 variant="standard"
                 value={player.name}
                 onChange={(event) => onChangePlayerName(player.id, event.target.value)}
-                inputProps={{ maxLength: 24, 'aria-label': `Name for seat ${player.color}` }}
+                slotProps={{
+                  htmlInput: { maxLength: 24, 'aria-label': `Name for seat ${player.color}` },
+                }}
                 sx={{
                   flex: 1,
                   minWidth: 0,
