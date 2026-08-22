@@ -8,6 +8,7 @@ import {
   loadGameLocal,
   repairStuckTurn,
   saveGameLocal,
+  setPlayerPaintHex,
 } from './localGameEngine'
 import {
   getGameSoundVolume,
@@ -42,17 +43,19 @@ import { averageProgressScore } from './progressScore'
 import { LudoToken } from './LudoToken'
 import { animateTokenHops, animateTokenSlide, buildCaptureReturnPercentPath, buildMovePercentPath, type BoardPercent } from './tokenMotion'
 import type { GameState, PlayerColor, TokenState } from './types'
+import { resolvePlayerPaintHex, buildSeatPaintMap, seatPaintCssVars } from './playerPaint'
+import {
+  LudoBoardSurface,
+  LudoLoadingPanel,
+  LudoMatchLayout,
+  LudoPageShell,
+  LudoSessionHeader,
+  LudoSetupPanel,
+} from './LudoMatchChrome'
 import './App.css'
 
 type SetupCount = 2 | 3 | 4
 type SetupStep = 'count' | 'names'
-
-const COLOR_CLASS_BY_COLOR: Record<PlayerColor, string> = {
-  red: 'red',
-  green: 'green',
-  yellow: 'yellow',
-  blue: 'blue',
-}
 
 const COLORS_BY_PLAYER_COUNT: Record<SetupCount, PlayerColor[]> = {
   2: ['blue', 'green'],
@@ -369,7 +372,9 @@ function HomeYardFinishBanner({
         <div className="home-yard-finish__icon" aria-hidden="true">
           <FinishPlaceIcon place={place} />
         </div>
-        <p className="home-yard-finish__name">{name}</p>
+        <p className="home-yard-finish__name" title={name}>
+          {name}
+        </p>
         <p className="home-yard-finish__place">#{place}</p>
         <p className="home-yard-finish__title">{finishPlaceTitle(place)}</p>
       </div>
@@ -408,6 +413,7 @@ function HomeYardOverlay({ color, active }: { color: PlayerColor; active: boolea
 
 function HomeYardTokens({
   color,
+  paintHex,
   tokens,
   legalMoves,
   disabled,
@@ -415,6 +421,7 @@ function HomeYardTokens({
   onSelect,
 }: {
   color: PlayerColor
+  paintHex: string
   tokens: TokenState[]
   legalMoves: string[]
   disabled: boolean
@@ -455,6 +462,7 @@ function HomeYardTokens({
               >
                 <LudoToken
                   color={color}
+                  paintHex={paintHex}
                   shape="pin"
                   variant="classic"
                   movable={canMoveToken}
@@ -470,10 +478,10 @@ function HomeYardTokens({
 function CenterFinish() {
   return (
     <svg className="center-finish" viewBox="0 0 100 100" aria-hidden="true">
-      <polygon points="0,0 100,0 50,50" fill="#179949" />
-      <polygon points="100,0 100,100 50,50" fill="#e6bb00" />
-      <polygon points="0,100 100,100 50,50" fill="#2d7ae8" />
-      <polygon points="0,0 0,100 50,50" fill="#ef2424" />
+      <polygon points="0,0 100,0 50,50" fill="var(--seat-green, #179949)" />
+      <polygon points="100,0 100,100 50,50" fill="var(--seat-yellow, #e6bb00)" />
+      <polygon points="0,100 100,100 50,50" fill="var(--seat-blue, #2d7ae8)" />
+      <polygon points="0,0 0,100 50,50" fill="var(--seat-red, #ef2424)" />
     </svg>
   )
 }
@@ -496,11 +504,13 @@ function App() {
   const [hoppingToken, setHoppingToken] = useState<{
     tokenId: string
     color: PlayerColor
+    paintHex: string
     path: BoardPercent[]
   } | null>(null)
   const [returningToken, setReturningToken] = useState<{
     tokenId: string
     color: PlayerColor
+    paintHex: string
     path: BoardPercent[]
   } | null>(null)
 
@@ -509,6 +519,7 @@ function App() {
   const [editingNameIndex, setEditingNameIndex] = useState<number | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [endGameOpen, setEndGameOpen] = useState(false)
+  const [autoRollByPlayerId, setAutoRollByPlayerId] = useState<Record<string, boolean>>({})
   const [soundVolume, setSoundVolume] = useState(() => getGameSoundVolume())
   const hoppingTokenRef = useRef<HTMLDivElement | null>(null)
   const returningTokenRef = useRef<HTMLDivElement | null>(null)
@@ -516,7 +527,9 @@ function App() {
   const gameRef = useRef<GameState | null>(null)
   const endSoundPlayedForRef = useRef<string | null>(null)
   const autoMovedKeyRef = useRef<string | null>(null)
+  const autoRollKeyRef = useRef<string | null>(null)
   const handleMoveRef = useRef<(tokenId: string) => Promise<void>>(async () => {})
+  const handleRollRef = useRef<() => Promise<GameState | null>>(async () => null)
   gameRef.current = game
 
   const motionHiddenTokenId = returningToken?.tokenId ?? hoppingToken?.tokenId ?? null
@@ -605,6 +618,7 @@ function App() {
 
     type RawPlacement = {
       playerColor: PlayerColor
+      paintHex: string
       playerId: string
       token: TokenState
       row: number
@@ -627,6 +641,7 @@ function App() {
         }
         raw.push({
           playerColor: player.color,
+          paintHex: resolvePlayerPaintHex(player),
           playerId: player.id,
           token,
           row: coord[0],
@@ -648,6 +663,7 @@ function App() {
 
     const placements: Array<{
       playerColor: PlayerColor
+      paintHex: string
       playerId: string
       token: TokenState
       row: number
@@ -722,6 +738,11 @@ function App() {
 
   const currentPlayerFinished =
     currentPlayer !== null && finishPlaceByPlayerId.has(currentPlayer.id)
+
+  const seatPaintStyle = useMemo(
+    () => (game ? seatPaintCssVars(buildSeatPaintMap(game.players)) : undefined),
+    [game],
+  )
 
   const canRoll =
     game !== null &&
@@ -914,7 +935,12 @@ function App() {
       setBusy(true)
       setReturningToken(null)
       if (path.length >= 2) {
-        setHoppingToken({ tokenId, color: movingPlayer.color, path })
+        setHoppingToken({
+          tokenId,
+          color: movingPlayer.color,
+          paintHex: resolvePlayerPaintHex(movingPlayer),
+          path,
+        })
       }
     })
 
@@ -968,12 +994,14 @@ function App() {
         }
 
         let capturedColor: PlayerColor | null = null
+        let capturedPaintHex = '#2d7ae8'
         let capturedProgress = -1
         let capturedIndex = 0
         for (const player of snapshot.players) {
           const token = player.tokens.find((entry) => entry.id === capturedId)
           if (token) {
             capturedColor = player.color
+            capturedPaintHex = resolvePlayerPaintHex(player)
             capturedProgress = token.progress
             capturedIndex = token.index
             break
@@ -1000,6 +1028,7 @@ function App() {
           setReturningToken({
             tokenId: capturedId,
             color: capturedColor,
+            paintHex: capturedPaintHex,
             path: returnPath,
           })
         })
@@ -1083,6 +1112,64 @@ function App() {
     void handleMoveRef.current(tokenId)
   }, [game, loading, busy, dieRolling, hoppingToken, returningToken])
 
+  handleRollRef.current = handleRoll
+
+  // Auto-roll when the current player's Match Control checkbox is on.
+  useEffect(() => {
+    if (!game || loading || !canRoll || dieRolling || busy) {
+      return
+    }
+    if (hoppingToken || returningToken) {
+      return
+    }
+    if (!currentPlayer || !autoRollByPlayerId[currentPlayer.id]) {
+      return
+    }
+
+    const rollKey = `${game.gameId}:${game.revision}:${currentPlayer.id}`
+    if (autoRollKeyRef.current === rollKey) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      autoRollKeyRef.current = rollKey
+      void handleRollRef.current()
+    }, 450)
+
+    return () => window.clearTimeout(timer)
+  }, [
+    game,
+    loading,
+    canRoll,
+    dieRolling,
+    busy,
+    hoppingToken,
+    returningToken,
+    currentPlayer,
+    autoRollByPlayerId,
+  ])
+
+  function handleToggleAutoRoll(playerId: string, enabled: boolean): void {
+    setAutoRollByPlayerId((prev) => ({ ...prev, [playerId]: enabled }))
+  }
+
+  function handleChangePlayerPaint(playerId: string, paintHex: string): void {
+    if (!game) {
+      return
+    }
+
+    try {
+      const next = setPlayerPaintHex(game, playerId, paintHex)
+      setGame(next)
+      saveGameLocal(next)
+      setError(null)
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error ? requestError.message : 'Failed to change color.'
+      setError(message)
+    }
+  }
+
   const endGameStandings = useMemo(() => {
     if (!game?.finishOrder?.length) {
       return []
@@ -1110,7 +1197,9 @@ function App() {
     setBusy(false)
     setMenuOpen(false)
     setEndGameOpen(false)
+    setAutoRollByPlayerId({})
     endSoundPlayedForRef.current = null
+    autoRollKeyRef.current = null
     clearGameLocal()
     setGame(null)
     setError(null)
@@ -1137,242 +1226,66 @@ function App() {
   }
 
   return (
-    <main className={game ? 'app-shell app-shell--playing' : 'app-shell'}>
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">Ludo Online</p>
-          <div className="title-group">
-            {currentPlayer ? (
-              <span
-                className={`title-player-dot title-player-dot--${currentPlayer.color}`}
-                aria-label={`Current player: ${currentPlayer.name}`}
-              />
-            ) : null}
-            <h1>Production Session Board</h1>
-          </div>
-          <p className="subtitle">Backend-authoritative state, autosave on every accepted command</p>
-          <div className="token-preview" aria-label="Token preview">
-            <LudoToken color="red" variant="classic" size={32} />
-            <LudoToken color="green" variant="flat" size={32} />
-            <LudoToken color="blue" variant="glass" size={32} />
-            <LudoToken color="yellow" variant="classic" selected size={32} />
-          </div>
-        </div>
-        {game ? (
-          <button type="button" className="ghost topbar__new-session" onClick={handleResetSession}>
-            New Session
-          </button>
-        ) : null}
-      </header>
+    <LudoPageShell playing={Boolean(game)} seatPaintStyle={seatPaintStyle}>
+      <LudoSessionHeader
+        currentPlayer={
+          currentPlayer
+            ? {
+                name: currentPlayer.name,
+                color: currentPlayer.color,
+                paintHex: resolvePlayerPaintHex(currentPlayer),
+              }
+            : null
+        }
+        showNewSession={Boolean(game)}
+        onNewSession={handleResetSession}
+      />
 
-      {loading ? (
-        <section className="panel loading-panel">
-          <div className="loading-dot" />
-          <p>Checking for an active anonymous session...</p>
-        </section>
-      ) : null}
+      {loading ? <LudoLoadingPanel /> : null}
 
       {!loading && !game ? (
-        <section className="panel setup-panel">
-          <h2>Create New Game</h2>
-          <p className="setup-copy">Set player count, edit names, then confirm.</p>
-
-          {setupStep === 'count' ? (
-            <>
-              <h3>How many players?</h3>
-              <div className="count-grid" role="radiogroup" aria-label="Player count">
-                {[2, 3, 4].map((count) => (
-                  <button
-                    key={count}
-                    type="button"
-                    className={count === playerCount ? 'count-button active' : 'count-button'}
-                    onClick={() => handlePlayerCountChange(count as SetupCount)}
-                    aria-pressed={count === playerCount}
-                  >
-                    {count} Players
-                  </button>
-                ))}
-              </div>
-              <button type="button" className="primary" onClick={handleContinueToNames}>
-                Continue
-              </button>
-            </>
-          ) : (
-            <>
-              <h3>Player Names</h3>
-              <p className="setup-copy">Double click a name to edit. Press Enter to save.</p>
-
-              <div className="name-list">
-                {names.slice(0, playerCount).map((name, index) => {
-                  const color = COLORS_BY_PLAYER_COUNT[playerCount][index]
-                  const isEditing = editingNameIndex === index
-                  const colorClass = COLOR_CLASS_BY_COLOR[color]
-
-                  return (
-                    <div key={color} className={`name-row ${colorClass}`}>
-                      <span className="badge">{color}</span>
-                      <div className="name-editor-wrap">
-                        {isEditing ? (
-                          <input
-                            autoFocus
-                            value={name}
-                            onChange={(event) => updateName(index, event.target.value)}
-                            onBlur={() => setEditingNameIndex(null)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter' || event.key === 'Escape') {
-                                setEditingNameIndex(null)
-                              }
-                            }}
-                            aria-label={`Edit name for player ${index + 1}`}
-                          />
-                        ) : (
-                          <button
-                            type="button"
-                            className="name-button"
-                            onDoubleClick={() => setEditingNameIndex(index)}
-                            onClick={() => setEditingNameIndex(index)}
-                          >
-                            {name || `Player ${index + 1}`}
-                          </button>
-                        )}
-                        {nameErrors[index] ? <p className="field-error">{nameErrors[index]}</p> : null}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="setup-actions">
-                <button type="button" className="ghost" onClick={handleBackToCount}>
-                  Back
-                </button>
-                <button
-                  type="button"
-                  className="primary"
-                  onClick={handleCreateGame}
-                >
-                  OK, Start Game
-                </button>
-              </div>
-            </>
-          )}
-
-          {error ? <p className="error">{error}</p> : null}
-        </section>
+        <LudoSetupPanel
+          setupStep={setupStep}
+          playerCount={playerCount}
+          names={names}
+          nameErrors={nameErrors}
+          editingNameIndex={editingNameIndex}
+          error={error}
+          colorsForCount={COLORS_BY_PLAYER_COUNT[playerCount]}
+          onPlayerCountChange={handlePlayerCountChange}
+          onContinueToNames={handleContinueToNames}
+          onBackToCount={handleBackToCount}
+          onCreateGame={handleCreateGame}
+          onUpdateName={updateName}
+          onStartEditName={setEditingNameIndex}
+          onStopEditName={() => setEditingNameIndex(null)}
+        />
       ) : null}
 
       {!loading && game ? (
-        <section className="game-layout">
-          <button
-            type="button"
-            className="menu-toggle"
-            aria-label="Open menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen(true)}
-          >
-            <span className="menu-toggle__bar" />
-            <span className="menu-toggle__bar" />
-            <span className="menu-toggle__bar" />
-          </button>
-
-          {menuOpen ? (
-            <button
-              type="button"
-              className="menu-backdrop"
-              aria-label="Close menu"
-              onClick={() => setMenuOpen(false)}
-            />
-          ) : null}
-
-          <aside className={menuOpen ? 'panel hud hud--open' : 'panel hud'} id="match-control-menu">
-            <div className="hud__header">
-              <h2>Match Control</h2>
-              <button
-                type="button"
-                className="hud__close"
-                aria-label="Close menu"
-                onClick={() => setMenuOpen(false)}
-              >
-                ×
-              </button>
-            </div>
-            <p className="meta">Session ID: {game.id.slice(0, 8)}</p>
-            <p className="turn-text">
-              Turn: <strong>{currentPlayer?.name ?? '-'}</strong>
-            </p>
-            <p className="turn-text">
-              Dice: <strong>{game.pendingRoll ?? game.lastDiceRoll ?? '-'}</strong>
-            </p>
-
-            <button
-              type="button"
-              className="primary"
-              onClick={() => void handleRoll()}
-              disabled={!canRoll}
-            >
-              Roll Dice
-            </button>
-
-            <label className="sound-control">
-              <span className="sound-control__label">Sound</span>
-              <input
-                type="range"
-                className="sound-control__slider"
-                min={0}
-                max={100}
-                step={1}
-                value={Math.round(soundVolume * 100)}
-                aria-label="Sound volume"
-                onChange={(event) => {
-                  unlockGameSounds()
-                  const next = Number(event.target.value) / 100
-                  setSoundVolume(next)
-                  setGameSoundVolume(next)
-                }}
-              />
-              <span className="sound-control__value">{Math.round(soundVolume * 100)}%</span>
-            </label>
-
-            <p className="message">{game.message}</p>
-
-            {game.finishOrder?.length ? (
-              <p className="winner">
-                {game.status === 'COMPLETED' ? 'Final standings' : 'Finished'}:{' '}
-                {game.finishOrder
-                  .map((playerId, index) => {
-                    const player = game.players.find((entry) => entry.id === playerId)
-                    return player ? `#${index + 1} ${player.name}` : null
-                  })
-                  .filter(Boolean)
-                  .join(' · ')}
-              </p>
-            ) : null}
-
-            <h3>Progress</h3>
-            <div className="score-list">
-              {game.players.map((player) => {
-                const colorClass = COLOR_CLASS_BY_COLOR[player.color]
-                const place = finishPlaceByPlayerId.get(player.id)
-                return (
-                  <div key={player.id} className={`score-row ${colorClass}`}>
-                    <span>{player.name}</span>
-                    <span>
-                      {place ? `#${place}` : `${finishedCounts[player.color]}/4 home`}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-
-            <button type="button" className="ghost hud__new-session" onClick={handleResetSession}>
-              New Session
-            </button>
-
-            {error ? <p className="error">{error}</p> : null}
-          </aside>
-
-          <section className="board-wrap" aria-label="Ludo board">
-            <div className="board-frame">
+        <LudoMatchLayout
+          game={game}
+          currentPlayerName={currentPlayer?.name ?? '-'}
+          canRoll={canRoll}
+          soundVolume={soundVolume}
+          finishPlaceByPlayerId={finishPlaceByPlayerId}
+          finishedCounts={finishedCounts}
+          error={error}
+          menuOpen={menuOpen}
+          autoRollByPlayerId={autoRollByPlayerId}
+          onMenuOpen={() => setMenuOpen(true)}
+          onMenuClose={() => setMenuOpen(false)}
+          onRoll={() => void handleRoll()}
+          onSoundVolumeChange={(next) => {
+            unlockGameSounds()
+            setSoundVolume(next)
+            setGameSoundVolume(next)
+          }}
+          onNewSession={handleResetSession}
+          onToggleAutoRoll={handleToggleAutoRoll}
+          onChangePlayerPaint={handleChangePlayerPaint}
+          board={
+          <LudoBoardSurface seatPaintStyle={seatPaintStyle}>
               {BOARD_CORNERS.map((corner) => (
                 (() => {
                   const cornerPlayerIndex = game.players.findIndex((entry) => entry.color === corner.color)
@@ -1492,6 +1405,7 @@ function App() {
                       >
                         <LudoToken
                           color={placement.playerColor}
+                          paintHex={placement.paintHex}
                           shape="pin"
                           variant="classic"
                           movable={tokenCanMove}
@@ -1518,6 +1432,9 @@ function App() {
                     <HomeYardTokens
                       key={`${color}-tokens`}
                       color={color}
+                      paintHex={
+                        player ? resolvePlayerPaintHex(player) : resolvePlayerPaintHex({ color })
+                      }
                       tokens={player?.tokens ?? []}
                       legalMoves={isActivePlayer ? game.legalMoves : []}
                       disabled={!canMove || !isActivePlayer}
@@ -1538,6 +1455,7 @@ function App() {
                     >
                       <LudoToken
                         color={hoppingToken.color}
+                        paintHex={hoppingToken.paintHex}
                         shape="pin"
                         variant="classic"
                       />
@@ -1556,6 +1474,7 @@ function App() {
                     >
                       <LudoToken
                         color={returningToken.color}
+                        paintHex={returningToken.paintHex}
                         shape="pin"
                         variant="classic"
                       />
@@ -1563,9 +1482,9 @@ function App() {
                   </div>
                 ) : null}
               </div>
-            </div>
-          </section>
-        </section>
+          </LudoBoardSurface>
+          }
+        />
       ) : null}
 
       {game && endGameOpen && game.status === 'COMPLETED' && endGameStandings.length > 0 ? (
@@ -1575,7 +1494,7 @@ function App() {
           onClose={() => setEndGameOpen(false)}
         />
       ) : null}
-    </main>
+    </LudoPageShell>
   )
 }
 

@@ -1,27 +1,16 @@
 /**
- * Scoped base styles for the embedded Ludo page.
- * Intentionally avoids html/body/#root so Chess chrome is unchanged.
+ * Scoped reset for the embedded Ludo page.
+ * Avoids html/body/#root so Chess chrome is unchanged.
+ * Page layout/chrome come from MUI; this only scopes box-sizing.
  */
-.ludo-root {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 100%;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #17202c;
-}
-
+.ludo-root,
 .ludo-root *,
 .ludo-root *::before,
 .ludo-root *::after {
   box-sizing: border-box;
 }
 
-.ludo-root button,
-.ludo-root input {
-  font: inherit;
-}
-
-/* Fill the Chess main panel instead of forcing a full viewport shell. */
+/* Board tile variables / grid still rely on these CSS classes under MUI Paper. */
 .ludo-root .app-shell {
   min-height: 100%;
 }

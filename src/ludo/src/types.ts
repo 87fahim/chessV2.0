@@ -8,7 +8,10 @@ export interface TokenState {
 
 export interface PlayerState {
   id: string
+  /** Board seat / path (red, green, yellow, or blue corner). */
   color: PlayerColor
+  /** Cosmetic token/UI color as #rrggbb. Falls back to seat default when missing. */
+  paintHex?: string
   name: string
   userId?: string | null
   tokens: TokenState[]

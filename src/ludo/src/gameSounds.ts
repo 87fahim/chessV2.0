@@ -1,6 +1,9 @@
 /** Lightweight procedural SFX via Web Audio — no external audio files. */
 
 const VOLUME_STORAGE_KEY = 'ludo.soundVolume'
+/** UI volume is 0–1; multiply so 100% is actually audible over the board UI. */
+const MASTER_OUTPUT_SCALE = 20
+const DEFAULT_VOLUME = 0.85
 
 let audioContext: AudioContext | null = null
 let masterGain: GainNode | null = null
@@ -10,16 +13,20 @@ function loadStoredVolume(): number {
   try {
     const raw = localStorage.getItem(VOLUME_STORAGE_KEY)
     if (raw === null) {
-      return 0.7
+      return DEFAULT_VOLUME
     }
     const parsed = Number(raw)
     if (!Number.isFinite(parsed)) {
-      return 0.7
+      return DEFAULT_VOLUME
     }
     return Math.min(1, Math.max(0, parsed))
   } catch {
-    return 0.7
+    return DEFAULT_VOLUME
   }
+}
+
+function masterGainValue(uiVolume: number): number {
+  return Math.min(1, Math.max(0, uiVolume)) * MASTER_OUTPUT_SCALE
 }
 
 function getAudioContext(): AudioContext | null {
@@ -38,7 +45,7 @@ function getAudioContext(): AudioContext | null {
   if (!audioContext) {
     audioContext = new AudioCtx()
     masterGain = audioContext.createGain()
-    masterGain.gain.value = volume
+    masterGain.gain.value = masterGainValue(volume)
     masterGain.connect(audioContext.destination)
   }
 
@@ -56,7 +63,7 @@ function getMaster(): GainNode | null {
   }
   if (!masterGain) {
     masterGain = context.createGain()
-    masterGain.gain.value = volume
+    masterGain.gain.value = masterGainValue(volume)
     masterGain.connect(context.destination)
   }
   return masterGain
@@ -79,7 +86,7 @@ export function setGameSoundVolume(next: number): void {
   }
   const master = getMaster()
   if (master && audioContext) {
-    master.gain.setTargetAtTime(volume, audioContext.currentTime, 0.02)
+    master.gain.setTargetAtTime(masterGainValue(volume), audioContext.currentTime, 0.02)
   }
 }
 

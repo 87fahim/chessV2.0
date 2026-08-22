@@ -1,4 +1,5 @@
 import { FINISH_PROGRESS, SAFE_OUTER_INDEXES, START_INDEX } from './boardLayout'
+import { DEFAULT_PAINT_BY_SEAT, normalizePaintHex } from './playerPaint'
 import type { GameState, MoveSummary, PlayerColor, PlayerState, TokenState } from './types'
 
 const STORAGE_KEY = 'ludo.activeGame'
@@ -272,6 +273,7 @@ export function createLocalGame(playerCount: 2 | 3 | 4, playerNames: string[]): 
   const players: PlayerState[] = colors.map((color, playerIndex) => ({
     id: `${color}-player`,
     color,
+    paintHex: DEFAULT_PAINT_BY_SEAT[color],
     name: normalizeName(playerNames[playerIndex] ?? '', `Player ${playerIndex + 1}`),
     userId: null,
     tokens: createTokens(color),
@@ -368,6 +370,7 @@ export function applyLocalRoll(game: GameState, clientRoll: number): GameState {
 }
 
 export function applyLocalMove(game: GameState, tokenId: string): GameState {
+
   const next = structuredClone(game)
   ensureFinishOrder(next)
 
@@ -474,6 +477,7 @@ function normalizeLoadedGame(game: GameState): GameState {
       typeof player.timesCaptured === 'number' && Number.isFinite(player.timesCaptured)
         ? Math.max(0, Math.floor(player.timesCaptured))
         : 0
+    player.paintHex = normalizePaintHex(player.paintHex) ?? DEFAULT_PAINT_BY_SEAT[player.color]
     for (const token of player.tokens) {
       if (token.progress > FINISH_PROGRESS) {
         token.progress = FINISH_PROGRESS
@@ -521,6 +525,26 @@ function normalizeLoadedGame(game: GameState): GameState {
 
   game.status = 'ACTIVE'
   return game
+}
+
+/**
+ * Set a player's cosmetic paint color (any #rrggbb). Board seat / path is unchanged.
+ */
+export function setPlayerPaintHex(game: GameState, playerId: string, paintHex: string): GameState {
+  const nextHex = normalizePaintHex(paintHex)
+  if (!nextHex) {
+    throw new Error('Pick a valid color.')
+  }
+
+  const next = structuredClone(game)
+  const player = next.players.find((entry) => entry.id === playerId)
+  if (!player) {
+    throw new Error('Player not found.')
+  }
+
+  player.paintHex = nextHex
+  next.updatedAt = nowIso()
+  return next
 }
 
 /** Returns a repaired copy when the turn is stuck on a finished player; ignores real race endings. */
