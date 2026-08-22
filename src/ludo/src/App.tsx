@@ -121,78 +121,79 @@ function CornerDie({
 
   return (
     <div className={`corner-die-slot corner-die-slot--${corner}`}>
-      <div className="corner-die-player">
-        <div
-          className={
-            highlighted
-              ? `corner-die-profile corner-die-profile--active corner-die-profile--${color}`
-              : `corner-die-profile corner-die-profile--${color}`
-          }
-          title={profileName}
-          aria-label={profileName}
+      <div
+        className={
+          highlighted
+            ? `corner-die-profile corner-die-profile--active corner-die-profile--${color}`
+            : `corner-die-profile corner-die-profile--${color}`
+        }
+        title={profileName}
+        aria-label={profileName}
+      >
+        <span className="corner-die-profile__name">{shortLabel}</span>
+      </div>
+
+      <div className="corner-die-main">
+        <button
+          type="button"
+          className="corner-die"
+          aria-label={`Roll ${corner} die for ${profileName}. Current value ${value}`}
+          onClick={onRoll}
+          disabled={disabled}
         >
-          <span className="corner-die-profile__name">{shortLabel}</span>
-        </div>
+          <span className={plateClassName} aria-hidden="true">
+            <span className={shadowClassName} />
+            {turnActive ? (
+              <svg className="corner-die__plate-ring" viewBox="0 0 100 100" focusable="false">
+                <rect
+                  className="corner-die__plate-ring-path"
+                  x="3"
+                  y="3"
+                  width="94"
+                  height="94"
+                  rx="14"
+                  ry="14"
+                  pathLength={100}
+                />
+              </svg>
+            ) : null}
+          </span>
+          <span
+            className={rolling ? 'corner-die__cube corner-die__cube--rolling' : 'corner-die__cube'}
+            style={{
+              ['--die-rx' as string]: orientation.rx,
+              ['--die-ry' as string]: orientation.ry,
+              ['--die-rz' as string]: orientation.rz,
+            }}
+          >
+            {DIE_VALUES.map((face) => (
+              <span key={face} className={`die-face die-face--${face}`}>
+                {DIE_PIP_LAYOUTS[face].map(([row, column], index) => (
+                  <span
+                    key={`${face}-${index}`}
+                    className="die-pip"
+                    style={{
+                      ['--pip-row' as string]: row,
+                      ['--pip-column' as string]: column,
+                    }}
+                  />
+                ))}
+              </span>
+            ))}
+          </span>
+        </button>
+
         <div
           className="corner-die-stats"
-          aria-label={`${profileName} stats: captured ${capturesMade}, was captured ${timesCaptured}, progress ${progressScore}%`}
+          aria-label={`${profileName} stats: captured ${capturesMade}, lost ${timesCaptured}, score ${progressScore}%`}
         >
-          <span title="Pieces captured">C {capturesMade}</span>
-          <span title="Pieces lost">L {timesCaptured}</span>
+          <span title="Pieces captured">Captured {capturesMade}</span>
+          <span title="Pieces lost">Lost {timesCaptured}</span>
           <span title="Average progress (exact-finish, home-yard, and behind-threat adjusted)">
-            S {progressScore}%
+            Score {progressScore}%
           </span>
         </div>
       </div>
-
-      <button
-        type="button"
-        className="corner-die"
-        aria-label={`Roll ${corner} die for ${profileName}. Current value ${value}`}
-        onClick={onRoll}
-        disabled={disabled}
-      >
-        <span className={plateClassName} aria-hidden="true">
-          <span className={shadowClassName} />
-          {turnActive ? (
-            <svg className="corner-die__plate-ring" viewBox="0 0 100 100" focusable="false">
-              <rect
-                className="corner-die__plate-ring-path"
-                x="3"
-                y="3"
-                width="94"
-                height="94"
-                rx="14"
-                ry="14"
-                pathLength={100}
-              />
-            </svg>
-          ) : null}
-        </span>
-        <span
-          className={rolling ? 'corner-die__cube corner-die__cube--rolling' : 'corner-die__cube'}
-          style={{
-            ['--die-rx' as string]: orientation.rx,
-            ['--die-ry' as string]: orientation.ry,
-            ['--die-rz' as string]: orientation.rz,
-          }}
-        >
-          {DIE_VALUES.map((face) => (
-            <span key={face} className={`die-face die-face--${face}`}>
-              {DIE_PIP_LAYOUTS[face].map(([row, column], index) => (
-                <span
-                  key={`${face}-${index}`}
-                  className="die-pip"
-                  style={{
-                    ['--pip-row' as string]: row,
-                    ['--pip-column' as string]: column,
-                  }}
-                />
-              ))}
-            </span>
-          ))}
-        </span>
-      </button>
     </div>
   )
 }
@@ -1228,15 +1229,6 @@ function App() {
   return (
     <LudoPageShell playing={Boolean(game)} seatPaintStyle={seatPaintStyle}>
       <LudoSessionHeader
-        currentPlayer={
-          currentPlayer
-            ? {
-                name: currentPlayer.name,
-                color: currentPlayer.color,
-                paintHex: resolvePlayerPaintHex(currentPlayer),
-              }
-            : null
-        }
         showNewSession={Boolean(game)}
         onNewSession={handleResetSession}
       />

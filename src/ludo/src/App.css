@@ -509,24 +509,24 @@
   transform: translate(calc(100% + var(--die-gap)), -50%);
 }
 
+/* Bottom seats: die above name */
 .corner-die-slot--bottom-left,
 .corner-die-slot--bottom-right {
-  /* Die above, player name below */
   flex-direction: column-reverse;
 }
 
-.corner-die-slot--top-left .corner-die-player,
-.corner-die-slot--top-right .corner-die-player {
+.corner-die-slot--top-left .corner-die-main,
+.corner-die-slot--top-right .corner-die-main {
   /* Plate sits taller than the die hit-box and sticks above it — clear that + a small gap */
-  margin-bottom: calc(
+  margin-top: calc(
     var(--die-plate-size) - var(--die-size) - var(--die-plate-nudge) + var(--die-profile-clearance)
   );
 }
 
-.corner-die-slot--bottom-left .corner-die-player,
-.corner-die-slot--bottom-right .corner-die-player {
+.corner-die-slot--bottom-left .corner-die-main,
+.corner-die-slot--bottom-right .corner-die-main {
   /* Plate overhangs under the die — clear that + a small gap */
-  margin-top: calc(var(--die-plate-nudge) + var(--die-profile-clearance));
+  margin-bottom: calc(var(--die-plate-nudge) + var(--die-profile-clearance));
 }
 
 .corner-die-slot--bottom-left {
@@ -541,12 +541,23 @@
   transform: translate(calc(100% + var(--die-gap)), -50%);
 }
 
-.corner-die-player {
-  width: var(--die-profile-width);
+.corner-die-main {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   gap: var(--die-stats-gap);
+}
+
+/* Top seats: stats below the die (DOM order die → stats) */
+.corner-die-slot--top-left .corner-die-main,
+.corner-die-slot--top-right .corner-die-main {
+  flex-direction: column;
+}
+
+/* Bottom seats: stats above the die */
+.corner-die-slot--bottom-left .corner-die-main,
+.corner-die-slot--bottom-right .corner-die-main {
+  flex-direction: column-reverse;
 }
 
 .corner-die-profile {
@@ -570,7 +581,7 @@
   min-height: var(--die-stats-height);
   padding: 2px 0;
   color: #31425f;
-  font-size: clamp(0.52rem, calc(var(--tile-size) * 0.28), 0.72rem);
+  font-size: clamp(0.48rem, calc(var(--tile-size) * 0.24), 0.68rem);
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: 0.01em;
@@ -2308,6 +2319,31 @@
     right: auto;
     transform: translate(-50%, calc(100% + var(--die-gap)));
   }
+
+  /* Above/below board: stats beside the die (right of left seats, left of right seats). */
+  .app-shell--playing .corner-die-slot--top-left .corner-die-main,
+  .app-shell--playing .corner-die-slot--bottom-left .corner-die-main {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .app-shell--playing .corner-die-slot--top-right .corner-die-main,
+  .app-shell--playing .corner-die-slot--bottom-right .corner-die-main {
+    flex-direction: row-reverse;
+    align-items: center;
+  }
+
+  .app-shell--playing .corner-die-stats {
+    align-items: flex-start;
+    text-align: left;
+    min-height: 0;
+  }
+
+  .app-shell--playing .corner-die-slot--top-right .corner-die-stats,
+  .app-shell--playing .corner-die-slot--bottom-right .corner-die-stats {
+    align-items: flex-end;
+    text-align: right;
+  }
 }
 
 @media (max-width: 960px) {
@@ -2357,5 +2393,29 @@
     left: 82%;
     right: auto;
     transform: translate(-50%, calc(100% + var(--die-gap)));
+  }
+
+  .corner-die-slot--top-left .corner-die-main,
+  .corner-die-slot--bottom-left .corner-die-main {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .corner-die-slot--top-right .corner-die-main,
+  .corner-die-slot--bottom-right .corner-die-main {
+    flex-direction: row-reverse;
+    align-items: center;
+  }
+
+  .corner-die-stats {
+    align-items: flex-start;
+    text-align: left;
+    min-height: 0;
+  }
+
+  .corner-die-slot--top-right .corner-die-stats,
+  .corner-die-slot--bottom-right .corner-die-stats {
+    align-items: flex-end;
+    text-align: right;
   }
 }

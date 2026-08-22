@@ -100,12 +100,10 @@ export function LudoBoardSurface({
 }
 
 export function LudoSessionHeader({
-  currentPlayer,
   showNewSession,
   onNewSession,
   hideOnMobilePlaying = true,
 }: {
-  currentPlayer: { name: string; color: PlayerColor; paintHex?: string } | null;
   showNewSession: boolean;
   onNewSession: () => void;
   hideOnMobilePlaying?: boolean;
@@ -117,60 +115,40 @@ export function LudoSessionHeader({
         maxWidth: 1240,
         mx: 'auto',
         mb: 2.5,
-        p: { xs: 2, sm: 2.5 },
+        p: { xs: 1.5, sm: 2 },
         border: '1px solid',
         borderColor: 'divider',
         borderRadius: 2,
         bgcolor: (theme) => alpha(theme.palette.background.paper, 0.92),
         display: hideOnMobilePlaying ? { xs: showNewSession ? 'none' : 'flex', md: 'flex' } : 'flex',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         justifyContent: 'space-between',
         gap: 2,
         flexWrap: 'wrap',
         backdropFilter: 'blur(8px)',
       }}
     >
-      <Box sx={{ minWidth: 0, flex: '1 1 240px' }}>
-        <Typography
-          variant="overline"
-          sx={{ letterSpacing: '0.12em', fontWeight: 700, color: 'primary.main' }}
-        >
-          Ludo Online
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0 }}>
+        <Typography variant="h5" component="h1" sx={{ fontWeight: 800, fontSize: { xs: '1.35rem', sm: '1.65rem' } }}>
+          Ludo Game
         </Typography>
-        <Stack direction="row" spacing={1.5} sx={{ mt: 0.5, alignItems: 'center' }}>
-          {currentPlayer ? (
-            <Box
-              component="span"
-              aria-label={`Current player: ${currentPlayer.name}`}
-              sx={{
-                width: 16,
-                height: 16,
-                borderRadius: '50%',
-                bgcolor: currentPlayer.paintHex
-                  ? currentPlayer.paintHex
-                  : COLOR_HEX[currentPlayer.color],
-                boxShadow: '0 0 0 2px rgba(15, 23, 42, 0.08)',
-                flexShrink: 0,
-              }}
-            />
-          ) : null}
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 700, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-            Production Session Board
-          </Typography>
+        <Stack direction="row" spacing={0.75} aria-label="Token preview" sx={{ alignItems: 'center' }}>
+          <LudoToken color="red" variant="classic" size={28} />
+          <LudoToken color="green" variant="classic" size={28} />
+          <LudoToken color="yellow" variant="classic" size={28} />
+          <LudoToken color="blue" variant="classic" size={28} />
         </Stack>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
-          Local session board with autosave on every accepted move
-        </Typography>
-        <Stack direction="row" spacing={1} sx={{ mt: 1.5 }} aria-label="Token preview">
-          <LudoToken color="red" variant="classic" size={32} />
-          <LudoToken color="green" variant="flat" size={32} />
-          <LudoToken color="blue" variant="glass" size={32} />
-          <LudoToken color="yellow" variant="classic" selected size={32} />
-        </Stack>
-      </Box>
+      </Stack>
       {showNewSession ? (
-        <Button variant="outlined" startIcon={<RestartAltIcon />} onClick={onNewSession}>
-          New Session
+        <Button
+          variant="contained"
+          color="primary"
+          size="large"
+          startIcon={<RestartAltIcon />}
+          onClick={onNewSession}
+          sx={{ fontWeight: 700, px: 2.5 }}
+        >
+          New Game
         </Button>
       ) : null}
     </Paper>
@@ -386,7 +364,6 @@ export function LudoSetupPanel({
 
 function MatchControlBody({
   game,
-  currentPlayerName,
   canRoll,
   soundVolume,
   finishPlaceByPlayerId,
@@ -417,50 +394,35 @@ function MatchControlBody({
   onClose?: () => void;
   showClose: boolean;
 }) {
-  const turnPlayer = game.players.find((entry) => entry.id === game.currentPlayerId);
-  const turnPaint = turnPlayer ? resolvePlayerPaintHex(turnPlayer) : undefined;
-
   return (
-    <Stack spacing={1.75} sx={{ p: 2, height: '100%' }}>
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+    <Stack spacing={1} sx={{ p: 1.5, height: '100%' }}>
+      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
           Match Control
         </Typography>
         {showClose && onClose ? (
           <IconButton aria-label="Close menu" onClick={onClose} size="small">
-            <CloseIcon />
+            <CloseIcon fontSize="small" />
           </IconButton>
         ) : null}
       </Stack>
 
-      <Typography variant="body2" color="text.secondary">
-        Session ID: {game.id.slice(0, 8)}
-      </Typography>
-      <Typography variant="body2">
-        Turn:{' '}
-        <Box component="strong" sx={{ color: turnPaint ?? 'inherit' }}>
-          {currentPlayerName}
-        </Box>
-      </Typography>
-      <Typography variant="body2">
-        Dice: <strong>{game.pendingRoll ?? game.lastDiceRoll ?? '-'}</strong>
-      </Typography>
-
       <Button
         variant="contained"
-        size="large"
+        size="small"
         startIcon={<CasinoIcon />}
         onClick={onRoll}
         disabled={!canRoll}
+        sx={{ py: 0.75 }}
       >
         Roll Dice
       </Button>
 
-      <Paper variant="outlined" sx={{ px: 1.5, py: 1, bgcolor: 'action.hover' }}>
-        <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+      <Paper variant="outlined" sx={{ px: 1, py: 0.5, bgcolor: 'action.hover' }}>
+        <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', lineHeight: 1.2 }}>
           Sound
         </Typography>
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <Slider
             size="small"
             min={0}
@@ -470,18 +432,18 @@ function MatchControlBody({
             aria-label="Sound volume"
             onChange={(_event, value) => onSoundVolumeChange((value as number) / 100)}
           />
-          <Typography variant="caption" sx={{ minWidth: 36, textAlign: 'right', fontWeight: 700 }}>
+          <Typography variant="caption" sx={{ minWidth: 32, textAlign: 'right', fontWeight: 700 }}>
             {Math.round(soundVolume * 100)}%
           </Typography>
         </Stack>
       </Paper>
 
-      <Alert severity="info" icon={false} sx={{ py: 0.5 }}>
+      <Alert severity="info" icon={false} sx={{ py: 0.25, px: 1, '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
         {game.message}
       </Alert>
 
       {game.finishOrder?.length ? (
-        <Typography variant="body2" sx={{ fontWeight: 700, color: 'success.dark' }}>
+        <Typography variant="caption" sx={{ fontWeight: 700, color: 'success.dark' }}>
           {game.status === 'COMPLETED' ? 'Final standings' : 'Finished'}:{' '}
           {game.finishOrder
             .map((playerId, index) => {
@@ -493,9 +455,9 @@ function MatchControlBody({
         </Typography>
       ) : null}
 
-      <Divider />
+      <Divider sx={{ my: 0.25 }} />
 
-      <Stack spacing={0.5}>
+      <Stack spacing={0.25}>
         {game.players.map((player) => {
           const place = finishPlaceByPlayerId.get(player.id);
           const autoRoll = Boolean(autoRollByPlayerId[player.id]);
@@ -505,8 +467,8 @@ function MatchControlBody({
             <Stack
               key={player.id}
               direction="row"
-              spacing={0.75}
-              sx={{ alignItems: 'center', minHeight: 28 }}
+              spacing={0.5}
+              sx={{ alignItems: 'center', minHeight: 24 }}
             >
               <Box
                 component="input"
@@ -517,17 +479,17 @@ function MatchControlBody({
                   onChangePlayerPaint(player.id, event.target.value)
                 }
                 sx={{
-                  width: 22,
-                  height: 22,
+                  width: 18,
+                  height: 18,
                   p: 0,
                   border: '1px solid',
                   borderColor: 'divider',
-                  borderRadius: 0.75,
+                  borderRadius: 0.5,
                   bgcolor: 'transparent',
                   cursor: 'pointer',
                   flexShrink: 0,
                   '&::-webkit-color-swatch-wrapper': { p: 0 },
-                  '&::-webkit-color-swatch': { border: 'none', borderRadius: 0.5 },
+                  '&::-webkit-color-swatch': { border: 'none', borderRadius: 0.4 },
                 }}
               />
               <Tooltip title="Reset color">
@@ -537,9 +499,9 @@ function MatchControlBody({
                     aria-label={`Reset color for ${player.name}`}
                     disabled={paintHex === DEFAULT_PAINT_BY_SEAT[player.color]}
                     onClick={() => onChangePlayerPaint(player.id, DEFAULT_PAINT_BY_SEAT[player.color])}
-                    sx={{ p: 0.25 }}
+                    sx={{ p: 0.15 }}
                   >
-                    <RestartAltIcon sx={{ fontSize: 16 }} />
+                    <RestartAltIcon sx={{ fontSize: 14 }} />
                   </IconButton>
                 </span>
               </Tooltip>
@@ -553,11 +515,12 @@ function MatchControlBody({
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
                   color: paintHex,
+                  fontSize: '0.72rem',
                 }}
               >
                 {player.name}
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0, fontSize: '0.7rem' }}>
                 {place ? `#${place}` : `${finishedCounts[player.color]}/4`}
               </Typography>
               <Tooltip title="Auto roll">
@@ -566,7 +529,7 @@ function MatchControlBody({
                   checked={autoRoll}
                   onChange={(event) => onToggleAutoRoll(player.id, event.target.checked)}
                   slotProps={{ input: { 'aria-label': `Auto roll for ${player.name}` } }}
-                  sx={{ p: 0.25 }}
+                  sx={{ p: 0.15 }}
                 />
               </Tooltip>
             </Stack>
@@ -576,11 +539,15 @@ function MatchControlBody({
 
       <Box sx={{ flexGrow: 1 }} />
 
-      <Button variant="outlined" startIcon={<RestartAltIcon />} onClick={onNewSession}>
-        New Session
+      <Button variant="outlined" size="small" startIcon={<RestartAltIcon />} onClick={onNewSession}>
+        New Game
       </Button>
 
-      {error ? <Alert severity="error">{error}</Alert> : null}
+      {error ? (
+        <Alert severity="error" sx={{ py: 0.25, '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
+          {error}
+        </Alert>
+      ) : null}
     </Stack>
   );
 }
