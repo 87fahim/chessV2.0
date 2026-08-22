@@ -375,6 +375,7 @@ function MatchControlBody({
   onNewSession,
   onToggleAutoRoll,
   onChangePlayerPaint,
+  onChangePlayerName,
   onClose,
   showClose,
 }: {
@@ -391,6 +392,7 @@ function MatchControlBody({
   onNewSession: () => void;
   onToggleAutoRoll: (playerId: string, enabled: boolean) => void;
   onChangePlayerPaint: (playerId: string, paintHex: string) => void;
+  onChangePlayerName: (playerId: string, name: string) => void;
   onClose?: () => void;
   showClose: boolean;
 }) {
@@ -505,21 +507,25 @@ function MatchControlBody({
                   </IconButton>
                 </span>
               </Tooltip>
-              <Typography
-                variant="caption"
+              <TextField
+                size="small"
+                variant="standard"
+                value={player.name}
+                onChange={(event) => onChangePlayerName(player.id, event.target.value)}
+                inputProps={{ maxLength: 24, 'aria-label': `Name for seat ${player.color}` }}
                 sx={{
-                  fontWeight: 700,
                   flex: 1,
                   minWidth: 0,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  color: paintHex,
-                  fontSize: '0.72rem',
+                  '& .MuiInputBase-input': {
+                    fontWeight: 700,
+                    fontSize: '0.72rem',
+                    color: paintHex,
+                    py: 0.25,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  },
                 }}
-              >
-                {player.name}
-              </Typography>
+              />
               <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0, fontSize: '0.7rem' }}>
                 {place ? `#${place}` : `${finishedCounts[player.color]}/4`}
               </Typography>
@@ -569,6 +575,7 @@ export function LudoMatchLayout({
   onNewSession,
   onToggleAutoRoll,
   onChangePlayerPaint,
+  onChangePlayerName,
   board,
 }: {
   game: GameState;
@@ -587,6 +594,7 @@ export function LudoMatchLayout({
   onNewSession: () => void;
   onToggleAutoRoll: (playerId: string, enabled: boolean) => void;
   onChangePlayerPaint: (playerId: string, paintHex: string) => void;
+  onChangePlayerName: (playerId: string, name: string) => void;
   board: React.ReactNode;
 }) {
   const theme = useTheme();
@@ -607,6 +615,7 @@ export function LudoMatchLayout({
     onNewSession,
     onToggleAutoRoll,
     onChangePlayerPaint,
+    onChangePlayerName,
   };
 
   return (

@@ -441,7 +441,7 @@
   --token-scale: 1;
   --die-size: calc(var(--tile-size) * 1.66);
   --die-plate-size: calc(var(--tile-size) * 2.2);
-  --die-profile-width: var(--die-plate-size);
+  --die-profile-width: calc(var(--tile-size) * 3.4);
   --die-profile-height: calc(var(--tile-size) * 0.82);
   --die-gap: calc(var(--tile-size) * 0.7);
   --die-slot-gap: calc(var(--tile-size) * 0.12);
@@ -565,6 +565,7 @@
 
 .corner-die-profile {
   width: 100%;
+  min-width: 0;
   height: var(--die-profile-height);
   border-radius: calc(var(--tile-size) * 0.24);
   border: 2px solid rgba(255, 255, 255, 0.85);
@@ -574,6 +575,13 @@
   place-items: center;
   box-sizing: border-box;
   pointer-events: none;
+  overflow: hidden;
+}
+
+.corner-die-profile--empty {
+  opacity: 0;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .corner-die-stats {
@@ -614,16 +622,19 @@
 }
 
 .corner-die-profile__name {
+  display: block;
+  width: 100%;
+  min-width: 0;
   color: #ffffff;
-  font-size: clamp(0.62rem, calc(var(--tile-size) * 0.38), 0.95rem);
+  font-size: clamp(0.58rem, calc(var(--tile-size) * 0.34), 0.9rem);
   font-weight: 800;
-  letter-spacing: 0.02em;
-  line-height: 1;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
   text-shadow: 0 1px 1px rgba(15, 26, 42, 0.25);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%;
+  text-align: center;
 }
 
 .corner-die-profile--active {
@@ -2346,6 +2357,29 @@
   .app-shell--playing .corner-die-slot--bottom-right .corner-die-stats {
     align-items: flex-end;
     text-align: right;
+  }
+}
+
+/* iPad / tablet only: kill the empty top gap (phones stay centered). */
+@media (min-width: 768px) and (max-width: 1366px) {
+  .app-shell--playing {
+    /* Chess dense AppBar is already above this page. */
+    --play-chrome: 48px;
+    height: calc(100dvh - var(--play-chrome));
+    min-height: calc(100dvh - var(--play-chrome));
+    max-height: calc(100dvh - var(--play-chrome));
+  }
+
+  .app-shell--playing .board-wrap {
+    place-items: start center;
+    align-content: start;
+  }
+
+  .app-shell--playing .board-frame {
+    width: min(100%, calc((100dvh - var(--play-chrome)) / (1 + 2 * var(--vertical-die-ratio))));
+    /* Less top band than bottom so the stack sits higher. */
+    margin-top: calc(var(--vertical-die-space) * 0.65);
+    margin-bottom: var(--vertical-die-space);
   }
 }
 

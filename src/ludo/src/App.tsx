@@ -9,6 +9,7 @@ import {
   repairStuckTurn,
   saveGameLocal,
   setPlayerPaintHex,
+  setPlayerName,
 } from './localGameEngine'
 import {
   getGameSoundVolume,
@@ -89,7 +90,6 @@ function CornerDie({
   corner,
   color,
   profileName,
-  shortLabel,
   highlighted,
   turnActive,
   capturesMade,
@@ -103,7 +103,6 @@ function CornerDie({
   corner: BoardCornerId
   color: PlayerColor
   profileName: string
-  shortLabel: string
   highlighted: boolean
   turnActive: boolean
   capturesMade: number
@@ -123,14 +122,17 @@ function CornerDie({
     <div className={`corner-die-slot corner-die-slot--${corner}`}>
       <div
         className={
-          highlighted
-            ? `corner-die-profile corner-die-profile--active corner-die-profile--${color}`
-            : `corner-die-profile corner-die-profile--${color}`
+          !profileName
+            ? `corner-die-profile corner-die-profile--empty corner-die-profile--${color}`
+            : highlighted
+              ? `corner-die-profile corner-die-profile--active corner-die-profile--${color}`
+              : `corner-die-profile corner-die-profile--${color}`
         }
-        title={profileName}
-        aria-label={profileName}
+        title={profileName || undefined}
+        aria-label={profileName || undefined}
+        aria-hidden={profileName ? undefined : true}
       >
-        <span className="corner-die-profile__name">{shortLabel}</span>
+        <span className="corner-die-profile__name">{profileName || ''}</span>
       </div>
 
       <div className="corner-die-main">
@@ -1171,6 +1173,23 @@ function App() {
     }
   }
 
+  function handleChangePlayerName(playerId: string, name: string): void {
+    if (!game) {
+      return
+    }
+
+    try {
+      const next = setPlayerName(game, playerId, name)
+      setGame(next)
+      saveGameLocal(next)
+      setError(null)
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error ? requestError.message : 'Failed to change name.'
+      setError(message)
+    }
+  }
+
   const endGameStandings = useMemo(() => {
     if (!game?.finishOrder?.length) {
       return []
@@ -1276,6 +1295,7 @@ function App() {
           onNewSession={handleResetSession}
           onToggleAutoRoll={handleToggleAutoRoll}
           onChangePlayerPaint={handleChangePlayerPaint}
+          onChangePlayerName={handleChangePlayerName}
           board={
           <LudoBoardSurface seatPaintStyle={seatPaintStyle}>
               {BOARD_CORNERS.map((corner) => (
@@ -1286,8 +1306,9 @@ function App() {
                   const cornerFinished = cornerPlayer
                     ? finishPlaceByPlayerId.has(cornerPlayer.id)
                     : false
-                  const profileName = cornerPlayer?.name ?? `${corner.color.toUpperCase()} Seat`
-                  const shortLabel = cornerPlayer ? `P${cornerPlayerIndex + 1}` : '—'
+                  const profileName = cornerPlayer
+                    ? cornerPlayer.name.trim() || `Player ${cornerPlayerIndex + 1}`
+                    : ''
                   const capturesMade = safeStatCount(cornerPlayer?.capturesMade)
                   const timesCaptured = safeStatCount(cornerPlayer?.timesCaptured)
                   const progressScore = cornerPlayer
@@ -1303,7 +1324,6 @@ function App() {
                       corner={corner.id}
                       color={corner.color}
                       profileName={profileName}
-                      shortLabel={shortLabel}
                       highlighted={isCurrentCorner && !cornerFinished}
                       turnActive={
                         isCurrentCorner &&

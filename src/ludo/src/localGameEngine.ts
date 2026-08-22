@@ -528,6 +528,22 @@ function normalizeLoadedGame(game: GameState): GameState {
 }
 
 /**
+ * Set a player's display name (same string shown in Match Control and on the board).
+ * Empty values are kept while typing; the board falls back to "Player N" when blank.
+ */
+export function setPlayerName(game: GameState, playerId: string, name: string): GameState {
+  const next = structuredClone(game)
+  const player = next.players.find((entry) => entry.id === playerId)
+  if (!player) {
+    throw new Error('Player not found.')
+  }
+
+  player.name = name.slice(0, 24)
+  next.updatedAt = nowIso()
+  return next
+}
+
+/**
  * Set a player's cosmetic paint color (any #rrggbb). Board seat / path is unchanged.
  */
 export function setPlayerPaintHex(game: GameState, playerId: string, paintHex: string): GameState {
