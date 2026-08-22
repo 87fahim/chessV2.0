@@ -49,11 +49,11 @@ export function LudoPageShell({
       className={playing ? 'app-shell app-shell--playing' : 'app-shell'}
       style={seatPaintStyle}
       sx={{
-        minHeight: playing ? { xs: '100dvh', md: '100%' } : '100%',
-        p: playing ? { xs: 0, md: 3 } : { xs: 2, sm: 3 },
+        minHeight: playing ? { xs: '100dvh', xl: '100%' } : '100%',
+        p: playing ? { xs: 0, xl: 3 } : { xs: 2, sm: 3 },
         boxSizing: 'border-box',
         color: 'text.primary',
-        overflow: playing ? { xs: 'hidden', md: 'visible' } : 'visible',
+        overflow: playing ? { xs: 'hidden', xl: 'visible' } : 'visible',
         background: (theme) =>
           [
             `radial-gradient(circle at 10% 20%, ${alpha(theme.palette.info.light, 0.45)} 0, transparent 48%)`,
@@ -120,7 +120,7 @@ export function LudoSessionHeader({
         borderColor: 'divider',
         borderRadius: 2,
         bgcolor: (theme) => alpha(theme.palette.background.paper, 0.92),
-        display: hideOnMobilePlaying ? { xs: showNewSession ? 'none' : 'flex', md: 'flex' } : 'flex',
+        display: hideOnMobilePlaying ? { xs: showNewSession ? 'none' : 'flex', xl: 'flex' } : 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 2,
@@ -590,7 +590,8 @@ export function LudoMatchLayout({
   board: React.ReactNode;
 }) {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  // Tablets including iPad Pro use the drawer chrome (same as phones).
+  const isMobile = useMediaQuery(theme.breakpoints.down('xl'));
 
   const controlProps = {
     game,
@@ -614,7 +615,7 @@ export function LudoMatchLayout({
         maxWidth: 1240,
         mx: 'auto',
         display: 'grid',
-        gridTemplateColumns: { xs: '1fr', md: 'minmax(240px, 280px) minmax(0, 1fr)' },
+        gridTemplateColumns: { xs: '1fr', xl: 'minmax(240px, 280px) minmax(0, 1fr)' },
         gap: 2,
         alignItems: 'start',
         position: 'relative',
