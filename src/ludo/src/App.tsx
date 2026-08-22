@@ -43,7 +43,7 @@ import { averageProgressScore } from './progressScore'
 import { LudoToken } from './LudoToken'
 import { animateTokenHops, animateTokenSlide, buildCaptureReturnPercentPath, buildMovePercentPath, type BoardPercent } from './tokenMotion'
 import type { GameState, PlayerColor, TokenState } from './types'
-import { resolvePlayerPaintHex } from './playerPaint'
+import { resolvePlayerPaintHex, buildSeatPaintMap, seatPaintCssVars } from './playerPaint'
 import {
   LudoBoardSurface,
   LudoLoadingPanel,
@@ -476,10 +476,10 @@ function HomeYardTokens({
 function CenterFinish() {
   return (
     <svg className="center-finish" viewBox="0 0 100 100" aria-hidden="true">
-      <polygon points="0,0 100,0 50,50" fill="#179949" />
-      <polygon points="100,0 100,100 50,50" fill="#e6bb00" />
-      <polygon points="0,100 100,100 50,50" fill="#2d7ae8" />
-      <polygon points="0,0 0,100 50,50" fill="#ef2424" />
+      <polygon points="0,0 100,0 50,50" fill="var(--seat-green, #179949)" />
+      <polygon points="100,0 100,100 50,50" fill="var(--seat-yellow, #e6bb00)" />
+      <polygon points="0,100 100,100 50,50" fill="var(--seat-blue, #2d7ae8)" />
+      <polygon points="0,0 0,100 50,50" fill="var(--seat-red, #ef2424)" />
     </svg>
   )
 }
@@ -736,6 +736,11 @@ function App() {
 
   const currentPlayerFinished =
     currentPlayer !== null && finishPlaceByPlayerId.has(currentPlayer.id)
+
+  const seatPaintStyle = useMemo(
+    () => (game ? seatPaintCssVars(buildSeatPaintMap(game.players)) : undefined),
+    [game],
+  )
 
   const canRoll =
     game !== null &&
@@ -1219,7 +1224,7 @@ function App() {
   }
 
   return (
-    <LudoPageShell playing={Boolean(game)}>
+    <LudoPageShell playing={Boolean(game)} seatPaintStyle={seatPaintStyle}>
       <LudoSessionHeader
         currentPlayer={
           currentPlayer

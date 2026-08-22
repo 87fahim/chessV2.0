@@ -25,31 +25,29 @@ import MenuIcon from '@mui/icons-material/Menu';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import CasinoIcon from '@mui/icons-material/Casino';
 import type { GameState, PlayerColor } from './types';
-import { resolvePlayerPaintHex } from './playerPaint';
+import { DEFAULT_PAINT_BY_SEAT, resolvePlayerPaintHex } from './playerPaint';
 import { LudoToken } from './LudoToken';
 
 type SetupCount = 2 | 3 | 4;
 type SetupStep = 'count' | 'names';
 
-const COLOR_HEX: Record<PlayerColor, string> = {
-  red: '#ef2424',
-  green: '#1f9d55',
-  yellow: '#d4a017',
-  blue: '#2d7ae8',
-};
+const COLOR_HEX = DEFAULT_PAINT_BY_SEAT;
 
 /** Full-page Material UI shell; keeps app-shell classes for board media-query layout. */
 export function LudoPageShell({
   playing,
+  seatPaintStyle,
   children,
 }: {
   playing: boolean;
+  seatPaintStyle?: React.CSSProperties;
   children: React.ReactNode;
 }) {
   return (
     <Box
       component="main"
       className={playing ? 'app-shell app-shell--playing' : 'app-shell'}
+      style={seatPaintStyle}
       sx={{
         minHeight: playing ? { xs: '100dvh', md: '100%' } : '100%',
         p: playing ? { xs: 0, md: 3 } : { xs: 2, sm: 3 },
@@ -410,6 +408,9 @@ function MatchControlBody({
   onClose?: () => void;
   showClose: boolean;
 }) {
+  const turnPlayer = game.players.find((entry) => entry.id === game.currentPlayerId);
+  const turnPaint = turnPlayer ? resolvePlayerPaintHex(turnPlayer) : undefined;
+
   return (
     <Stack spacing={1.75} sx={{ p: 2, height: '100%' }}>
       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
@@ -427,7 +428,10 @@ function MatchControlBody({
         Session ID: {game.id.slice(0, 8)}
       </Typography>
       <Typography variant="body2">
-        Turn: <strong>{currentPlayerName}</strong>
+        Turn:{' '}
+        <Box component="strong" sx={{ color: turnPaint ?? 'inherit' }}>
+          {currentPlayerName}
+        </Box>
       </Typography>
       <Typography variant="body2">
         Dice: <strong>{game.pendingRoll ?? game.lastDiceRoll ?? '-'}</strong>
@@ -526,6 +530,7 @@ function MatchControlBody({
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
+                  color: paintHex,
                 }}
               >
                 {player.name}
