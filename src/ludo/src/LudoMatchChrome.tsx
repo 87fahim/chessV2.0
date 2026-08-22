@@ -530,6 +530,19 @@ function MatchControlBody({
                   '&::-webkit-color-swatch': { border: 'none', borderRadius: 0.5 },
                 }}
               />
+              <Tooltip title="Reset color">
+                <span>
+                  <IconButton
+                    size="small"
+                    aria-label={`Reset color for ${player.name}`}
+                    disabled={paintHex === DEFAULT_PAINT_BY_SEAT[player.color]}
+                    onClick={() => onChangePlayerPaint(player.id, DEFAULT_PAINT_BY_SEAT[player.color])}
+                    sx={{ p: 0.25 }}
+                  >
+                    <RestartAltIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
               <Typography
                 variant="caption"
                 sx={{
