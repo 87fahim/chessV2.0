@@ -480,7 +480,7 @@
   gap: 1px;
   padding: 0;
   border: 1px solid #636d7e;
-  background: #ffffff;
+  background: #7a8a9d;
   position: relative;
   z-index: 3;
   pointer-events: none;
@@ -852,15 +852,29 @@
   border: 0;
 }
 
-/* Small path / start / safe tiles only — not blank fillers, center, or home yards. */
-.cell--track,
-.cell--safe,
-.cell--start,
-.cell--red-path,
-.cell--green-path,
-.cell--yellow-path,
-.cell--blue-path {
+.cell > * {
+  position: relative;
+  z-index: 1;
+}
+
+/*
+ * Rounded face sits on a square white pad so corner wedges stay white,
+ * while the grey board-grid gap (tile borders) is unchanged.
+ */
+.cell--track::before,
+.cell--safe::before,
+.cell--start::before,
+.cell--red-path::before,
+.cell--green-path::before,
+.cell--yellow-path::before,
+.cell--blue-path::before {
+  content: '';
+  position: absolute;
+  inset: 0;
   border-radius: var(--tile-radius, 0px);
+  background: #ffffff;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .cell--blank {
@@ -891,46 +905,70 @@
 }
 
 .cell--red-path {
-  background: var(--seat-red, #ef2424);
+  background: #ffffff;
   border-color: #7a8a9d;
+}
+
+.cell--red-path::before {
+  background: var(--seat-red, #ef2424);
 }
 
 .cell--green-path {
-  background: var(--seat-green, #179949);
+  background: #ffffff;
   border-color: #7a8a9d;
+}
+
+.cell--green-path::before {
+  background: var(--seat-green, #179949);
 }
 
 .cell--yellow-path {
-  background: var(--seat-yellow, #e6bb00);
+  background: #ffffff;
   border-color: #7a8a9d;
+}
+
+.cell--yellow-path::before {
+  background: var(--seat-yellow, #e6bb00);
 }
 
 .cell--blue-path {
-  background: var(--seat-blue, #2d7ae8);
+  background: #ffffff;
   border-color: #7a8a9d;
+}
+
+.cell--blue-path::before {
+  background: var(--seat-blue, #2d7ae8);
+}
+
+.cell--start.cell--red::before,
+.cell--track.cell--red::before {
+  background: var(--seat-red, #ef2424);
+}
+
+.cell--start.cell--green::before,
+.cell--track.cell--green::before {
+  background: var(--seat-green, #179949);
+}
+
+.cell--start.cell--yellow::before,
+.cell--track.cell--yellow::before {
+  background: var(--seat-yellow, #e6bb00);
+}
+
+.cell--start.cell--blue::before,
+.cell--track.cell--blue::before {
+  background: var(--seat-blue, #2d7ae8);
 }
 
 .cell--start.cell--red,
-.cell--track.cell--red {
-  background: var(--seat-red, #ef2424);
-  border-color: #7a8a9d;
-}
-
+.cell--track.cell--red,
 .cell--start.cell--green,
-.cell--track.cell--green {
-  background: var(--seat-green, #179949);
-  border-color: #7a8a9d;
-}
-
+.cell--track.cell--green,
 .cell--start.cell--yellow,
-.cell--track.cell--yellow {
-  background: var(--seat-yellow, #e6bb00);
-  border-color: #7a8a9d;
-}
-
+.cell--track.cell--yellow,
 .cell--start.cell--blue,
 .cell--track.cell--blue {
-  background: var(--seat-blue, #2d7ae8);
+  background: #ffffff;
   border-color: #7a8a9d;
 }
 
