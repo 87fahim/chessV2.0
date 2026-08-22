@@ -1,0 +1,572 @@
+import React from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Divider,
+  Drawer,
+  IconButton,
+  Paper,
+  Slider,
+  Stack,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import MenuIcon from '@mui/icons-material/Menu';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import CasinoIcon from '@mui/icons-material/Casino';
+import type { GameState, PlayerColor } from './types';
+import { LudoToken } from './LudoToken';
+
+type SetupCount = 2 | 3 | 4;
+type SetupStep = 'count' | 'names';
+
+const COLOR_HEX: Record<PlayerColor, string> = {
+  red: '#ef2424',
+  green: '#1f9d55',
+  yellow: '#d4a017',
+  blue: '#2d7ae8',
+};
+
+export function LudoSessionHeader({
+  currentPlayer,
+  showNewSession,
+  onNewSession,
+}: {
+  currentPlayer: { name: string; color: PlayerColor } | null;
+  showNewSession: boolean;
+  onNewSession: () => void;
+}) {
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        maxWidth: 1240,
+        mx: 'auto',
+        mb: 2.5,
+        p: { xs: 2, sm: 2.5 },
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 2,
+        bgcolor: 'rgba(255,255,255,0.9)',
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 2,
+        flexWrap: 'wrap',
+      }}
+    >
+      <Box sx={{ minWidth: 0, flex: '1 1 240px' }}>
+        <Typography
+          variant="overline"
+          sx={{ letterSpacing: '0.12em', fontWeight: 700, color: 'primary.main' }}
+        >
+          Ludo Online
+        </Typography>
+        <Stack direction="row" spacing={1.5} sx={{ mt: 0.5, alignItems: 'center' }}>
+          {currentPlayer ? (
+            <Box
+              component="span"
+              aria-label={`Current player: ${currentPlayer.name}`}
+              sx={{
+                width: 16,
+                height: 16,
+                borderRadius: '50%',
+                bgcolor: COLOR_HEX[currentPlayer.color],
+                boxShadow: '0 0 0 2px rgba(15, 23, 42, 0.08)',
+                flexShrink: 0,
+              }}
+            />
+          ) : null}
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 700, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
+            Production Session Board
+          </Typography>
+        </Stack>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+          Local session board with autosave on every accepted move
+        </Typography>
+        <Stack direction="row" spacing={1} sx={{ mt: 1.5 }} aria-label="Token preview">
+          <LudoToken color="red" variant="classic" size={32} />
+          <LudoToken color="green" variant="flat" size={32} />
+          <LudoToken color="blue" variant="glass" size={32} />
+          <LudoToken color="yellow" variant="classic" selected size={32} />
+        </Stack>
+      </Box>
+      {showNewSession ? (
+        <Button variant="outlined" startIcon={<RestartAltIcon />} onClick={onNewSession}>
+          New Session
+        </Button>
+      ) : null}
+    </Paper>
+  );
+}
+
+export function LudoLoadingPanel() {
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        maxWidth: 520,
+        mx: 'auto',
+        p: 3,
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: 'divider',
+        textAlign: 'center',
+      }}
+    >
+      <Box
+        sx={{
+          width: 12,
+          height: 12,
+          borderRadius: '50%',
+          bgcolor: 'primary.main',
+          mx: 'auto',
+          mb: 2,
+          animation: 'ludoPulse 1s ease-in-out infinite',
+          '@keyframes ludoPulse': {
+            '0%, 100%': { opacity: 0.35, transform: 'scale(0.85)' },
+            '50%': { opacity: 1, transform: 'scale(1)' },
+          },
+        }}
+      />
+      <Typography>Checking for an active local session...</Typography>
+    </Paper>
+  );
+}
+
+export function LudoSetupPanel({
+  setupStep,
+  playerCount,
+  names,
+  nameErrors,
+  editingNameIndex,
+  error,
+  colorsForCount,
+  onPlayerCountChange,
+  onContinueToNames,
+  onBackToCount,
+  onCreateGame,
+  onUpdateName,
+  onStartEditName,
+  onStopEditName,
+}: {
+  setupStep: SetupStep;
+  playerCount: SetupCount;
+  names: string[];
+  nameErrors: string[];
+  editingNameIndex: number | null;
+  error: string | null;
+  colorsForCount: PlayerColor[];
+  onPlayerCountChange: (count: SetupCount) => void;
+  onContinueToNames: () => void;
+  onBackToCount: () => void;
+  onCreateGame: () => void;
+  onUpdateName: (index: number, value: string) => void;
+  onStartEditName: (index: number) => void;
+  onStopEditName: () => void;
+}) {
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        maxWidth: 560,
+        mx: 'auto',
+        p: { xs: 2.5, sm: 3 },
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
+      <Typography variant="h5" component="h2" sx={{ fontWeight: 700, mb: 1 }}>
+        Create New Game
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+        Set player count, edit names, then confirm.
+      </Typography>
+
+      {setupStep === 'count' ? (
+        <Stack spacing={2.5}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            How many players?
+          </Typography>
+          <ToggleButtonGroup
+            exclusive
+            fullWidth
+            color="primary"
+            value={playerCount}
+            onChange={(_event, value: SetupCount | null) => {
+              if (value) onPlayerCountChange(value);
+            }}
+            aria-label="Player count"
+          >
+            {[2, 3, 4].map((count) => (
+              <ToggleButton key={count} value={count} sx={{ py: 1.25, fontWeight: 700 }}>
+                {count} Players
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+          <Button variant="contained" size="large" onClick={onContinueToNames}>
+            Continue
+          </Button>
+        </Stack>
+      ) : (
+        <Stack spacing={2}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            Player Names
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Click a name to edit. Press Enter to save.
+          </Typography>
+
+          <Stack spacing={1.5}>
+            {names.slice(0, playerCount).map((name, index) => {
+              const color = colorsForCount[index];
+              const isEditing = editingNameIndex === index;
+
+              return (
+                <Paper
+                  key={color}
+                  variant="outlined"
+                  sx={{
+                    p: 1.5,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 1.5,
+                    borderLeft: 4,
+                    borderLeftColor: COLOR_HEX[color],
+                  }}
+                >
+                  <Chip
+                    size="small"
+                    label={color}
+                    sx={{
+                      textTransform: 'capitalize',
+                      fontWeight: 700,
+                      bgcolor: `${COLOR_HEX[color]}22`,
+                      color: 'text.primary',
+                    }}
+                  />
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    {isEditing ? (
+                      <TextField
+                        autoFocus
+                        fullWidth
+                        size="small"
+                        value={name}
+                        onChange={(event) => onUpdateName(index, event.target.value)}
+                        onBlur={onStopEditName}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === 'Escape') {
+                            onStopEditName();
+                          }
+                        }}
+                        aria-label={`Edit name for player ${index + 1}`}
+                        error={Boolean(nameErrors[index])}
+                        helperText={nameErrors[index] || undefined}
+                      />
+                    ) : (
+                      <>
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          onClick={() => onStartEditName(index)}
+                          sx={{ justifyContent: 'flex-start', textTransform: 'none' }}
+                        >
+                          {name || `Player ${index + 1}`}
+                        </Button>
+                        {nameErrors[index] ? (
+                          <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.75, ml: 0.5 }}>
+                            {nameErrors[index]}
+                          </Typography>
+                        ) : null}
+                      </>
+                    )}
+                  </Box>
+                </Paper>
+              );
+            })}
+          </Stack>
+
+          <Stack direction="row" spacing={1.5} sx={{ pt: 1, justifyContent: 'space-between' }}>
+            <Button variant="outlined" onClick={onBackToCount}>
+              Back
+            </Button>
+            <Button variant="contained" size="large" onClick={onCreateGame}>
+              OK, Start Game
+            </Button>
+          </Stack>
+        </Stack>
+      )}
+
+      {error ? (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
+      ) : null}
+    </Paper>
+  );
+}
+
+function MatchControlBody({
+  game,
+  currentPlayerName,
+  canRoll,
+  soundVolume,
+  finishPlaceByPlayerId,
+  finishedCounts,
+  error,
+  onRoll,
+  onSoundVolumeChange,
+  onNewSession,
+  onClose,
+  showClose,
+}: {
+  game: GameState;
+  currentPlayerName: string;
+  canRoll: boolean;
+  soundVolume: number;
+  finishPlaceByPlayerId: Map<string, number>;
+  finishedCounts: Record<PlayerColor, number>;
+  error: string | null;
+  onRoll: () => void;
+  onSoundVolumeChange: (value: number) => void;
+  onNewSession: () => void;
+  onClose?: () => void;
+  showClose: boolean;
+}) {
+  return (
+    <Stack spacing={1.75} sx={{ p: 2, height: '100%' }}>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+          Match Control
+        </Typography>
+        {showClose && onClose ? (
+          <IconButton aria-label="Close menu" onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        ) : null}
+      </Stack>
+
+      <Typography variant="body2" color="text.secondary">
+        Session ID: {game.id.slice(0, 8)}
+      </Typography>
+      <Typography variant="body2">
+        Turn: <strong>{currentPlayerName}</strong>
+      </Typography>
+      <Typography variant="body2">
+        Dice: <strong>{game.pendingRoll ?? game.lastDiceRoll ?? '-'}</strong>
+      </Typography>
+
+      <Button
+        variant="contained"
+        size="large"
+        startIcon={<CasinoIcon />}
+        onClick={onRoll}
+        disabled={!canRoll}
+      >
+        Roll Dice
+      </Button>
+
+      <Paper variant="outlined" sx={{ px: 1.5, py: 1, bgcolor: 'action.hover' }}>
+        <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+          Sound
+        </Typography>
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+          <Slider
+            size="small"
+            min={0}
+            max={100}
+            step={1}
+            value={Math.round(soundVolume * 100)}
+            aria-label="Sound volume"
+            onChange={(_event, value) => onSoundVolumeChange((value as number) / 100)}
+          />
+          <Typography variant="caption" sx={{ minWidth: 36, textAlign: 'right', fontWeight: 700 }}>
+            {Math.round(soundVolume * 100)}%
+          </Typography>
+        </Stack>
+      </Paper>
+
+      <Alert severity="info" icon={false} sx={{ py: 0.5 }}>
+        {game.message}
+      </Alert>
+
+      {game.finishOrder?.length ? (
+        <Typography variant="body2" sx={{ fontWeight: 700, color: 'success.dark' }}>
+          {game.status === 'COMPLETED' ? 'Final standings' : 'Finished'}:{' '}
+          {game.finishOrder
+            .map((playerId, index) => {
+              const player = game.players.find((entry) => entry.id === playerId);
+              return player ? `#${index + 1} ${player.name}` : null;
+            })
+            .filter(Boolean)
+            .join(' · ')}
+        </Typography>
+      ) : null}
+
+      <Divider />
+
+      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+        Progress
+      </Typography>
+      <Stack spacing={1}>
+        {game.players.map((player) => {
+          const place = finishPlaceByPlayerId.get(player.id);
+          return (
+            <Paper
+              key={player.id}
+              variant="outlined"
+              sx={{
+                px: 1.25,
+                py: 1,
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 1,
+                borderLeft: 4,
+                borderLeftColor: COLOR_HEX[player.color],
+              }}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {player.name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {place ? `#${place}` : `${finishedCounts[player.color]}/4 home`}
+              </Typography>
+            </Paper>
+          );
+        })}
+      </Stack>
+
+      <Box sx={{ flexGrow: 1 }} />
+
+      <Button variant="outlined" startIcon={<RestartAltIcon />} onClick={onNewSession}>
+        New Session
+      </Button>
+
+      {error ? <Alert severity="error">{error}</Alert> : null}
+    </Stack>
+  );
+}
+
+export function LudoMatchLayout({
+  game,
+  currentPlayerName,
+  canRoll,
+  soundVolume,
+  finishPlaceByPlayerId,
+  finishedCounts,
+  error,
+  menuOpen,
+  onMenuOpen,
+  onMenuClose,
+  onRoll,
+  onSoundVolumeChange,
+  onNewSession,
+  board,
+}: {
+  game: GameState;
+  currentPlayerName: string;
+  canRoll: boolean;
+  soundVolume: number;
+  finishPlaceByPlayerId: Map<string, number>;
+  finishedCounts: Record<PlayerColor, number>;
+  error: string | null;
+  menuOpen: boolean;
+  onMenuOpen: () => void;
+  onMenuClose: () => void;
+  onRoll: () => void;
+  onSoundVolumeChange: (value: number) => void;
+  onNewSession: () => void;
+  board: React.ReactNode;
+}) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  const controlProps = {
+    game,
+    currentPlayerName,
+    canRoll,
+    soundVolume,
+    finishPlaceByPlayerId,
+    finishedCounts,
+    error,
+    onRoll,
+    onSoundVolumeChange,
+    onNewSession,
+  };
+
+  return (
+    <Box
+      sx={{
+        maxWidth: 1240,
+        mx: 'auto',
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr', md: 'minmax(240px, 280px) minmax(0, 1fr)' },
+        gap: 2,
+        alignItems: 'start',
+        position: 'relative',
+      }}
+    >
+      {isMobile ? (
+        <>
+          <IconButton
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
+            onClick={onMenuOpen}
+            sx={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              zIndex: 3,
+              bgcolor: 'background.paper',
+              border: '1px solid',
+              borderColor: 'divider',
+              boxShadow: 1,
+            }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Drawer
+            anchor="left"
+            open={menuOpen}
+            onClose={onMenuClose}
+            ModalProps={{ keepMounted: true }}
+            sx={{
+              '& .MuiDrawer-paper': {
+                width: 'min(320px, 88vw)',
+                boxSizing: 'border-box',
+              },
+            }}
+          >
+            <MatchControlBody {...controlProps} showClose onClose={onMenuClose} />
+          </Drawer>
+        </>
+      ) : (
+        <Paper
+          elevation={0}
+          sx={{
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 2,
+            bgcolor: 'rgba(255,255,255,0.92)',
+            position: 'sticky',
+            top: 8,
+            maxHeight: 'calc(100vh - 24px)',
+            overflow: 'auto',
+          }}
+        >
+          <MatchControlBody {...controlProps} showClose={false} />
+        </Paper>
+      )}
+
+      <Box sx={{ minWidth: 0, maxWidth: '100%' }}>{board}</Box>
+    </Box>
+  );
+}

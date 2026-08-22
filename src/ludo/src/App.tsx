@@ -42,17 +42,16 @@ import { averageProgressScore } from './progressScore'
 import { LudoToken } from './LudoToken'
 import { animateTokenHops, animateTokenSlide, buildCaptureReturnPercentPath, buildMovePercentPath, type BoardPercent } from './tokenMotion'
 import type { GameState, PlayerColor, TokenState } from './types'
+import {
+  LudoLoadingPanel,
+  LudoMatchLayout,
+  LudoSessionHeader,
+  LudoSetupPanel,
+} from './LudoMatchChrome'
 import './App.css'
 
 type SetupCount = 2 | 3 | 4
 type SetupStep = 'count' | 'names'
-
-const COLOR_CLASS_BY_COLOR: Record<PlayerColor, string> = {
-  red: 'red',
-  green: 'green',
-  yellow: 'yellow',
-  blue: 'blue',
-}
 
 const COLORS_BY_PLAYER_COUNT: Record<SetupCount, PlayerColor[]> = {
   2: ['blue', 'green'],
@@ -1138,239 +1137,53 @@ function App() {
 
   return (
     <main className={game ? 'app-shell app-shell--playing' : 'app-shell'}>
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">Ludo Online</p>
-          <div className="title-group">
-            {currentPlayer ? (
-              <span
-                className={`title-player-dot title-player-dot--${currentPlayer.color}`}
-                aria-label={`Current player: ${currentPlayer.name}`}
-              />
-            ) : null}
-            <h1>Production Session Board</h1>
-          </div>
-          <p className="subtitle">Backend-authoritative state, autosave on every accepted command</p>
-          <div className="token-preview" aria-label="Token preview">
-            <LudoToken color="red" variant="classic" size={32} />
-            <LudoToken color="green" variant="flat" size={32} />
-            <LudoToken color="blue" variant="glass" size={32} />
-            <LudoToken color="yellow" variant="classic" selected size={32} />
-          </div>
-        </div>
-        {game ? (
-          <button type="button" className="ghost topbar__new-session" onClick={handleResetSession}>
-            New Session
-          </button>
-        ) : null}
-      </header>
+      <LudoSessionHeader
+        currentPlayer={currentPlayer ? { name: currentPlayer.name, color: currentPlayer.color } : null}
+        showNewSession={Boolean(game)}
+        onNewSession={handleResetSession}
+      />
 
-      {loading ? (
-        <section className="panel loading-panel">
-          <div className="loading-dot" />
-          <p>Checking for an active anonymous session...</p>
-        </section>
-      ) : null}
+      {loading ? <LudoLoadingPanel /> : null}
 
       {!loading && !game ? (
-        <section className="panel setup-panel">
-          <h2>Create New Game</h2>
-          <p className="setup-copy">Set player count, edit names, then confirm.</p>
-
-          {setupStep === 'count' ? (
-            <>
-              <h3>How many players?</h3>
-              <div className="count-grid" role="radiogroup" aria-label="Player count">
-                {[2, 3, 4].map((count) => (
-                  <button
-                    key={count}
-                    type="button"
-                    className={count === playerCount ? 'count-button active' : 'count-button'}
-                    onClick={() => handlePlayerCountChange(count as SetupCount)}
-                    aria-pressed={count === playerCount}
-                  >
-                    {count} Players
-                  </button>
-                ))}
-              </div>
-              <button type="button" className="primary" onClick={handleContinueToNames}>
-                Continue
-              </button>
-            </>
-          ) : (
-            <>
-              <h3>Player Names</h3>
-              <p className="setup-copy">Double click a name to edit. Press Enter to save.</p>
-
-              <div className="name-list">
-                {names.slice(0, playerCount).map((name, index) => {
-                  const color = COLORS_BY_PLAYER_COUNT[playerCount][index]
-                  const isEditing = editingNameIndex === index
-                  const colorClass = COLOR_CLASS_BY_COLOR[color]
-
-                  return (
-                    <div key={color} className={`name-row ${colorClass}`}>
-                      <span className="badge">{color}</span>
-                      <div className="name-editor-wrap">
-                        {isEditing ? (
-                          <input
-                            autoFocus
-                            value={name}
-                            onChange={(event) => updateName(index, event.target.value)}
-                            onBlur={() => setEditingNameIndex(null)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter' || event.key === 'Escape') {
-                                setEditingNameIndex(null)
-                              }
-                            }}
-                            aria-label={`Edit name for player ${index + 1}`}
-                          />
-                        ) : (
-                          <button
-                            type="button"
-                            className="name-button"
-                            onDoubleClick={() => setEditingNameIndex(index)}
-                            onClick={() => setEditingNameIndex(index)}
-                          >
-                            {name || `Player ${index + 1}`}
-                          </button>
-                        )}
-                        {nameErrors[index] ? <p className="field-error">{nameErrors[index]}</p> : null}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="setup-actions">
-                <button type="button" className="ghost" onClick={handleBackToCount}>
-                  Back
-                </button>
-                <button
-                  type="button"
-                  className="primary"
-                  onClick={handleCreateGame}
-                >
-                  OK, Start Game
-                </button>
-              </div>
-            </>
-          )}
-
-          {error ? <p className="error">{error}</p> : null}
-        </section>
+        <LudoSetupPanel
+          setupStep={setupStep}
+          playerCount={playerCount}
+          names={names}
+          nameErrors={nameErrors}
+          editingNameIndex={editingNameIndex}
+          error={error}
+          colorsForCount={COLORS_BY_PLAYER_COUNT[playerCount]}
+          onPlayerCountChange={handlePlayerCountChange}
+          onContinueToNames={handleContinueToNames}
+          onBackToCount={handleBackToCount}
+          onCreateGame={handleCreateGame}
+          onUpdateName={updateName}
+          onStartEditName={setEditingNameIndex}
+          onStopEditName={() => setEditingNameIndex(null)}
+        />
       ) : null}
 
       {!loading && game ? (
-        <section className="game-layout">
-          <button
-            type="button"
-            className="menu-toggle"
-            aria-label="Open menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen(true)}
-          >
-            <span className="menu-toggle__bar" />
-            <span className="menu-toggle__bar" />
-            <span className="menu-toggle__bar" />
-          </button>
-
-          {menuOpen ? (
-            <button
-              type="button"
-              className="menu-backdrop"
-              aria-label="Close menu"
-              onClick={() => setMenuOpen(false)}
-            />
-          ) : null}
-
-          <aside className={menuOpen ? 'panel hud hud--open' : 'panel hud'} id="match-control-menu">
-            <div className="hud__header">
-              <h2>Match Control</h2>
-              <button
-                type="button"
-                className="hud__close"
-                aria-label="Close menu"
-                onClick={() => setMenuOpen(false)}
-              >
-                ×
-              </button>
-            </div>
-            <p className="meta">Session ID: {game.id.slice(0, 8)}</p>
-            <p className="turn-text">
-              Turn: <strong>{currentPlayer?.name ?? '-'}</strong>
-            </p>
-            <p className="turn-text">
-              Dice: <strong>{game.pendingRoll ?? game.lastDiceRoll ?? '-'}</strong>
-            </p>
-
-            <button
-              type="button"
-              className="primary"
-              onClick={() => void handleRoll()}
-              disabled={!canRoll}
-            >
-              Roll Dice
-            </button>
-
-            <label className="sound-control">
-              <span className="sound-control__label">Sound</span>
-              <input
-                type="range"
-                className="sound-control__slider"
-                min={0}
-                max={100}
-                step={1}
-                value={Math.round(soundVolume * 100)}
-                aria-label="Sound volume"
-                onChange={(event) => {
-                  unlockGameSounds()
-                  const next = Number(event.target.value) / 100
-                  setSoundVolume(next)
-                  setGameSoundVolume(next)
-                }}
-              />
-              <span className="sound-control__value">{Math.round(soundVolume * 100)}%</span>
-            </label>
-
-            <p className="message">{game.message}</p>
-
-            {game.finishOrder?.length ? (
-              <p className="winner">
-                {game.status === 'COMPLETED' ? 'Final standings' : 'Finished'}:{' '}
-                {game.finishOrder
-                  .map((playerId, index) => {
-                    const player = game.players.find((entry) => entry.id === playerId)
-                    return player ? `#${index + 1} ${player.name}` : null
-                  })
-                  .filter(Boolean)
-                  .join(' · ')}
-              </p>
-            ) : null}
-
-            <h3>Progress</h3>
-            <div className="score-list">
-              {game.players.map((player) => {
-                const colorClass = COLOR_CLASS_BY_COLOR[player.color]
-                const place = finishPlaceByPlayerId.get(player.id)
-                return (
-                  <div key={player.id} className={`score-row ${colorClass}`}>
-                    <span>{player.name}</span>
-                    <span>
-                      {place ? `#${place}` : `${finishedCounts[player.color]}/4 home`}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-
-            <button type="button" className="ghost hud__new-session" onClick={handleResetSession}>
-              New Session
-            </button>
-
-            {error ? <p className="error">{error}</p> : null}
-          </aside>
-
+        <LudoMatchLayout
+          game={game}
+          currentPlayerName={currentPlayer?.name ?? '-'}
+          canRoll={canRoll}
+          soundVolume={soundVolume}
+          finishPlaceByPlayerId={finishPlaceByPlayerId}
+          finishedCounts={finishedCounts}
+          error={error}
+          menuOpen={menuOpen}
+          onMenuOpen={() => setMenuOpen(true)}
+          onMenuClose={() => setMenuOpen(false)}
+          onRoll={() => void handleRoll()}
+          onSoundVolumeChange={(next) => {
+            unlockGameSounds()
+            setSoundVolume(next)
+            setGameSoundVolume(next)
+          }}
+          onNewSession={handleResetSession}
+          board={
           <section className="board-wrap" aria-label="Ludo board">
             <div className="board-frame">
               {BOARD_CORNERS.map((corner) => (
@@ -1565,7 +1378,8 @@ function App() {
               </div>
             </div>
           </section>
-        </section>
+          }
+        />
       ) : null}
 
       {game && endGameOpen && game.status === 'COMPLETED' && endGameStandings.length > 0 ? (
