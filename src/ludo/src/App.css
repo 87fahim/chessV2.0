@@ -446,7 +446,7 @@
   --die-gap: calc(var(--tile-size) * 0.7);
   --die-slot-gap: calc(var(--tile-size) * 0.12);
   --die-profile-clearance: calc(var(--tile-size) * 0.18);
-  --die-stats-gap: calc(var(--tile-size) * 0.08);
+  --die-stats-gap: calc(var(--tile-size) * 0.22);
   --die-stats-height: calc(var(--tile-size) * 1.15);
   --die-cube-size: calc(var(--die-size) * 0.7857);
   --die-half: calc(var(--die-cube-size) / 2);
@@ -552,6 +552,8 @@
 .corner-die-slot--top-left .corner-die-main,
 .corner-die-slot--top-right .corner-die-main {
   flex-direction: column;
+  /* Clear the plate that hangs under the die before the labels */
+  gap: calc(var(--die-stats-gap) + var(--die-plate-nudge));
 }
 
 /* Bottom seats: stats above the die */
