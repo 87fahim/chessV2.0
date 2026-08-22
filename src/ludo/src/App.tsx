@@ -372,7 +372,9 @@ function HomeYardFinishBanner({
         <div className="home-yard-finish__icon" aria-hidden="true">
           <FinishPlaceIcon place={place} />
         </div>
-        <p className="home-yard-finish__name">{name}</p>
+        <p className="home-yard-finish__name" title={name}>
+          {name}
+        </p>
         <p className="home-yard-finish__place">#{place}</p>
         <p className="home-yard-finish__title">{finishPlaceTitle(place)}</p>
       </div>
