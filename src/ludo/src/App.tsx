@@ -1283,7 +1283,7 @@ function App() {
           onToggleAutoRoll={handleToggleAutoRoll}
           onChangePlayerPaint={handleChangePlayerPaint}
           board={
-          <LudoBoardSurface>
+          <LudoBoardSurface seatPaintStyle={seatPaintStyle}>
               {BOARD_CORNERS.map((corner) => (
                 (() => {
                   const cornerPlayerIndex = game.players.findIndex((entry) => entry.color === corner.color)

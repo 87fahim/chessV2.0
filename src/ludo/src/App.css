@@ -432,20 +432,9 @@
 }
 
 .board-frame {
-  /* All die / profile / token sizes track one board tile. */
+  /* All die / profile / token sizes track one board tile.
+     Seat colors (--seat-*) come from inline styles on the page/board shell. */
   container-type: inline-size;
-  --seat-red: #ef2424;
-  --seat-red-dark: #9c1b1b;
-  --seat-red-soft: #ff8f8f;
-  --seat-green: #179949;
-  --seat-green-dark: #0f6b34;
-  --seat-green-soft: #7ad69d;
-  --seat-yellow: #e6bb00;
-  --seat-yellow-dark: #b88600;
-  --seat-yellow-soft: #f5d762;
-  --seat-blue: #2d7ae8;
-  --seat-blue-dark: #1d5db3;
-  --seat-blue-soft: #8ebdff;
   --tile-size: calc((100cqw - 14px) / 15);
   --board-token-size: var(--tile-size);
   --token-fit: 1;

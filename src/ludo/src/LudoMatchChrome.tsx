@@ -68,12 +68,19 @@ export function LudoPageShell({
 }
 
 /** MUI plate around the board; board-wrap/board-frame classes keep CSS tile variables. */
-export function LudoBoardSurface({ children }: { children: React.ReactNode }) {
+export function LudoBoardSurface({
+  children,
+  seatPaintStyle,
+}: {
+  children: React.ReactNode;
+  seatPaintStyle?: React.CSSProperties;
+}) {
   return (
     <Paper
       elevation={2}
       className="board-wrap"
       aria-label="Ludo board"
+      style={seatPaintStyle}
       sx={{
         position: 'relative',
         borderRadius: 2.5,
@@ -85,7 +92,9 @@ export function LudoBoardSurface({ children }: { children: React.ReactNode }) {
         width: '100%',
       }}
     >
-      <Box className="board-frame">{children}</Box>
+      <Box className="board-frame" style={seatPaintStyle}>
+        {children}
+      </Box>
     </Paper>
   );
 }
