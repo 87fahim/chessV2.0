@@ -43,8 +43,10 @@ import { LudoToken } from './LudoToken'
 import { animateTokenHops, animateTokenSlide, buildCaptureReturnPercentPath, buildMovePercentPath, type BoardPercent } from './tokenMotion'
 import type { GameState, PlayerColor, TokenState } from './types'
 import {
+  LudoBoardSurface,
   LudoLoadingPanel,
   LudoMatchLayout,
+  LudoPageShell,
   LudoSessionHeader,
   LudoSetupPanel,
 } from './LudoMatchChrome'
@@ -1136,7 +1138,7 @@ function App() {
   }
 
   return (
-    <main className={game ? 'app-shell app-shell--playing' : 'app-shell'}>
+    <LudoPageShell playing={Boolean(game)}>
       <LudoSessionHeader
         currentPlayer={currentPlayer ? { name: currentPlayer.name, color: currentPlayer.color } : null}
         showNewSession={Boolean(game)}
@@ -1184,8 +1186,7 @@ function App() {
           }}
           onNewSession={handleResetSession}
           board={
-          <section className="board-wrap" aria-label="Ludo board">
-            <div className="board-frame">
+          <LudoBoardSurface>
               {BOARD_CORNERS.map((corner) => (
                 (() => {
                   const cornerPlayerIndex = game.players.findIndex((entry) => entry.color === corner.color)
@@ -1376,8 +1377,7 @@ function App() {
                   </div>
                 ) : null}
               </div>
-            </div>
-          </section>
+          </LudoBoardSurface>
           }
         />
       ) : null}
@@ -1389,7 +1389,7 @@ function App() {
           onClose={() => setEndGameOpen(false)}
         />
       ) : null}
-    </main>
+    </LudoPageShell>
   )
 }
 

@@ -17,6 +17,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import MenuIcon from '@mui/icons-material/Menu';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
@@ -34,14 +35,70 @@ const COLOR_HEX: Record<PlayerColor, string> = {
   blue: '#2d7ae8',
 };
 
+/** Full-page Material UI shell; keeps app-shell classes for board media-query layout. */
+export function LudoPageShell({
+  playing,
+  children,
+}: {
+  playing: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Box
+      component="main"
+      className={playing ? 'app-shell app-shell--playing' : 'app-shell'}
+      sx={{
+        minHeight: playing ? { xs: '100dvh', md: '100%' } : '100%',
+        p: playing ? { xs: 0, md: 3 } : { xs: 2, sm: 3 },
+        boxSizing: 'border-box',
+        color: 'text.primary',
+        overflow: playing ? { xs: 'hidden', md: 'visible' } : 'visible',
+        background: (theme) =>
+          [
+            `radial-gradient(circle at 10% 20%, ${alpha(theme.palette.info.light, 0.45)} 0, transparent 48%)`,
+            `radial-gradient(circle at 92% 22%, ${alpha(theme.palette.warning.light, 0.35)} 0, transparent 42%)`,
+            `linear-gradient(180deg, ${theme.palette.grey[50]} 0%, ${alpha(theme.palette.primary.light, 0.12)} 100%)`,
+          ].join(', '),
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
+/** MUI plate around the board; board-wrap/board-frame classes keep CSS tile variables. */
+export function LudoBoardSurface({ children }: { children: React.ReactNode }) {
+  return (
+    <Paper
+      elevation={2}
+      className="board-wrap"
+      aria-label="Ludo board"
+      sx={{
+        position: 'relative',
+        borderRadius: 2.5,
+        border: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'grey.50',
+        overflow: 'visible',
+        minWidth: 0,
+        width: '100%',
+      }}
+    >
+      <Box className="board-frame">{children}</Box>
+    </Paper>
+  );
+}
+
 export function LudoSessionHeader({
   currentPlayer,
   showNewSession,
   onNewSession,
+  hideOnMobilePlaying = true,
 }: {
   currentPlayer: { name: string; color: PlayerColor } | null;
   showNewSession: boolean;
   onNewSession: () => void;
+  hideOnMobilePlaying?: boolean;
 }) {
   return (
     <Paper
@@ -54,12 +111,13 @@ export function LudoSessionHeader({
         border: '1px solid',
         borderColor: 'divider',
         borderRadius: 2,
-        bgcolor: 'rgba(255,255,255,0.9)',
-        display: 'flex',
+        bgcolor: (theme) => alpha(theme.palette.background.paper, 0.92),
+        display: hideOnMobilePlaying ? { xs: showNewSession ? 'none' : 'flex', md: 'flex' } : 'flex',
         alignItems: 'flex-start',
         justifyContent: 'space-between',
         gap: 2,
         flexWrap: 'wrap',
+        backdropFilter: 'blur(8px)',
       }}
     >
       <Box sx={{ minWidth: 0, flex: '1 1 240px' }}>

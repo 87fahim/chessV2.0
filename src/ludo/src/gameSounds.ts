@@ -2,7 +2,7 @@
 
 const VOLUME_STORAGE_KEY = 'ludo.soundVolume'
 /** UI volume is 0–1; multiply so 100% is actually audible over the board UI. */
-const MASTER_OUTPUT_SCALE = 9
+const MASTER_OUTPUT_SCALE = 20
 const DEFAULT_VOLUME = 0.85
 
 let audioContext: AudioContext | null = null

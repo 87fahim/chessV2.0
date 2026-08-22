@@ -1,11 +1,7 @@
 .app-shell {
-  min-height: 100vh;
-  padding: 24px;
-  color: #1d2939;
-  background:
-    radial-gradient(circle at 10% 20%, #d8f3ff 0, #f2f9ff 28%, transparent 48%),
-    radial-gradient(circle at 92% 22%, #ffe6d8 0, #fff4ee 24%, transparent 42%),
-    linear-gradient(180deg, #f9fcff 0%, #edf5ff 100%);
+  /* Page chrome/background owned by MUI LudoPageShell; keep class for layout media queries. */
+  min-height: 100%;
+  color: inherit;
 }
 
 .topbar {
