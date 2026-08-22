@@ -52,7 +52,7 @@ import {
 import { averageProgressScore } from './progressScore'
 import { LudoToken } from './LudoToken'
 import { RadialBoard } from './RadialBoard'
-import { animateTokenHops, animateTokenSlide, buildCaptureReturnPercentPath, buildMovePercentPath, type BoardPercent } from './tokenMotion'
+import { animateTokenHops, animateTokenSlide, buildCaptureReturnPercentPath, buildMovePercentPath, getProgressCoord, type BoardPercent } from './tokenMotion'
 import type { GameState, PlayerColor, PlayerCount, TokenState } from './types'
 import { resolvePlayerPaintHex, buildSeatPaintMap, seatPaintCssVars } from './playerPaint'
 import {
@@ -652,12 +652,27 @@ function App() {
     return counts
   }, [game])
 
+  const radialSeatColorsKey = game?.players.map((player) => player.color).join(',') ?? ''
   const radialLayout = useMemo(() => {
     if (!game || !isRadialPlayerCount(game.playerCount)) {
       return null
     }
     return buildRadialBoardLayout(game.players.map((player) => player.color))
-  }, [game])
+    // Geometry depends on seat colors / count, not turn or token motion.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- radialSeatColorsKey tracks color order
+  }, [game?.playerCount, radialSeatColorsKey])
+
+  const [pageHidden, setPageHidden] = useState(
+    () => typeof document !== 'undefined' && document.visibilityState === 'hidden',
+  )
+
+  useEffect(() => {
+    const onVisibility = () => {
+      setPageHidden(document.visibilityState === 'hidden')
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [])
 
   const boardFinishProgress = useMemo(() => {
     if (!game) {
@@ -825,6 +840,25 @@ function App() {
     game.legalMoves.length > 0 &&
     game.status !== 'COMPLETED' &&
     !currentPlayerFinished
+
+  const classicAvailableCells = useMemo(() => {
+    const keys = new Set<string>()
+    if (!game || radialLayout || game.pendingRoll == null || !canMove || !currentPlayer) {
+      return keys
+    }
+    const roll = game.pendingRoll
+    for (const token of currentPlayer.tokens) {
+      if (!game.legalMoves.includes(token.id)) {
+        continue
+      }
+      const toProgress = token.progress === -1 ? 0 : token.progress + roll
+      const coord = getProgressCoord(currentPlayer.color, toProgress, token.index)
+      if (coord) {
+        keys.add(`${coord[0]}:${coord[1]}`)
+      }
+    }
+    return keys
+  }, [game, radialLayout, canMove, currentPlayer])
 
   function validateSetupNames(selectedCount: SetupCount): string[] {
     const errors: string[] = []
@@ -1542,7 +1576,7 @@ function App() {
           onChangePlayerPaint={handleChangePlayerPaint}
           onChangePlayerName={handleChangePlayerName}
           board={
-          <LudoBoardSurface seatPaintStyle={seatPaintStyle}>
+          <LudoBoardSurface seatPaintStyle={seatPaintStyle} animPaused={pageHidden}>
               {isRadialPlayerCount(game.playerCount) ? (
                 <RadialBoard
                   game={game}
@@ -1607,9 +1641,13 @@ function App() {
               <div className="board-grid">
                 {BOARD_CELLS.map((cell) => {
                   const cellClassName = ['cell', `cell--${cell.type}`]
+                  const available = classicAvailableCells.has(`${cell.row}:${cell.column}`)
 
                   if (cell.color && cell.marker !== 'home-entry') {
                     cellClassName.push(`cell--${cell.color}`)
+                  }
+                  if (available) {
+                    cellClassName.push('cell--available')
                   }
 
                   return (
