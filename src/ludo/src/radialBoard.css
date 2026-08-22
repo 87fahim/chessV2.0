@@ -303,9 +303,13 @@
 }
 
 .radial-board-container .radial-token.board-token-piece--movable {
-  pointer-events: auto;
+  pointer-events: none;
   cursor: pointer;
-  z-index: 7;
+}
+
+.radial-board-container .radial-token.board-token-piece--movable .ludo-token {
+  pointer-events: visiblePainted;
+  cursor: pointer;
 }
 
 /* Finished tokens: small 2×2 on the hub wedge; keep upright (no rotate). */
@@ -325,10 +329,6 @@
   height: 100%;
   transform: none;
   pointer-events: none;
-}
-
-.radial-board-container .radial-token.board-token-piece--movable .ludo-token {
-  pointer-events: auto;
 }
 
 .radial-hop-layer {

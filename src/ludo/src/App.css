@@ -1437,20 +1437,9 @@
 }
 
 .home-yard__token--movable {
-  pointer-events: auto;
+  /* Clicks only on the pin SVG — not an expanded hit box. */
+  pointer-events: none;
   cursor: pointer;
-  /* Keep the same centered position as idle tokens; expand hit area via ::before. */
-}
-
-.home-yard__token--movable::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: 130%;
-  height: 220%;
-  transform: translateX(-50%);
-  z-index: 0;
 }
 
 .home-yard__token:disabled {
@@ -1470,7 +1459,9 @@
 }
 
 .home-yard__token--movable .ludo-token {
-  pointer-events: auto;
+  /* Hit only painted pin pixels, not the empty SVG box. */
+  pointer-events: visiblePainted;
+  cursor: pointer;
   z-index: 1;
 }
 
@@ -1559,24 +1550,15 @@
 }
 
 .board-token-piece--movable {
-  pointer-events: auto;
+  /* Hit testing is on the pin SVG only — not the full grid cell / ::before pad. */
+  pointer-events: none;
   cursor: pointer;
 }
 
-.board-token-piece--movable::before {
-  content: '';
-  position: absolute;
-  left: var(--stack-anchor, 50%);
-  bottom: -15%;
-  /* Cover the full pin (body + head), not just the tile footprint / flash zone. */
-  width: max(160%, calc(var(--board-token-size) * var(--token-fit, 1) * var(--token-scale, 1) * 1.6));
-  height: 280%;
-  transform: translateX(-50%);
-  z-index: 0;
-}
-
 .board-token-piece--movable .ludo-token {
-  pointer-events: auto;
+  /* Hit only painted pin pixels, not the empty SVG box / full cell. */
+  pointer-events: visiblePainted;
+  cursor: pointer;
   z-index: 1;
 }
 
@@ -1825,22 +1807,20 @@
 }
 
 .ludo-token--movable .ludo-token__body {
-  filter: brightness(1.12);
+  animation: token-body-flash 0.85s ease-in-out infinite;
 }
 
 .ludo-token--movable {
-  outline: 2px solid var(--token-glow, #f6c945);
-  outline-offset: 1px;
+  filter: drop-shadow(0 0 6px var(--token-glow));
 }
 
 .token-preview .ludo-token--movable {
-  outline: 2px solid var(--token-glow, #f6c945);
+  animation: token-ready 900ms ease-in-out infinite alternate;
 }
 
 .ludo-token--selected {
   transform: translateY(-6px) scale(1.08);
-  outline: 2px solid var(--token-glow, #f6c945);
-  outline-offset: 2px;
+  filter: drop-shadow(0 0 9px var(--token-glow));
 }
 
 .ludo-token--disabled {
