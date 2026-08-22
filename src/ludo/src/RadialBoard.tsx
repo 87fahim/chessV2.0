@@ -1,6 +1,7 @@
-import { useMemo, type RefObject } from 'react'
+import { useEffect, useMemo, useState, type RefObject } from 'react'
 import {
   buildRadialBoardLayout,
+  getRadialCellIdForProgress,
   getRadialTokenPercent,
   pointsToSvg,
   VIEW_SIZE,
@@ -81,10 +82,6 @@ function regularPolygonSvgPoints(sides: number, radius = 47, cx = 50, cy = 50): 
     points.push(`${(cx + radius * Math.cos(angle)).toFixed(2)},${(cy + radius * Math.sin(angle)).toFixed(2)}`)
   }
   return points.join(' ')
-}
-
-function isColoredTrackTile(tile: RadialBoardLayout['tiles'][number]): boolean {
-  return Boolean(tile.color && (tile.type === 'home-lane' || tile.type === 'start'))
 }
 
 function tileFill(
@@ -251,9 +248,47 @@ export function RadialBoard({
     return [...tokenPlacements].sort((a, b) => a.top - b.top || a.left - b.left)
   }, [tokenPlacements])
 
+  const availableTileIds = useMemo(() => {
+    const ids = new Set<string>()
+    const roll = game.pendingRoll
+    if (roll == null || legalMoveIds.size === 0) {
+      return ids
+    }
+    for (const player of game.players) {
+      if (player.withdrawn) {
+        continue
+      }
+      for (const token of player.tokens) {
+        if (!legalMoveIds.has(token.id)) {
+          continue
+        }
+        const toProgress = token.progress === -1 ? 0 : token.progress + roll
+        const cellId = getRadialCellIdForProgress(layout, player.color, toProgress)
+        if (cellId) {
+          ids.add(cellId)
+        }
+      }
+    }
+    return ids
+  }, [game.pendingRoll, game.players, layout, legalMoveIds])
+
+  const [pageHidden, setPageHidden] = useState(
+    () => typeof document !== 'undefined' && document.visibilityState === 'hidden',
+  )
+
+  useEffect(() => {
+    const onVisibility = () => {
+      setPageHidden(document.visibilityState === 'hidden')
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [])
+
   return (
     <div
-      className="radial-board-container"
+      className={
+        pageHidden ? 'radial-board-container radial-board-container--anim-paused' : 'radial-board-container'
+      }
       aria-label={
         layout.playerCount === 5 ? 'Five-player radial Ludo board' : 'Six-player radial Ludo board'
       }
@@ -266,65 +301,24 @@ export function RadialBoard({
         role="presentation"
       >
         <defs>
-          <filter id="radial-board-float" x="-35%" y="-35%" width="170%" height="170%">
-            <feDropShadow dx="0" dy="18" stdDeviation="22" floodColor="#122038" floodOpacity="0.42" />
-            <feDropShadow dx="0" dy="8" stdDeviation="10" floodColor="#122038" floodOpacity="0.28" />
-            <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#122038" floodOpacity="0.2" />
-          </filter>
-          <filter id="radial-finish-glow" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="blur" />
-            <feOffset dy="3" result="off" />
-            <feFlood floodColor="#0f1a2a" floodOpacity="0.35" result="color" />
-            <feComposite in="color" in2="off" operator="in" result="shadow" />
-            <feMerge>
-              <feMergeNode in="shadow" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          <filter id="radial-finish-number-glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="2.4" result="soft" />
-            <feMerge>
-              <feMergeNode in="soft" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
+          <filter id="radial-board-float" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="12" stdDeviation="14" floodColor="#122038" floodOpacity="0.28" />
           </filter>
           {layout.seats.map((seat) => {
             const paint = paintByColor[seat.color]
             return (
-              <g key={`seat-grads-${seat.seat}`}>
-                <linearGradient
-                  id={`radial-seat-grad-${seat.seat}`}
-                  x1="18%"
-                  y1="8%"
-                  x2="86%"
-                  y2="92%"
-                >
-                  <stop offset="0%" stopColor={lightenPaintHex(paint, 0.38)} />
-                  <stop offset="42%" stopColor={paint} />
-                  <stop offset="100%" stopColor={darkenPaintHex(paint, 0.28)} />
-                </linearGradient>
-                <linearGradient
-                  id={`radial-finish-grad-${seat.seat}`}
-                  x1="18%"
-                  y1="0%"
-                  x2="82%"
-                  y2="100%"
-                >
-                  <stop offset="0%" stopColor={lightenPaintHex(paint, 0.55)} />
-                  <stop offset="38%" stopColor={lightenPaintHex(paint, 0.12)} />
-                  <stop offset="100%" stopColor={darkenPaintHex(paint, 0.38)} />
-                </linearGradient>
-                <radialGradient
-                  id={`radial-finish-orb-${seat.seat}`}
-                  cx="50%"
-                  cy="42%"
-                  r="58%"
-                >
-                  <stop offset="0%" stopColor="#ffffff" stopOpacity="0.55" />
-                  <stop offset="45%" stopColor={lightenPaintHex(paint, 0.35)} stopOpacity="0.28" />
-                  <stop offset="100%" stopColor={paint} stopOpacity="0" />
-                </radialGradient>
-              </g>
+              <linearGradient
+                key={`seat-grads-${seat.seat}`}
+                id={`radial-seat-grad-${seat.seat}`}
+                x1="18%"
+                y1="8%"
+                x2="86%"
+                y2="92%"
+              >
+                <stop offset="0%" stopColor={lightenPaintHex(paint, 0.28)} />
+                <stop offset="55%" stopColor={paint} />
+                <stop offset="100%" stopColor={darkenPaintHex(paint, 0.22)} />
+              </linearGradient>
             )
           })}
         </defs>
@@ -362,16 +356,11 @@ export function RadialBoard({
                 yardTurnActive ? 'radial-yard radial-yard--turn-active' : 'radial-yard'
               }
             >
-              {/* Colored outer frame — classic thick rim around the white pad */}
+              {/* Colored outer frame — one shared gradient per seat */}
               <polygon
                 points={pointsToSvg(seat.homeTriangle)}
                 fill={`url(#radial-seat-grad-${seat.seat})`}
                 className="radial-yard-outer"
-              />
-              {/* Soft inner bevel on the colored rim */}
-              <polygon
-                points={pointsToSvg(seat.homeTriangle)}
-                className="radial-yard-outer-sheen"
               />
               {/* White classic yard plate */}
               <polygon
@@ -406,37 +395,29 @@ export function RadialBoard({
         })}
 
         {layout.seats.map((seat) => (
-          <g key={`hub-${seat.seat}`} className="radial-colored-tile radial-colored-tile--subtle">
-            <polygon
-              points={pointsToSvg(seat.centerWedge)}
-              fill={paintByColor[seat.color]}
-              stroke="#718096"
-              strokeWidth={2}
-            />
-            <polygon
-              points={pointsToSvg(seat.centerWedge)}
-              className="radial-colored-tile__sheen"
-            />
-          </g>
+          <polygon
+            key={`hub-${seat.seat}`}
+            points={pointsToSvg(seat.centerWedge)}
+            fill={paintByColor[seat.color]}
+            stroke="#718096"
+            strokeWidth={2}
+          />
         ))}
 
         {layout.tiles.map((tile) => {
-          const colored = isColoredTrackTile(tile)
+          const available = availableTileIds.has(tile.id)
           return (
           <g
             key={tile.id}
-            className={colored ? 'radial-colored-tile radial-colored-tile--subtle' : undefined}
+            className={available ? 'radial-tile radial-tile--available' : 'radial-tile'}
           >
             <polygon
               points={pointsToSvg(tile.points)}
               fill={tileFill(tile, paintByColor)}
               stroke="#718096"
-              strokeWidth={2}
+              strokeWidth={available ? 2.5 : 1.5}
               data-tile-id={tile.id}
             />
-            {colored ? (
-              <polygon points={pointsToSvg(tile.points)} className="radial-colored-tile__sheen" />
-            ) : null}
             {tile.type === 'safe' ? (
               <g transform={`translate(${tile.center.x} ${tile.center.y})`}>
                 <ClassicSafeStar size={markerSize} />
@@ -472,11 +453,9 @@ export function RadialBoard({
 
           // Large inset card — leaves a thin colored rim, number only.
           const panel = insetTriangleByFactor(seat.homeTriangle, 0.16)
-          const sheen = insetTriangleByFactor(seat.homeTriangle, 0.22)
           const center = triangleCentroid(panel)
           const tile = layout.measurements.tileSize
           const placeSize = Math.max(36, tile * 1.05)
-          const orbR = Math.max(22, tile * 0.62)
 
           return (
             <g
@@ -486,34 +465,13 @@ export function RadialBoard({
             >
               <polygon
                 points={pointsToSvg(panel)}
-                fill={`url(#radial-finish-grad-${seat.seat})`}
+                fill={`url(#radial-seat-grad-${seat.seat})`}
                 className="radial-home-finish__panel"
-                filter="url(#radial-finish-glow)"
-              />
-              <polygon
-                points={pointsToSvg(sheen)}
-                className="radial-home-finish__sheen"
               />
               <polygon
                 points={pointsToSvg(panel)}
                 className="radial-home-finish__panel-rim"
               />
-              <circle
-                cx={center.x}
-                cy={center.y}
-                r={orbR}
-                fill={`url(#radial-finish-orb-${seat.seat})`}
-                className="radial-home-finish__orb"
-              />
-              <text
-                x={center.x}
-                y={center.y}
-                className="radial-home-finish__place radial-home-finish__place--glow"
-                style={{ fontSize: placeSize }}
-                filter="url(#radial-finish-number-glow)"
-              >
-                {place}
-              </text>
               <text
                 x={center.x}
                 y={center.y}

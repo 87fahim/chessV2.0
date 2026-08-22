@@ -8,6 +8,8 @@ const DEFAULT_VOLUME = 0.85
 let audioContext: AudioContext | null = null
 let masterGain: GainNode | null = null
 let volume = loadStoredVolume()
+/** Cached noise buffers reused by hop/dice SFX (avoid reallocating every play). */
+let noiseBufferCache: AudioBuffer[] | null = null
 
 function loadStoredVolume(): number {
   try {
@@ -47,6 +49,7 @@ function getAudioContext(): AudioContext | null {
     masterGain = audioContext.createGain()
     masterGain.gain.value = masterGainValue(volume)
     masterGain.connect(audioContext.destination)
+    warmNoiseBuffers(audioContext)
   }
 
   if (audioContext.state === 'suspended') {
@@ -141,6 +144,34 @@ function tone(
   oscillator.stop(start + duration + 0.02)
 }
 
+function warmNoiseBuffers(context: AudioContext): void {
+  if (noiseBufferCache) {
+    return
+  }
+  const durations = [0.04, 0.08, 0.14]
+  noiseBufferCache = durations.map((duration) => {
+    const sampleCount = Math.max(1, Math.floor(context.sampleRate * duration))
+    const buffer = context.createBuffer(1, sampleCount, context.sampleRate)
+    const data = buffer.getChannelData(0)
+    for (let index = 0; index < sampleCount; index += 1) {
+      data[index] = (Math.random() * 2 - 1) * (1 - index / sampleCount)
+    }
+    return buffer
+  })
+}
+
+function pickNoiseBuffer(context: AudioContext, duration: number): AudioBuffer {
+  warmNoiseBuffers(context)
+  const cache = noiseBufferCache!
+  if (duration <= 0.05) {
+    return cache[0]
+  }
+  if (duration <= 0.1) {
+    return cache[1]
+  }
+  return cache[2]
+}
+
 function noiseBurst(
   context: AudioContext,
   {
@@ -161,15 +192,8 @@ function noiseBurst(
   }
 
   const start = context.currentTime + when
-  const sampleCount = Math.floor(context.sampleRate * duration)
-  const buffer = context.createBuffer(1, sampleCount, context.sampleRate)
-  const data = buffer.getChannelData(0)
-  for (let index = 0; index < sampleCount; index += 1) {
-    data[index] = (Math.random() * 2 - 1) * (1 - index / sampleCount)
-  }
-
   const source = context.createBufferSource()
-  source.buffer = buffer
+  source.buffer = pickNoiseBuffer(context, duration)
 
   const filter = context.createBiquadFilter()
   filter.type = 'bandpass'

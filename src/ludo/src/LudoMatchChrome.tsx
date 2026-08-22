@@ -82,14 +82,17 @@ export function LudoPageShell({
 export function LudoBoardSurface({
   children,
   seatPaintStyle,
+  animPaused = false,
 }: {
   children: React.ReactNode;
   seatPaintStyle?: React.CSSProperties;
+  /** Pause decorative CSS animations while the tab is backgrounded. */
+  animPaused?: boolean;
 }) {
   return (
     <Paper
       elevation={0}
-      className="board-wrap"
+      className={animPaused ? 'board-wrap board-wrap--anim-paused' : 'board-wrap'}
       aria-label="Ludo board"
       style={seatPaintStyle}
       sx={{

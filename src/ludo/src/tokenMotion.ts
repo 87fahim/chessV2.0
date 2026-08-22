@@ -104,17 +104,16 @@ export function buildMovePercentPath(
   return path
 }
 
-/** Reverse path from the capture tile back through every prior tile into the home yard. */
 export function buildCaptureReturnPercentPath(
   color: PlayerColor,
   fromProgress: number,
   tokenIndex = 0,
 ): BoardPercent[] {
+  const path: BoardPercent[] = []
   if (fromProgress < 0) {
     return [yardSlotToPercent(color, tokenIndex)]
   }
 
-  const path: BoardPercent[] = []
   for (let progress = fromProgress; progress >= 0; progress -= 1) {
     const coord = getProgressCoord(color, progress, tokenIndex)
     if (coord) {
@@ -135,10 +134,51 @@ function wait(ms: number): Promise<void> {
   })
 }
 
+/** Pause hops while Safari/tab is backgrounded so we don't burn frames offscreen. */
+function waitWhileDocumentHidden(signal?: AbortSignal): Promise<void> {
+  if (typeof document === 'undefined' || document.visibilityState !== 'hidden') {
+    return Promise.resolve()
+  }
+
+  return new Promise((resolve) => {
+    const finish = () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      signal?.removeEventListener('abort', finish)
+      resolve()
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        finish()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    signal?.addEventListener('abort', finish, { once: true })
+  })
+}
+
+function footingTransform(anchorYPercent: number, dx = 0, dy = 0, scale = 1): string {
+  return `translate3d(calc(-50% + ${dx}px), calc(-${anchorYPercent}% + ${dy}px), 0) scale(${scale})`
+}
+
 function placeToken(element: HTMLElement, point: BoardPercent, anchorYPercent = 90): void {
   element.style.left = `${point.left}%`
   element.style.top = `${point.top}%`
-  element.style.transform = `translate(-50%, -${anchorYPercent}%) scale(1)`
+  element.style.transform = footingTransform(anchorYPercent)
+  element.style.willChange = 'auto'
+}
+
+function boardDeltaPx(
+  element: HTMLElement,
+  from: BoardPercent,
+  to: BoardPercent,
+): { x: number; y: number } {
+  const parent = element.offsetParent as HTMLElement | null
+  const width = parent?.clientWidth ?? element.parentElement?.clientWidth ?? 1
+  const height = parent?.clientHeight ?? element.parentElement?.clientHeight ?? 1
+  return {
+    x: ((to.left - from.left) / 100) * width,
+    y: ((to.top - from.top) / 100) * height,
+  }
 }
 
 async function animateHop(
@@ -148,6 +188,14 @@ async function animateHop(
   durationMs: number,
   anchorYPercent = 90,
 ): Promise<void> {
+  placeToken(element, from, anchorYPercent)
+  element.style.willChange = 'transform'
+
+  const { x: dx, y: dy } = boardDeltaPx(element, from, to)
+  const parent = element.offsetParent as HTMLElement | null
+  const height = parent?.clientHeight ?? element.parentElement?.clientHeight ?? 1
+  const liftPx = (HOP_LIFT_PERCENT / 100) * height
+
   const frames = 18
   const keyframes: Keyframe[] = []
 
@@ -158,9 +206,7 @@ async function animateHop(
     const scale = 1 + arc * 0.08
 
     keyframes.push({
-      left: `${from.left + (to.left - from.left) * eased}%`,
-      top: `${from.top + (to.top - from.top) * eased - arc * HOP_LIFT_PERCENT}%`,
-      transform: `translate(-50%, -${anchorYPercent}%) scale(${scale})`,
+      transform: footingTransform(anchorYPercent, dx * eased, dy * eased - arc * liftPx, scale),
       offset: t,
     })
   }
@@ -168,16 +214,17 @@ async function animateHop(
   const animation = element.animate(keyframes, {
     duration: durationMs,
     easing: 'linear',
-    fill: 'forwards',
+    fill: 'none',
   })
 
   try {
     await animation.finished
   } catch {
     animation.cancel()
+  } finally {
+    animation.cancel()
+    placeToken(element, to, anchorYPercent)
   }
-
-  placeToken(element, to, anchorYPercent)
 }
 
 export async function animateTokenHops(
@@ -206,6 +253,12 @@ export async function animateTokenHops(
   const hopDurationMs = options?.hopDurationMs ?? HOP_DURATION_MS
 
   for (let index = 0; index < path.length - 1; index += 1) {
+    if (options?.signal?.aborted) {
+      placeToken(element, path[path.length - 1], anchorYPercent)
+      return
+    }
+
+    await waitWhileDocumentHidden(options?.signal)
     if (options?.signal?.aborted) {
       placeToken(element, path[path.length - 1], anchorYPercent)
       return
@@ -254,17 +307,25 @@ export async function animateTokenSlide(
     return
   }
 
+  await waitWhileDocumentHidden(options?.signal)
+  if (options?.signal?.aborted) {
+    placeToken(element, path[path.length - 1], anchorYPercent)
+    element.classList.remove('board-returning-token--active')
+    return
+  }
+
   const segmentDurationMs = options?.segmentDurationMs ?? SLIDE_SEGMENT_MS
   const durationMs = segmentDurationMs * (path.length - 1)
   options?.onStart?.(durationMs)
 
+  const start = path[0]
+  element.style.willChange = 'transform'
   const keyframes: Keyframe[] = path.map((point, index) => {
     const t = index / (path.length - 1)
     const shrink = 1 - Math.sin(Math.PI * t) * 0.12
+    const { x, y } = boardDeltaPx(element, start, point)
     return {
-      left: `${point.left}%`,
-      top: `${point.top}%`,
-      transform: `translate(-50%, -${anchorYPercent}%) scale(${shrink})`,
+      transform: footingTransform(anchorYPercent, x, y, shrink),
       offset: t,
       easing: 'ease-in-out',
     }
@@ -273,7 +334,7 @@ export async function animateTokenSlide(
   const animation = element.animate(keyframes, {
     duration: durationMs,
     easing: 'linear',
-    fill: 'forwards',
+    fill: 'none',
   })
 
   const onAbort = () => {
@@ -287,9 +348,10 @@ export async function animateTokenSlide(
     animation.cancel()
   } finally {
     options?.signal?.removeEventListener('abort', onAbort)
+    animation.cancel()
     element.classList.remove('board-returning-token--active')
+    placeToken(element, path[path.length - 1], anchorYPercent)
   }
 
-  placeToken(element, path[path.length - 1], anchorYPercent)
   options?.onComplete?.()
 }

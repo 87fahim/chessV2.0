@@ -502,6 +502,33 @@ export function getRadialTokenPoint(
   return null
 }
 
+/** Track / home-lane cell id for a progress value (null for yard or finished hub). */
+export function getRadialCellIdForProgress(
+  layout: RadialBoardLayout,
+  color: PlayerColor,
+  progress: number,
+): string | null {
+  const seat = layout.seats.find((entry) => entry.color === color)
+  if (!seat) {
+    return null
+  }
+  const { rules } = layout
+  if (progress < 0 || progress >= rules.finishProgress) {
+    return null
+  }
+  if (progress >= rules.homeLaneStart) {
+    return seat.homeLaneIds[progress - rules.homeLaneStart] ?? null
+  }
+  if (progress > rules.lastOuterProgress) {
+    return null
+  }
+  const start = rules.startIndex[color]
+  if (typeof start !== 'number') {
+    return null
+  }
+  return layout.outerRoute[(start + progress) % rules.outerLength] ?? null
+}
+
 export function getRadialTokenPercent(
   layout: RadialBoardLayout,
   color: PlayerColor,
