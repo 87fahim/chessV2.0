@@ -1,4 +1,6 @@
-export type PlayerColor = 'red' | 'green' | 'yellow' | 'blue'
+export type PlayerColor = 'red' | 'green' | 'yellow' | 'blue' | 'orange' | 'purple'
+
+export type PlayerCount = 2 | 3 | 4 | 5 | 6
 
 export interface TokenState {
   id: string
@@ -8,7 +10,7 @@ export interface TokenState {
 
 export interface PlayerState {
   id: string
-  /** Board seat / path (red, green, yellow, or blue corner). */
+  /** Board seat / path color. */
   color: PlayerColor
   /** Cosmetic token/UI color as #rrggbb. Falls back to seat default when missing. */
   paintHex?: string
@@ -19,6 +21,8 @@ export interface PlayerState {
   capturesMade: number
   /** Times this player's pieces were sent home. */
   timesCaptured: number
+  /** Removed mid-match — no tokens, no turns. */
+  withdrawn?: boolean
 }
 
 export interface MoveSummary {
@@ -40,7 +44,7 @@ export interface GameState {
   createdAt: string
   updatedAt: string
   moveCount: number
-  playerCount: 2 | 3 | 4
+  playerCount: PlayerCount
   players: PlayerState[]
   currentPlayerIndex: number
   currentPlayerId: string
@@ -52,7 +56,7 @@ export interface GameState {
   finishOrder: string[]
   lastMove: MoveSummary | null
   lastAction: {
-    type: 'CREATE_GAME' | 'ROLL' | 'MOVE'
+    type: 'CREATE_GAME' | 'ROLL' | 'MOVE' | 'WITHDRAW'
     at: string
     playerId?: string
     playerName?: string

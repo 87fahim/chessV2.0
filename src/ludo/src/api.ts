@@ -1,4 +1,4 @@
-import type { GameState } from './types'
+import type { GameState, PlayerCount } from './types'
 
 interface ApiErrorResponse {
   message?: string
@@ -19,7 +19,7 @@ async function parseResponse(response: Response): Promise<GameState> {
   return (await response.json()) as GameState
 }
 
-export async function createGame(playerCount: 2 | 3 | 4, playerNames: string[]): Promise<GameState> {
+export async function createGame(playerCount: PlayerCount, playerNames: string[]): Promise<GameState> {
   const key = makeIdempotencyKey()
   const response = await fetch('/api/v1/games', {
     method: 'POST',
@@ -35,7 +35,7 @@ export async function createGame(playerCount: 2 | 3 | 4, playerNames: string[]):
 }
 
 export async function createGameWithKey(
-  playerCount: 2 | 3 | 4,
+  playerCount: PlayerCount,
   playerNames: string[],
   idempotencyKey: string,
 ): Promise<GameState> {

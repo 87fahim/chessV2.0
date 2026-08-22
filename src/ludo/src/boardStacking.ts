@@ -1,6 +1,6 @@
 import type { PlayerColor } from './types'
 
-export const COLOR_STACK_ORDER: PlayerColor[] = ['red', 'green', 'yellow', 'blue']
+export const COLOR_STACK_ORDER: PlayerColor[] = ['red', 'green', 'yellow', 'blue', 'orange', 'purple']
 
 /** Horizontal anchors (% of tile width) so stacked tokens fan like a card deck. */
 export function stackAnchorPercents(count: number): number[] {

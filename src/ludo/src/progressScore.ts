@@ -1,34 +1,36 @@
 import { FINISH_PROGRESS, SAFE_OUTER_INDEXES, START_INDEX } from './boardLayout'
-import type { PlayerColor, PlayerState, TokenState } from './types'
+import { getBoardRules, getTrackIndexForRules } from './boardRules'
+import type { PlayerColor, PlayerCount, PlayerState, TokenState } from './types'
 
-function getOuterTrackIndex(color: PlayerColor, progress: number): number {
-  return (START_INDEX[color] + progress) % 52
+function forwardStepsOnTrack(fromIndex: number, targetIndex: number, outerLength: number): number {
+  return (targetIndex - fromIndex + outerLength) % outerLength
 }
 
-/** Steps an opponent must roll forward to land on `targetIndex` from `fromIndex` (0 = same cell). */
-function forwardStepsOnTrack(fromIndex: number, targetIndex: number): number {
-  return (targetIndex - fromIndex + 52) % 52
-}
+function behindThreatAway(
+  player: PlayerState,
+  token: TokenState,
+  allPlayers: PlayerState[],
+  playerCount: PlayerCount,
+): number {
+  const rules = getBoardRules(
+    playerCount,
+    allPlayers.map((entry) => entry.color),
+  )
 
-/**
- * Capture pressure from opponent pieces within one die roll behind on the outer track.
- * Safe tiles and 2+ own-token stacks are treated as protected (no penalty).
- */
-function behindThreatAway(player: PlayerState, token: TokenState, allPlayers: PlayerState[]): number {
-  if (token.progress < 0 || token.progress > 50) {
+  if (token.progress < 0 || token.progress > rules.lastOuterProgress) {
     return 0
   }
 
-  const trackIndex = getOuterTrackIndex(player.color, token.progress)
-  if (SAFE_OUTER_INDEXES.has(trackIndex)) {
+  const trackIndex = getTrackIndexForRules(rules, player.color, token.progress)
+  if (rules.safeOuterIndexes.has(trackIndex)) {
     return 0
   }
 
   const ownStack = player.tokens.filter(
     (entry) =>
       entry.progress >= 0 &&
-      entry.progress <= 50 &&
-      getOuterTrackIndex(player.color, entry.progress) === trackIndex,
+      entry.progress <= rules.lastOuterProgress &&
+      getTrackIndexForRules(rules, player.color, entry.progress) === trackIndex,
   ).length
   if (ownStack >= 2) {
     return 0
@@ -40,11 +42,11 @@ function behindThreatAway(player: PlayerState, token: TokenState, allPlayers: Pl
       continue
     }
     for (const enemy of other.tokens) {
-      if (enemy.progress < 0 || enemy.progress > 50) {
+      if (enemy.progress < 0 || enemy.progress > rules.lastOuterProgress) {
         continue
       }
-      const enemyIndex = getOuterTrackIndex(other.color, enemy.progress)
-      const steps = forwardStepsOnTrack(enemyIndex, trackIndex)
+      const enemyIndex = getTrackIndexForRules(rules, other.color, enemy.progress)
+      const steps = forwardStepsOnTrack(enemyIndex, trackIndex, rules.outerLength)
       if (steps >= 1 && steps <= 6) {
         threat += (7 - steps) / 6
       }
@@ -55,28 +57,36 @@ function behindThreatAway(player: PlayerState, token: TokenState, allPlayers: Pl
 }
 
 /**
- * Average closeness to finish (0–100%), with risk adjustments:
- * home exit, exact-finish zone, home-yard exposure, and behind-threat.
+ * Average closeness to finish (0–100%), with risk adjustments.
  */
-export function averageProgressScore(player: PlayerState, allPlayers: PlayerState[]): number {
+export function averageProgressScore(
+  player: PlayerState,
+  allPlayers: PlayerState[],
+  playerCount: PlayerCount = 4,
+): number {
   const tokens = player.tokens
   if (tokens.length === 0) {
     return 0
   }
 
-  const MAX_AWAY = 60
+  const rules = getBoardRules(
+    playerCount,
+    allPlayers.map((entry) => entry.color),
+  )
+  const finishProgress = rules.finishProgress
+  const MAX_AWAY = Math.max(60, finishProgress + 4)
   const EXPOSURE_PER_HOME_TOKEN = 3
   const homeCount = tokens.filter((token) => token.progress < 0).length
 
   const totalCloseness = tokens.reduce((sum, token) => {
     let effectiveAway = 0
 
-    if (token.progress >= FINISH_PROGRESS) {
+    if (token.progress >= finishProgress) {
       effectiveAway = 0
     } else if (token.progress < 0) {
       effectiveAway = MAX_AWAY
     } else {
-      const tilesLeft = FINISH_PROGRESS - token.progress
+      const tilesLeft = finishProgress - token.progress
       effectiveAway = tilesLeft + 1
 
       if (tilesLeft >= 1 && tilesLeft <= 5) {
@@ -87,7 +97,7 @@ export function averageProgressScore(player: PlayerState, allPlayers: PlayerStat
         effectiveAway += homeCount * EXPOSURE_PER_HOME_TOKEN
       }
 
-      effectiveAway += behindThreatAway(player, token, allPlayers)
+      effectiveAway += behindThreatAway(player, token, allPlayers, playerCount)
     }
 
     return sum + Math.max(0, MAX_AWAY - effectiveAway)
@@ -95,3 +105,13 @@ export function averageProgressScore(player: PlayerState, allPlayers: PlayerStat
 
   return Math.round((totalCloseness / tokens.length / MAX_AWAY) * 100)
 }
+
+/** @deprecated square-only helpers kept for classic board math call sites. */
+export function classicOuterIndex(color: PlayerColor, progress: number): number | null {
+  if (color !== 'red' && color !== 'green' && color !== 'yellow' && color !== 'blue') {
+    return null
+  }
+  return (START_INDEX[color] + progress) % 52
+}
+
+export { FINISH_PROGRESS, SAFE_OUTER_INDEXES }

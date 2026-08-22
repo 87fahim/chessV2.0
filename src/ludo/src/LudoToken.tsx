@@ -1,6 +1,6 @@
 import { useId } from 'react'
 
-export type TokenColor = 'red' | 'green' | 'blue' | 'yellow'
+export type TokenColor = 'red' | 'green' | 'blue' | 'yellow' | 'orange' | 'purple'
 export type TokenShape = 'pin' | 'pawn' | 'disc'
 export type TokenVariant = 'classic' | 'flat' | 'glass'
 
@@ -57,6 +57,22 @@ const TOKEN_PALETTES: Record<TokenColor, Palette> = {
     dark: '#b88600',
     soft: '#f5d762',
     glow: 'rgba(230, 187, 0, 0.55)',
+    body: '#f5f7fb',
+    edge: '#636d7e',
+  },
+  orange: {
+    main: '#f07818',
+    dark: '#b8550c',
+    soft: '#ffb36b',
+    glow: 'rgba(240, 120, 24, 0.55)',
+    body: '#f5f7fb',
+    edge: '#636d7e',
+  },
+  purple: {
+    main: '#8b4fcf',
+    dark: '#5f3294',
+    soft: '#c49aef',
+    glow: 'rgba(139, 79, 207, 0.55)',
     body: '#f5f7fb',
     edge: '#636d7e',
   },

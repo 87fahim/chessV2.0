@@ -5,6 +5,11 @@ import {
   Button,
   Checkbox,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Divider,
   Drawer,
   IconButton,
@@ -24,11 +29,17 @@ import CloseIcon from '@mui/icons-material/Close';
 import MenuIcon from '@mui/icons-material/Menu';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import CasinoIcon from '@mui/icons-material/Casino';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import FlagIcon from '@mui/icons-material/Flag';
 import type { GameState, PlayerColor } from './types';
 import { DEFAULT_PAINT_BY_SEAT, resolvePlayerPaintHex } from './playerPaint';
 import { LudoToken } from './LudoToken';
 
-type SetupCount = 2 | 3 | 4;
+/** Dev/test helpers in Match Control (force finish / end). Hidden in production builds. */
+const SHOW_TEST_TOOLS = Boolean(import.meta.env.DEV);
+
+type SetupCount = 2 | 3 | 4 | 5 | 6;
 type SetupStep = 'count' | 'names';
 
 const COLOR_HEX = DEFAULT_PAINT_BY_SEAT;
@@ -77,19 +88,20 @@ export function LudoBoardSurface({
 }) {
   return (
     <Paper
-      elevation={2}
+      elevation={0}
       className="board-wrap"
       aria-label="Ludo board"
       style={seatPaintStyle}
       sx={{
         position: 'relative',
-        borderRadius: 2.5,
-        border: '1px solid',
-        borderColor: 'divider',
-        bgcolor: 'grey.50',
         overflow: 'visible',
         minWidth: 0,
         width: '100%',
+        // Layout only — no plate chrome (shadow/border come from the board itself).
+        borderRadius: 0,
+        bgcolor: 'transparent',
+        boxShadow: 'none',
+        border: 'none',
       }}
     >
       <Box className="board-frame" style={seatPaintStyle}>
@@ -144,7 +156,7 @@ export function LudoSessionHeader({
           variant="contained"
           color="primary"
           size="large"
-          startIcon={<RestartAltIcon />}
+          startIcon={<GroupAddIcon />}
           onClick={onNewSession}
           sx={{ fontWeight: 700, px: 2.5 }}
         >
@@ -152,6 +164,113 @@ export function LudoSessionHeader({
         </Button>
       ) : null}
     </Paper>
+  );
+}
+
+/** Pick player count only (no names) and start immediately. */
+export function LudoNewGameDialog({
+  open,
+  playerCount,
+  onPlayerCountChange,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  playerCount: SetupCount;
+  onPlayerCountChange: (count: SetupCount) => void;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ fontWeight: 800 }}>New Game</DialogTitle>
+      <DialogContent>
+        <DialogContentText sx={{ mb: 2 }}>
+          Choose how many players. Default names will be used.
+        </DialogContentText>
+        <ToggleButtonGroup
+          exclusive
+          fullWidth
+          color="primary"
+          value={playerCount}
+          onChange={(_event, value: SetupCount | null) => {
+            if (value) onPlayerCountChange(value);
+          }}
+          aria-label="Player count"
+        >
+          {[2, 3, 4, 5, 6].map((count) => (
+            <ToggleButton key={count} value={count} sx={{ py: 1.25, fontWeight: 700 }}>
+              {count}
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button variant="contained" onClick={onConfirm}>
+          Start
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+/** Confirm restart with the same players. */
+export function LudoRestartDialog({
+  open,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ fontWeight: 800 }}>Restart game?</DialogTitle>
+      <DialogContent>
+        <DialogContentText>
+          This clears the current board and starts a fresh match with the same players.
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button variant="contained" color="warning" onClick={onConfirm} startIcon={<RestartAltIcon />}>
+          Restart
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+/** Confirm removing a player from the current match. */
+export function LudoWithdrawPlayerDialog({
+  open,
+  playerName,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  playerName: string;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ fontWeight: 800 }}>Remove player?</DialogTitle>
+      <DialogContent>
+        <DialogContentText>
+          Remove <strong>{playerName}</strong> from this match? Their tokens leave the board and they
+          will not take turns.
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button variant="contained" color="error" onClick={onConfirm} startIcon={<CloseIcon />}>
+          Remove
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 
@@ -254,9 +373,9 @@ export function LudoSetupPanel({
             }}
             aria-label="Player count"
           >
-            {[2, 3, 4].map((count) => (
+            {[2, 3, 4, 5, 6].map((count) => (
               <ToggleButton key={count} value={count} sx={{ py: 1.25, fontWeight: 700 }}>
-                {count} Players
+                {count}
               </ToggleButton>
             ))}
           </ToggleButtonGroup>
@@ -370,10 +489,16 @@ function MatchControlBody({
   finishedCounts,
   error,
   autoRollByPlayerId,
+  autoPlayByPlayerId,
   onRoll,
   onSoundVolumeChange,
-  onNewSession,
+  onRestart,
+  onNewGame,
   onToggleAutoRoll,
+  onToggleAutoPlay,
+  onWithdrawPlayer,
+  onForceFinishPlayer,
+  onForceEndGame,
   onChangePlayerPaint,
   onChangePlayerName,
   onClose,
@@ -387,46 +512,54 @@ function MatchControlBody({
   finishedCounts: Record<PlayerColor, number>;
   error: string | null;
   autoRollByPlayerId: Record<string, boolean>;
+  autoPlayByPlayerId: Record<string, boolean>;
   onRoll: () => void;
   onSoundVolumeChange: (value: number) => void;
-  onNewSession: () => void;
+  onRestart: () => void;
+  onNewGame: () => void;
   onToggleAutoRoll: (playerId: string, enabled: boolean) => void;
+  onToggleAutoPlay: (playerId: string, enabled: boolean) => void;
+  onWithdrawPlayer: (playerId: string) => void;
+  onForceFinishPlayer: (playerId: string) => void;
+  onForceEndGame: () => void;
   onChangePlayerPaint: (playerId: string, paintHex: string) => void;
   onChangePlayerName: (playerId: string, name: string) => void;
   onClose?: () => void;
   showClose: boolean;
 }) {
+  const activePlayerCount = game.players.filter((player) => !player.withdrawn).length;
+
   return (
-    <Stack spacing={1} sx={{ p: 1.5, height: '100%' }}>
-      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+    <Stack spacing={1.5} sx={{ p: 2, height: '100%' }}>
+      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="h6" sx={{ fontWeight: 800, fontSize: '1.15rem' }}>
           Match Control
         </Typography>
         {showClose && onClose ? (
-          <IconButton aria-label="Close menu" onClick={onClose} size="small">
-            <CloseIcon fontSize="small" />
+          <IconButton aria-label="Close menu" onClick={onClose} size="medium">
+            <CloseIcon />
           </IconButton>
         ) : null}
       </Stack>
 
       <Button
         variant="contained"
-        size="small"
+        size="medium"
         startIcon={<CasinoIcon />}
         onClick={onRoll}
         disabled={!canRoll}
-        sx={{ py: 0.75 }}
+        sx={{ py: 1.1, fontWeight: 700, fontSize: '0.95rem' }}
       >
         Roll Dice
       </Button>
 
-      <Paper variant="outlined" sx={{ px: 1, py: 0.5, bgcolor: 'action.hover' }}>
-        <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', lineHeight: 1.2 }}>
+      <Paper variant="outlined" sx={{ px: 1.5, py: 1, bgcolor: 'action.hover' }}>
+        <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.secondary', lineHeight: 1.3, mb: 0.5 }}>
           Sound
         </Typography>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
           <Slider
-            size="small"
+            size="medium"
             min={0}
             max={100}
             step={1}
@@ -434,18 +567,18 @@ function MatchControlBody({
             aria-label="Sound volume"
             onChange={(_event, value) => onSoundVolumeChange((value as number) / 100)}
           />
-          <Typography variant="caption" sx={{ minWidth: 32, textAlign: 'right', fontWeight: 700 }}>
+          <Typography variant="body2" sx={{ minWidth: 40, textAlign: 'right', fontWeight: 700 }}>
             {Math.round(soundVolume * 100)}%
           </Typography>
         </Stack>
       </Paper>
 
-      <Alert severity="info" icon={false} sx={{ py: 0.25, px: 1, '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
+      <Alert severity="info" icon={false} sx={{ py: 0.75, px: 1.5, '& .MuiAlert-message': { fontSize: '0.875rem' } }}>
         {game.message}
       </Alert>
 
       {game.finishOrder?.length ? (
-        <Typography variant="caption" sx={{ fontWeight: 700, color: 'success.dark' }}>
+        <Typography variant="body2" sx={{ fontWeight: 700, color: 'success.dark' }}>
           {game.status === 'COMPLETED' ? 'Final standings' : 'Finished'}:{' '}
           {game.finishOrder
             .map((playerId, index) => {
@@ -457,41 +590,57 @@ function MatchControlBody({
         </Typography>
       ) : null}
 
-      <Divider sx={{ my: 0.25 }} />
+      <Divider sx={{ my: 0.5 }} />
 
-      <Stack spacing={0.25}>
+      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700, px: 0.25 }}>
+        {SHOW_TEST_TOOLS
+          ? 'Auto-roll · Auto-play · Finish (test)'
+          : 'Auto-roll · Auto-play (roll+move)'}
+      </Typography>
+
+      <Stack spacing={0.75}>
         {game.players.map((player) => {
           const place = finishPlaceByPlayerId.get(player.id);
           const autoRoll = Boolean(autoRollByPlayerId[player.id]);
+          const autoPlay = Boolean(autoPlayByPlayerId[player.id]);
           const paintHex = resolvePlayerPaintHex(player);
+          const withdrawn = Boolean(player.withdrawn);
+          const canRemove = !withdrawn && !place && activePlayerCount > 1;
+          const canForceFinish =
+            SHOW_TEST_TOOLS && game.status !== 'COMPLETED' && !withdrawn && !place;
 
           return (
             <Stack
               key={player.id}
               direction="row"
-              spacing={0.5}
-              sx={{ alignItems: 'center', minHeight: 24 }}
+              spacing={0.75}
+              sx={{
+                alignItems: 'center',
+                minHeight: 40,
+                opacity: withdrawn ? 0.45 : 1,
+              }}
             >
               <Box
                 component="input"
                 type="color"
                 value={paintHex}
                 aria-label={`Color for ${player.name}`}
+                disabled={withdrawn}
                 onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
                   onChangePlayerPaint(player.id, event.target.value)
                 }
                 sx={{
-                  width: 18,
-                  height: 18,
+                  width: 28,
+                  height: 28,
                   p: 0,
                   border: '1px solid',
                   borderColor: 'divider',
-                  borderRadius: 0.5,
+                  borderRadius: 0.75,
                   bgcolor: 'transparent',
-                  cursor: 'pointer',
+                  cursor: withdrawn ? 'default' : 'pointer',
                   flexShrink: 0,
                   '&::-webkit-color-swatch-wrapper': { p: 0 },
-                  '&::-webkit-color-swatch': { border: 'none', borderRadius: 0.4 },
+                  '&::-webkit-color-swatch': { border: 'none', borderRadius: 0.5 },
                 }}
               />
               <Tooltip title="Reset color">
@@ -499,18 +648,19 @@ function MatchControlBody({
                   <IconButton
                     size="small"
                     aria-label={`Reset color for ${player.name}`}
-                    disabled={paintHex === DEFAULT_PAINT_BY_SEAT[player.color]}
+                    disabled={withdrawn || paintHex === DEFAULT_PAINT_BY_SEAT[player.color]}
                     onClick={() => onChangePlayerPaint(player.id, DEFAULT_PAINT_BY_SEAT[player.color])}
-                    sx={{ p: 0.15 }}
+                    sx={{ p: 0.4 }}
                   >
-                    <RestartAltIcon sx={{ fontSize: 14 }} />
+                    <RestartAltIcon sx={{ fontSize: 18 }} />
                   </IconButton>
                 </span>
               </Tooltip>
               <TextField
                 size="small"
                 variant="standard"
-                value={player.name}
+                value={withdrawn ? `${player.name} (out)` : player.name}
+                disabled={withdrawn}
                 onChange={(event) => onChangePlayerName(player.id, event.target.value)}
                 slotProps={{
                   htmlInput: { maxLength: 24, 'aria-label': `Name for seat ${player.color}` },
@@ -520,39 +670,115 @@ function MatchControlBody({
                   minWidth: 0,
                   '& .MuiInputBase-input': {
                     fontWeight: 700,
-                    fontSize: '0.72rem',
+                    fontSize: '0.95rem',
                     color: paintHex,
-                    py: 0.25,
+                    py: 0.5,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                   },
                 }}
               />
-              <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0, fontSize: '0.7rem' }}>
-                {place ? `#${place}` : `${finishedCounts[player.color]}/4`}
+              <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0, fontWeight: 700, minWidth: place ? 22 : 0 }}>
+                {place ? `#${place}` : null}
               </Typography>
-              <Tooltip title="Auto roll">
-                <Checkbox
+              <Tooltip title="Auto roll dice only">
+                <span>
+                  <Checkbox
+                    size="medium"
+                    checked={autoRoll}
+                    disabled={withdrawn || Boolean(place)}
+                    onChange={(event) => onToggleAutoRoll(player.id, event.target.checked)}
+                    slotProps={{ input: { 'aria-label': `Auto roll for ${player.name}` } }}
+                    sx={{ p: 0.4 }}
+                  />
+                </span>
+              </Tooltip>
+              <Tooltip title="Auto play: roll and move">
+                <span>
+                  <Checkbox
+                    size="medium"
+                    checked={autoPlay}
+                    disabled={withdrawn || Boolean(place)}
+                    onChange={(event) => onToggleAutoPlay(player.id, event.target.checked)}
+                    slotProps={{ input: { 'aria-label': `Auto play for ${player.name}` } }}
+                    sx={{ p: 0.4 }}
+                  />
+                </span>
+              </Tooltip>
+              {SHOW_TEST_TOOLS ? (
+                <Button
                   size="small"
-                  checked={autoRoll}
-                  onChange={(event) => onToggleAutoRoll(player.id, event.target.checked)}
-                  slotProps={{ input: { 'aria-label': `Auto roll for ${player.name}` } }}
-                  sx={{ p: 0.15 }}
-                />
+                  variant="outlined"
+                  color="warning"
+                  disabled={!canForceFinish}
+                  onClick={() => onForceFinishPlayer(player.id)}
+                  startIcon={<EmojiEventsIcon sx={{ fontSize: 16 }} />}
+                  sx={{
+                    flexShrink: 0,
+                    minWidth: 0,
+                    px: 0.75,
+                    py: 0.25,
+                    fontWeight: 700,
+                    fontSize: '0.7rem',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  Finish
+                </Button>
+              ) : null}
+              <Tooltip title={canRemove ? 'Remove player' : 'Cannot remove'}>
+                <span>
+                  <IconButton
+                    size="small"
+                    aria-label={`Remove ${player.name}`}
+                    disabled={!canRemove}
+                    onClick={() => onWithdrawPlayer(player.id)}
+                    sx={{ p: 0.4 }}
+                  >
+                    <CloseIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </span>
               </Tooltip>
             </Stack>
           );
         })}
       </Stack>
 
+      {SHOW_TEST_TOOLS && game.status !== 'COMPLETED' ? (
+        <Paper variant="outlined" sx={{ px: 1.5, py: 1.25, bgcolor: 'action.hover' }}>
+          <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.secondary', mb: 0.75 }}>
+            Test tools
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, lineHeight: 1.35 }}>
+            Use <strong>Finish</strong> on a player row to test that seat’s place overlay. Use the button below for the full standings popup.
+          </Typography>
+          <Button
+            fullWidth
+            variant="outlined"
+            size="medium"
+            color="warning"
+            startIcon={<FlagIcon />}
+            onClick={onForceEndGame}
+            sx={{ fontWeight: 700 }}
+          >
+            Force end game
+          </Button>
+        </Paper>
+      ) : null}
+
       <Box sx={{ flexGrow: 1 }} />
 
-      <Button variant="outlined" size="small" startIcon={<RestartAltIcon />} onClick={onNewSession}>
-        New Game
-      </Button>
+      <Stack spacing={1.25}>
+        <Button variant="outlined" size="medium" color="warning" startIcon={<RestartAltIcon />} onClick={onRestart} sx={{ fontWeight: 700, py: 1 }}>
+          Restart
+        </Button>
+        <Button variant="contained" size="medium" startIcon={<GroupAddIcon />} onClick={onNewGame} sx={{ fontWeight: 700, py: 1 }}>
+          New Game
+        </Button>
+      </Stack>
 
       {error ? (
-        <Alert severity="error" sx={{ py: 0.25, '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
+        <Alert severity="error" sx={{ py: 0.75, '& .MuiAlert-message': { fontSize: '0.875rem' } }}>
           {error}
         </Alert>
       ) : null}
@@ -569,13 +795,19 @@ export function LudoMatchLayout({
   finishedCounts,
   error,
   autoRollByPlayerId,
+  autoPlayByPlayerId,
   menuOpen,
   onMenuOpen,
   onMenuClose,
   onRoll,
   onSoundVolumeChange,
-  onNewSession,
+  onRestart,
+  onNewGame,
   onToggleAutoRoll,
+  onToggleAutoPlay,
+  onWithdrawPlayer,
+  onForceFinishPlayer,
+  onForceEndGame,
   onChangePlayerPaint,
   onChangePlayerName,
   board,
@@ -588,13 +820,19 @@ export function LudoMatchLayout({
   finishedCounts: Record<PlayerColor, number>;
   error: string | null;
   autoRollByPlayerId: Record<string, boolean>;
+  autoPlayByPlayerId: Record<string, boolean>;
   menuOpen: boolean;
   onMenuOpen: () => void;
   onMenuClose: () => void;
   onRoll: () => void;
   onSoundVolumeChange: (value: number) => void;
-  onNewSession: () => void;
+  onRestart: () => void;
+  onNewGame: () => void;
   onToggleAutoRoll: (playerId: string, enabled: boolean) => void;
+  onToggleAutoPlay: (playerId: string, enabled: boolean) => void;
+  onWithdrawPlayer: (playerId: string) => void;
+  onForceFinishPlayer: (playerId: string) => void;
+  onForceEndGame: () => void;
   onChangePlayerPaint: (playerId: string, paintHex: string) => void;
   onChangePlayerName: (playerId: string, name: string) => void;
   board: React.ReactNode;
@@ -612,10 +850,16 @@ export function LudoMatchLayout({
     finishedCounts,
     error,
     autoRollByPlayerId,
+    autoPlayByPlayerId,
     onRoll,
     onSoundVolumeChange,
-    onNewSession,
+    onRestart,
+    onNewGame,
     onToggleAutoRoll,
+    onToggleAutoPlay,
+    onWithdrawPlayer,
+    onForceFinishPlayer,
+    onForceEndGame,
     onChangePlayerPaint,
     onChangePlayerName,
   };
@@ -626,7 +870,7 @@ export function LudoMatchLayout({
         maxWidth: 1240,
         mx: 'auto',
         display: 'grid',
-        gridTemplateColumns: { xs: '1fr', xl: 'minmax(240px, 280px) minmax(0, 1fr)' },
+        gridTemplateColumns: { xs: '1fr', xl: 'minmax(300px, 340px) minmax(0, 1fr)' },
         gap: 2,
         alignItems: 'start',
         position: 'relative',
@@ -651,6 +895,37 @@ export function LudoMatchLayout({
           >
             <MenuIcon />
           </IconButton>
+          <Stack
+            direction="column"
+            spacing={0.75}
+            sx={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              zIndex: 3,
+              alignItems: 'stretch',
+            }}
+          >
+            <Button
+              size="small"
+              variant="outlined"
+              color="warning"
+              onClick={onRestart}
+              startIcon={<RestartAltIcon />}
+              sx={{ bgcolor: 'background.paper', fontWeight: 700, boxShadow: 1 }}
+            >
+              Restart
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={onNewGame}
+              startIcon={<GroupAddIcon />}
+              sx={{ fontWeight: 700, boxShadow: 1 }}
+            >
+              New
+            </Button>
+          </Stack>
           <Drawer
             anchor="left"
             open={menuOpen}
@@ -658,7 +933,7 @@ export function LudoMatchLayout({
             ModalProps={{ keepMounted: true }}
             sx={{
               '& .MuiDrawer-paper': {
-                width: 'min(320px, 88vw)',
+                width: 'min(360px, 92vw)',
                 boxSizing: 'border-box',
               },
             }}
