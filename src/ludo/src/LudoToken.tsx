@@ -6,6 +6,8 @@ export type TokenVariant = 'classic' | 'flat' | 'glass'
 
 export interface LudoTokenProps {
   color: TokenColor
+  /** Optional custom paint; when set, overrides the seat palette. */
+  paintHex?: string
   shape?: TokenShape
   variant?: TokenVariant
   size?: number
@@ -58,6 +60,50 @@ const TOKEN_PALETTES: Record<TokenColor, Palette> = {
     body: '#f5f7fb',
     edge: '#636d7e',
   },
+}
+
+function clampByte(value: number): number {
+  return Math.max(0, Math.min(255, Math.round(value)))
+}
+
+function parseHexRgb(hex: string): { r: number; g: number; b: number } | null {
+  const match = /^#([0-9a-fA-F]{6})$/.exec(hex.trim())
+  if (!match) {
+    return null
+  }
+  const value = match[1]
+  return {
+    r: Number.parseInt(value.slice(0, 2), 16),
+    g: Number.parseInt(value.slice(2, 4), 16),
+    b: Number.parseInt(value.slice(4, 6), 16),
+  }
+}
+
+function mixRgb(
+  rgb: { r: number; g: number; b: number },
+  toward: { r: number; g: number; b: number },
+  amount: number,
+): string {
+  const t = Math.max(0, Math.min(1, amount))
+  const r = clampByte(rgb.r + (toward.r - rgb.r) * t)
+  const g = clampByte(rgb.g + (toward.g - rgb.g) * t)
+  const b = clampByte(rgb.b + (toward.b - rgb.b) * t)
+  return `#${[r, g, b].map((channel) => channel.toString(16).padStart(2, '0')).join('')}`
+}
+
+function paletteFromPaintHex(paintHex: string, fallback: Palette): Palette {
+  const rgb = parseHexRgb(paintHex)
+  if (!rgb) {
+    return fallback
+  }
+  return {
+    main: paintHex.toLowerCase(),
+    dark: mixRgb(rgb, { r: 0, g: 0, b: 0 }, 0.35),
+    soft: mixRgb(rgb, { r: 255, g: 255, b: 255 }, 0.4),
+    glow: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.55)`,
+    body: fallback.body,
+    edge: fallback.edge,
+  }
 }
 
 function PinShape({ palette, variant, softShadowId }: { palette: Palette; variant: TokenVariant; softShadowId: string }) {
@@ -180,6 +226,7 @@ function DiscShape({ palette, variant }: { palette: Palette; variant: TokenVaria
 
 export function LudoToken({
   color,
+  paintHex,
   shape = 'pin',
   variant = 'classic',
   size,
@@ -189,7 +236,8 @@ export function LudoToken({
   label,
   className,
 }: LudoTokenProps) {
-  const palette = TOKEN_PALETTES[color]
+  const seatPalette = TOKEN_PALETTES[color]
+  const palette = paintHex ? paletteFromPaintHex(paintHex, seatPalette) : seatPalette
   const isFlat = variant === 'flat'
   const shadowId = useId().replace(/:/g, '')
   const softShadowId = `${shadowId}-soft`

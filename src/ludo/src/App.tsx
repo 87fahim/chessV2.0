@@ -7,8 +7,8 @@ import {
   createLocalGame,
   loadGameLocal,
   repairStuckTurn,
-  reassignPlayerColor,
   saveGameLocal,
+  setPlayerPaintHex,
 } from './localGameEngine'
 import {
   getGameSoundVolume,
@@ -43,6 +43,7 @@ import { averageProgressScore } from './progressScore'
 import { LudoToken } from './LudoToken'
 import { animateTokenHops, animateTokenSlide, buildCaptureReturnPercentPath, buildMovePercentPath, type BoardPercent } from './tokenMotion'
 import type { GameState, PlayerColor, TokenState } from './types'
+import { resolvePlayerPaintHex } from './playerPaint'
 import {
   LudoBoardSurface,
   LudoLoadingPanel,
@@ -410,6 +411,7 @@ function HomeYardOverlay({ color, active }: { color: PlayerColor; active: boolea
 
 function HomeYardTokens({
   color,
+  paintHex,
   tokens,
   legalMoves,
   disabled,
@@ -417,6 +419,7 @@ function HomeYardTokens({
   onSelect,
 }: {
   color: PlayerColor
+  paintHex: string
   tokens: TokenState[]
   legalMoves: string[]
   disabled: boolean
@@ -457,6 +460,7 @@ function HomeYardTokens({
               >
                 <LudoToken
                   color={color}
+                  paintHex={paintHex}
                   shape="pin"
                   variant="classic"
                   movable={canMoveToken}
@@ -498,11 +502,13 @@ function App() {
   const [hoppingToken, setHoppingToken] = useState<{
     tokenId: string
     color: PlayerColor
+    paintHex: string
     path: BoardPercent[]
   } | null>(null)
   const [returningToken, setReturningToken] = useState<{
     tokenId: string
     color: PlayerColor
+    paintHex: string
     path: BoardPercent[]
   } | null>(null)
 
@@ -610,6 +616,7 @@ function App() {
 
     type RawPlacement = {
       playerColor: PlayerColor
+      paintHex: string
       playerId: string
       token: TokenState
       row: number
@@ -632,6 +639,7 @@ function App() {
         }
         raw.push({
           playerColor: player.color,
+          paintHex: resolvePlayerPaintHex(player),
           playerId: player.id,
           token,
           row: coord[0],
@@ -653,6 +661,7 @@ function App() {
 
     const placements: Array<{
       playerColor: PlayerColor
+      paintHex: string
       playerId: string
       token: TokenState
       row: number
@@ -919,7 +928,12 @@ function App() {
       setBusy(true)
       setReturningToken(null)
       if (path.length >= 2) {
-        setHoppingToken({ tokenId, color: movingPlayer.color, path })
+        setHoppingToken({
+          tokenId,
+          color: movingPlayer.color,
+          paintHex: resolvePlayerPaintHex(movingPlayer),
+          path,
+        })
       }
     })
 
@@ -973,12 +987,14 @@ function App() {
         }
 
         let capturedColor: PlayerColor | null = null
+        let capturedPaintHex = '#2d7ae8'
         let capturedProgress = -1
         let capturedIndex = 0
         for (const player of snapshot.players) {
           const token = player.tokens.find((entry) => entry.id === capturedId)
           if (token) {
             capturedColor = player.color
+            capturedPaintHex = resolvePlayerPaintHex(player)
             capturedProgress = token.progress
             capturedIndex = token.index
             break
@@ -1005,6 +1021,7 @@ function App() {
           setReturningToken({
             tokenId: capturedId,
             color: capturedColor,
+            paintHex: capturedPaintHex,
             path: returnPath,
           })
         })
@@ -1090,15 +1107,6 @@ function App() {
 
   handleRollRef.current = handleRoll
 
-  const colorChangeDisabled =
-    game === null ||
-    busy ||
-    dieRolling ||
-    hoppingToken !== null ||
-    returningToken !== null ||
-    game.pendingRoll !== null ||
-    game.status === 'COMPLETED'
-
   // Auto-roll when the current player's Match Control checkbox is on.
   useEffect(() => {
     if (!game || loading || !canRoll || dieRolling || busy) {
@@ -1138,19 +1146,19 @@ function App() {
     setAutoRollByPlayerId((prev) => ({ ...prev, [playerId]: enabled }))
   }
 
-  function handleChangePlayerColor(playerId: string, color: PlayerColor): void {
-    if (!game || colorChangeDisabled) {
+  function handleChangePlayerPaint(playerId: string, paintHex: string): void {
+    if (!game) {
       return
     }
 
     try {
-      const next = reassignPlayerColor(game, playerId, color)
+      const next = setPlayerPaintHex(game, playerId, paintHex)
       setGame(next)
       saveGameLocal(next)
       setError(null)
     } catch (requestError) {
       const message =
-        requestError instanceof Error ? requestError.message : 'Failed to change seat color.'
+        requestError instanceof Error ? requestError.message : 'Failed to change color.'
       setError(message)
     }
   }
@@ -1213,7 +1221,15 @@ function App() {
   return (
     <LudoPageShell playing={Boolean(game)}>
       <LudoSessionHeader
-        currentPlayer={currentPlayer ? { name: currentPlayer.name, color: currentPlayer.color } : null}
+        currentPlayer={
+          currentPlayer
+            ? {
+                name: currentPlayer.name,
+                color: currentPlayer.color,
+                paintHex: resolvePlayerPaintHex(currentPlayer),
+              }
+            : null
+        }
         showNewSession={Boolean(game)}
         onNewSession={handleResetSession}
       />
@@ -1250,7 +1266,6 @@ function App() {
           error={error}
           menuOpen={menuOpen}
           autoRollByPlayerId={autoRollByPlayerId}
-          colorChangeDisabled={colorChangeDisabled}
           onMenuOpen={() => setMenuOpen(true)}
           onMenuClose={() => setMenuOpen(false)}
           onRoll={() => void handleRoll()}
@@ -1261,7 +1276,7 @@ function App() {
           }}
           onNewSession={handleResetSession}
           onToggleAutoRoll={handleToggleAutoRoll}
-          onChangePlayerColor={handleChangePlayerColor}
+          onChangePlayerPaint={handleChangePlayerPaint}
           board={
           <LudoBoardSurface>
               {BOARD_CORNERS.map((corner) => (
@@ -1383,6 +1398,7 @@ function App() {
                       >
                         <LudoToken
                           color={placement.playerColor}
+                          paintHex={placement.paintHex}
                           shape="pin"
                           variant="classic"
                           movable={tokenCanMove}
@@ -1409,6 +1425,9 @@ function App() {
                     <HomeYardTokens
                       key={`${color}-tokens`}
                       color={color}
+                      paintHex={
+                        player ? resolvePlayerPaintHex(player) : resolvePlayerPaintHex({ color })
+                      }
                       tokens={player?.tokens ?? []}
                       legalMoves={isActivePlayer ? game.legalMoves : []}
                       disabled={!canMove || !isActivePlayer}
@@ -1429,6 +1448,7 @@ function App() {
                     >
                       <LudoToken
                         color={hoppingToken.color}
+                        paintHex={hoppingToken.paintHex}
                         shape="pin"
                         variant="classic"
                       />
@@ -1447,6 +1467,7 @@ function App() {
                     >
                       <LudoToken
                         color={returningToken.color}
+                        paintHex={returningToken.paintHex}
                         shape="pin"
                         variant="classic"
                       />

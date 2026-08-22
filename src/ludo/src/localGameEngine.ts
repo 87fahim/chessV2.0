@@ -1,4 +1,5 @@
 import { FINISH_PROGRESS, SAFE_OUTER_INDEXES, START_INDEX } from './boardLayout'
+import { DEFAULT_PAINT_BY_SEAT, normalizePaintHex } from './playerPaint'
 import type { GameState, MoveSummary, PlayerColor, PlayerState, TokenState } from './types'
 
 const STORAGE_KEY = 'ludo.activeGame'
@@ -272,6 +273,7 @@ export function createLocalGame(playerCount: 2 | 3 | 4, playerNames: string[]): 
   const players: PlayerState[] = colors.map((color, playerIndex) => ({
     id: `${color}-player`,
     color,
+    paintHex: DEFAULT_PAINT_BY_SEAT[color],
     name: normalizeName(playerNames[playerIndex] ?? '', `Player ${playerIndex + 1}`),
     userId: null,
     tokens: createTokens(color),
@@ -475,6 +477,7 @@ function normalizeLoadedGame(game: GameState): GameState {
       typeof player.timesCaptured === 'number' && Number.isFinite(player.timesCaptured)
         ? Math.max(0, Math.floor(player.timesCaptured))
         : 0
+    player.paintHex = normalizePaintHex(player.paintHex) ?? DEFAULT_PAINT_BY_SEAT[player.color]
     for (const token of player.tokens) {
       if (token.progress > FINISH_PROGRESS) {
         token.progress = FINISH_PROGRESS
@@ -524,30 +527,13 @@ function normalizeLoadedGame(game: GameState): GameState {
   return game
 }
 
-const ALL_SEAT_COLORS: PlayerColor[] = ['red', 'green', 'yellow', 'blue']
-
-function remapTokensToColor(tokens: TokenState[], color: PlayerColor): TokenState[] {
-  return tokens.map((token, index) => ({
-    ...token,
-    id: `${color}-${(token.index ?? index) + 1}`,
-    index: token.index ?? index,
-  }))
-}
-
 /**
- * Reassign a player's board seat color. If another player already has that color,
- * the two seats are swapped (tokens keep progress; ids remap to the new color).
- * Only safe when no dice roll is pending mid-turn.
+ * Set a player's cosmetic paint color (any #rrggbb). Board seat / path is unchanged.
  */
-export function reassignPlayerColor(game: GameState, playerId: string, nextColor: PlayerColor): GameState {
-  if (!ALL_SEAT_COLORS.includes(nextColor)) {
-    throw new Error('Invalid seat color.')
-  }
-  if (game.pendingRoll !== null) {
-    throw new Error('Finish the current roll before changing seat colors.')
-  }
-  if (game.status === 'COMPLETED') {
-    throw new Error('Match is over; seat colors are locked.')
+export function setPlayerPaintHex(game: GameState, playerId: string, paintHex: string): GameState {
+  const nextHex = normalizePaintHex(paintHex)
+  if (!nextHex) {
+    throw new Error('Pick a valid color.')
   }
 
   const next = structuredClone(game)
@@ -555,26 +541,9 @@ export function reassignPlayerColor(game: GameState, playerId: string, nextColor
   if (!player) {
     throw new Error('Player not found.')
   }
-  if (player.color === nextColor) {
-    return next
-  }
 
-  const occupant = next.players.find((entry) => entry.id !== playerId && entry.color === nextColor)
-  if (occupant) {
-    const previousColor = player.color
-    player.color = nextColor
-    player.tokens = remapTokensToColor(player.tokens, nextColor)
-    occupant.color = previousColor
-    occupant.tokens = remapTokensToColor(occupant.tokens, previousColor)
-  } else {
-    player.color = nextColor
-    player.tokens = remapTokensToColor(player.tokens, nextColor)
-  }
-
-  next.legalMoves = []
-  next.revision += 1
+  player.paintHex = nextHex
   next.updatedAt = nowIso()
-  next.message = `${player.name} is now on ${player.color}.`
   return next
 }
 

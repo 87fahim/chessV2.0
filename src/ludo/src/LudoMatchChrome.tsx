@@ -7,7 +7,6 @@ import {
   Chip,
   Divider,
   Drawer,
-  FormControlLabel,
   IconButton,
   Paper,
   Slider,
@@ -26,12 +25,11 @@ import MenuIcon from '@mui/icons-material/Menu';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import CasinoIcon from '@mui/icons-material/Casino';
 import type { GameState, PlayerColor } from './types';
+import { resolvePlayerPaintHex } from './playerPaint';
 import { LudoToken } from './LudoToken';
 
 type SetupCount = 2 | 3 | 4;
 type SetupStep = 'count' | 'names';
-
-const SEAT_COLORS: PlayerColor[] = ['red', 'green', 'yellow', 'blue'];
 
 const COLOR_HEX: Record<PlayerColor, string> = {
   red: '#ef2424',
@@ -100,7 +98,7 @@ export function LudoSessionHeader({
   onNewSession,
   hideOnMobilePlaying = true,
 }: {
-  currentPlayer: { name: string; color: PlayerColor } | null;
+  currentPlayer: { name: string; color: PlayerColor; paintHex?: string } | null;
   showNewSession: boolean;
   onNewSession: () => void;
   hideOnMobilePlaying?: boolean;
@@ -141,7 +139,9 @@ export function LudoSessionHeader({
                 width: 16,
                 height: 16,
                 borderRadius: '50%',
-                bgcolor: COLOR_HEX[currentPlayer.color],
+                bgcolor: currentPlayer.paintHex
+                  ? currentPlayer.paintHex
+                  : COLOR_HEX[currentPlayer.color],
                 boxShadow: '0 0 0 2px rgba(15, 23, 42, 0.08)',
                 flexShrink: 0,
               }}
@@ -386,12 +386,11 @@ function MatchControlBody({
   finishedCounts,
   error,
   autoRollByPlayerId,
-  colorChangeDisabled,
   onRoll,
   onSoundVolumeChange,
   onNewSession,
   onToggleAutoRoll,
-  onChangePlayerColor,
+  onChangePlayerPaint,
   onClose,
   showClose,
 }: {
@@ -403,12 +402,11 @@ function MatchControlBody({
   finishedCounts: Record<PlayerColor, number>;
   error: string | null;
   autoRollByPlayerId: Record<string, boolean>;
-  colorChangeDisabled: boolean;
   onRoll: () => void;
   onSoundVolumeChange: (value: number) => void;
   onNewSession: () => void;
   onToggleAutoRoll: (playerId: string, enabled: boolean) => void;
-  onChangePlayerColor: (playerId: string, color: PlayerColor) => void;
+  onChangePlayerPaint: (playerId: string, paintHex: string) => void;
   onClose?: () => void;
   showClose: boolean;
 }) {
@@ -484,94 +482,67 @@ function MatchControlBody({
 
       <Divider />
 
-      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-        Players
-      </Typography>
-      <Stack spacing={1.25}>
+      <Stack spacing={0.5}>
         {game.players.map((player) => {
           const place = finishPlaceByPlayerId.get(player.id);
           const autoRoll = Boolean(autoRollByPlayerId[player.id]);
+          const paintHex = resolvePlayerPaintHex(player);
 
           return (
-            <Paper
+            <Stack
               key={player.id}
-              variant="outlined"
-              sx={{
-                px: 1.25,
-                py: 1.25,
-                borderLeft: 4,
-                borderLeftColor: COLOR_HEX[player.color],
-              }}
+              direction="row"
+              spacing={0.75}
+              sx={{ alignItems: 'center', minHeight: 28 }}
             >
-              <Stack spacing={1}>
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                    {player.name}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {place ? `#${place}` : `${finishedCounts[player.color]}/4 home`}
-                  </Typography>
-                </Stack>
-
-                <FormControlLabel
-                  sx={{ m: 0, ml: -0.5 }}
-                  control={
-                    <Checkbox
-                      size="small"
-                      checked={autoRoll}
-                      onChange={(event) => onToggleAutoRoll(player.id, event.target.checked)}
-                    />
-                  }
-                  label={
-                    <Typography variant="body2">Auto roll</Typography>
-                  }
+              <Box
+                component="input"
+                type="color"
+                value={paintHex}
+                aria-label={`Color for ${player.name}`}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                  onChangePlayerPaint(player.id, event.target.value)
+                }
+                sx={{
+                  width: 22,
+                  height: 22,
+                  p: 0,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: 0.75,
+                  bgcolor: 'transparent',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  '&::-webkit-color-swatch-wrapper': { p: 0 },
+                  '&::-webkit-color-swatch': { border: 'none', borderRadius: 0.5 },
+                }}
+              />
+              <Typography
+                variant="caption"
+                sx={{
+                  fontWeight: 700,
+                  flex: 1,
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {player.name}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0 }}>
+                {place ? `#${place}` : `${finishedCounts[player.color]}/4`}
+              </Typography>
+              <Tooltip title="Auto roll">
+                <Checkbox
+                  size="small"
+                  checked={autoRoll}
+                  onChange={(event) => onToggleAutoRoll(player.id, event.target.checked)}
+                  slotProps={{ input: { 'aria-label': `Auto roll for ${player.name}` } }}
+                  sx={{ p: 0.25 }}
                 />
-
-                <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
-                    Seat
-                  </Typography>
-                  {SEAT_COLORS.map((color) => {
-                    const selected = player.color === color;
-                    const occupiedByOther = game.players.some(
-                      (entry) => entry.id !== player.id && entry.color === color,
-                    );
-                    return (
-                      <Tooltip
-                        key={color}
-                        title={
-                          colorChangeDisabled
-                            ? 'Finish the current roll first'
-                            : occupiedByOther
-                              ? `Swap with ${color}`
-                              : `Use ${color}`
-                        }
-                      >
-                        <span>
-                          <IconButton
-                            size="small"
-                            aria-label={`Set ${player.name} seat to ${color}`}
-                            aria-pressed={selected}
-                            disabled={colorChangeDisabled || selected}
-                            onClick={() => onChangePlayerColor(player.id, color)}
-                            sx={{
-                              width: 28,
-                              height: 28,
-                              bgcolor: COLOR_HEX[color],
-                              border: selected ? '2px solid' : '2px solid transparent',
-                              borderColor: selected ? 'text.primary' : 'transparent',
-                              opacity: colorChangeDisabled ? 0.45 : 1,
-                              '&:hover': { bgcolor: COLOR_HEX[color] },
-                              '&.Mui-disabled': { bgcolor: COLOR_HEX[color], opacity: selected ? 1 : 0.45 },
-                            }}
-                          />
-                        </span>
-                      </Tooltip>
-                    );
-                  })}
-                </Stack>
-              </Stack>
-            </Paper>
+              </Tooltip>
+            </Stack>
           );
         })}
       </Stack>
@@ -596,7 +567,6 @@ export function LudoMatchLayout({
   finishedCounts,
   error,
   autoRollByPlayerId,
-  colorChangeDisabled,
   menuOpen,
   onMenuOpen,
   onMenuClose,
@@ -604,7 +574,7 @@ export function LudoMatchLayout({
   onSoundVolumeChange,
   onNewSession,
   onToggleAutoRoll,
-  onChangePlayerColor,
+  onChangePlayerPaint,
   board,
 }: {
   game: GameState;
@@ -615,7 +585,6 @@ export function LudoMatchLayout({
   finishedCounts: Record<PlayerColor, number>;
   error: string | null;
   autoRollByPlayerId: Record<string, boolean>;
-  colorChangeDisabled: boolean;
   menuOpen: boolean;
   onMenuOpen: () => void;
   onMenuClose: () => void;
@@ -623,7 +592,7 @@ export function LudoMatchLayout({
   onSoundVolumeChange: (value: number) => void;
   onNewSession: () => void;
   onToggleAutoRoll: (playerId: string, enabled: boolean) => void;
-  onChangePlayerColor: (playerId: string, color: PlayerColor) => void;
+  onChangePlayerPaint: (playerId: string, paintHex: string) => void;
   board: React.ReactNode;
 }) {
   const theme = useTheme();
@@ -638,12 +607,11 @@ export function LudoMatchLayout({
     finishedCounts,
     error,
     autoRollByPlayerId,
-    colorChangeDisabled,
     onRoll,
     onSoundVolumeChange,
     onNewSession,
     onToggleAutoRoll,
-    onChangePlayerColor,
+    onChangePlayerPaint,
   };
 
   return (
