@@ -8,9 +8,11 @@
   position: relative;
   width: min(96vw, 96dvh);
   max-width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 1 / 1;
+  height: auto;
   margin: 8px auto;
-  padding: 8.5%;
+  /* No padding: token % coords must share the same box as the SVG (Safari-safe). */
+  padding: 0;
   container-type: inline-size;
   touch-action: manipulation;
   user-select: none;
@@ -18,12 +20,22 @@
   border-radius: 0;
   border: 0;
   box-shadow: none;
+  overflow: visible;
+}
+
+.radial-board-container--anim-paused,
+.radial-board-container--anim-paused *,
+.radial-board-container--anim-paused *::before,
+.radial-board-container--anim-paused *::after {
+  animation-play-state: paused !important;
 }
 
 .radial-board-stage {
-  position: relative;
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  overflow: visible;
 }
 
 .radial-board {
@@ -64,32 +76,11 @@
   stroke-linejoin: round;
 }
 
-.radial-yard-outer-sheen {
-  fill: rgba(255, 255, 255, 0.14);
-  stroke: none;
-  pointer-events: none;
-  mix-blend-mode: soft-light;
-}
-
-.radial-colored-tile__body {
-  stroke: #5f738c;
-  stroke-width: 2.25;
-  stroke-linejoin: round;
-}
-
-/* Path / start / hub — flat color with a barely-there highlight */
-.radial-colored-tile--subtle .radial-colored-tile__sheen {
-  fill: rgba(255, 255, 255, 0.06);
-  stroke: none;
-  pointer-events: none;
-}
-
 .radial-yard-inner {
   fill: #ffffff;
   stroke: rgba(174, 186, 208, 0.85);
   stroke-width: 2;
   stroke-linejoin: round;
-  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.65));
 }
 
 .radial-yard-inner-rim {
@@ -101,38 +92,23 @@
   pointer-events: none;
 }
 
-.radial-yard--turn-active .radial-yard-outer {
-  animation: radial-yard-turn-flash 1.1s ease-in-out infinite;
+.radial-tile--available > polygon {
+  filter: brightness(1.12);
+  stroke: #d4a017;
+  cursor: pointer;
 }
 
-@keyframes radial-yard-turn-flash {
-  0%,
-  100% {
-    stroke: #5f738c;
-    stroke-width: 2.75;
-  }
-  50% {
-    stroke: #ffffff;
-    stroke-width: 4.5;
-  }
+.radial-yard--turn-active .radial-yard-outer {
+  stroke: #ffffff;
+  stroke-width: 4;
 }
 
 .radial-home-finish {
   pointer-events: none;
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: radial-home-finish-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .radial-home-finish__panel {
   stroke: none;
-}
-
-.radial-home-finish__sheen {
-  fill: rgba(255, 255, 255, 0.22);
-  stroke: none;
-  mix-blend-mode: soft-light;
-  pointer-events: none;
 }
 
 .radial-home-finish__panel-rim {
@@ -140,10 +116,6 @@
   stroke: rgba(255, 255, 255, 0.82);
   stroke-width: 3;
   stroke-linejoin: round;
-}
-
-.radial-home-finish__orb {
-  pointer-events: none;
 }
 
 .radial-home-finish__place {
@@ -159,29 +131,14 @@
   letter-spacing: -0.04em;
 }
 
-.radial-home-finish__place--glow {
-  fill: rgba(255, 255, 255, 0.55);
-  stroke: none;
-}
-
 .radial-home-finish--place-1 .radial-home-finish__place {
   fill: #fff3b0;
   stroke: rgba(120, 70, 0, 0.35);
 }
 
-.radial-home-finish--place-1 .radial-home-finish__place--glow {
-  fill: rgba(255, 230, 120, 0.65);
-}
-
 .radial-home-finish--place-1 .radial-home-finish__panel-rim {
   stroke: rgba(255, 236, 170, 0.95);
   stroke-width: 3.5;
-}
-
-.radial-home-finish--place-1 {
-  animation:
-    radial-home-finish-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both,
-    radial-home-finish-pulse 2.4s ease-in-out 560ms infinite;
 }
 
 .radial-home-finish--place-2 .radial-home-finish__place {
@@ -190,27 +147,6 @@
 
 .radial-home-finish--place-3 .radial-home-finish__place {
   fill: #ffe8d4;
-}
-
-@keyframes radial-home-finish-in {
-  from {
-    opacity: 0;
-    transform: scale(0.78);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes radial-home-finish-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.92;
-  }
 }
 
 .radial-seat-label {
@@ -354,7 +290,7 @@
   width: calc(var(--board-token-size) * var(--token-fit, 1));
   height: calc(var(--board-token-size) * var(--token-fit, 1));
   margin: 0;
-  transform: translate(-50%, -90%);
+  transform: translate3d(-50%, -90%, 0);
   transform-origin: center bottom;
   display: grid;
   place-items: center;
@@ -377,7 +313,7 @@
   width: calc(var(--board-token-size) * var(--token-fit, 1) * 0.48);
   height: calc(var(--board-token-size) * var(--token-fit, 1) * 0.48);
   z-index: 11;
-  transform: translate(-50%, -90%);
+  transform: translate3d(-50%, -90%, 0);
   transform-origin: center bottom;
 }
 
@@ -405,7 +341,7 @@
 .radial-board-container .board-hopping-token {
   width: calc(var(--board-token-size) * var(--token-fit, 1));
   height: calc(var(--board-token-size) * var(--token-fit, 1));
-  transform: translate(-50%, -90%);
+  transform: translate3d(-50%, -90%, 0);
   transform-origin: center bottom;
 }
 

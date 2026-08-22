@@ -431,6 +431,20 @@
   box-shadow: none;
 }
 
+.board-wrap--anim-paused,
+.board-wrap--anim-paused *,
+.board-wrap--anim-paused *::before,
+.board-wrap--anim-paused *::after {
+  animation-play-state: paused !important;
+}
+
+.cell--available {
+  filter: brightness(1.12);
+  box-shadow: inset 0 0 0 2px rgba(212, 160, 23, 0.85);
+  cursor: pointer;
+  z-index: 1;
+}
+
 .board-frame {
   /* All die / profile / token sizes track one board tile.
      Seat colors (--seat-*) come from inline styles on the page/board shell. */
@@ -484,10 +498,7 @@
   position: relative;
   z-index: 3;
   pointer-events: none;
-  box-shadow:
-    0 8px 16px rgba(18, 32, 56, 0.14),
-    0 22px 48px rgba(18, 32, 56, 0.24),
-    0 48px 90px rgba(18, 32, 56, 0.18);
+  box-shadow: 0 18px 42px rgba(18, 32, 56, 0.22);
 }
 
 .corner-die-slot {
@@ -1054,6 +1065,10 @@
 
 .home-yard {
   position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   pointer-events: none;
   box-sizing: border-box;
   z-index: 1;
@@ -1350,6 +1365,10 @@
 
 .home-yard-tokens {
   position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   pointer-events: none;
   z-index: 45;
 }
@@ -1402,7 +1421,9 @@
 
 .home-yard__token {
   position: absolute;
-  transform: translate(-50%, -50%);
+  /* Foot of the pin sits on the slot center (same footing as path tokens). */
+  transform: translate(-50%, -90%);
+  transform-origin: center bottom;
   display: grid;
   place-items: center;
   z-index: 6;
@@ -1438,12 +1459,12 @@
 }
 
 .home-yard__token .ludo-token {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: calc(var(--board-token-size) * var(--token-fit, 1));
-  height: calc(var(--board-token-size) * var(--token-fit, 1));
-  transform: translate(-50%, -90%);
+  position: relative;
+  left: auto;
+  top: auto;
+  width: 100%;
+  height: 100%;
+  transform: none;
   transform-origin: center bottom;
   pointer-events: none;
 }
@@ -1495,10 +1516,9 @@
   height: calc(var(--board-token-size) * var(--token-fit, 1) * var(--token-scale, 1));
   display: grid;
   place-items: center;
-  transform: translate(-50%, -90%);
+  transform: translate3d(-50%, -90%, 0);
   transform-origin: center bottom;
-  will-change: left, top, transform;
-  filter: drop-shadow(0 10px 10px rgba(15, 26, 42, 0.28));
+  will-change: auto;
   z-index: 51;
 }
 
@@ -1513,22 +1533,13 @@
 }
 
 .board-returning-token--active {
-  filter: drop-shadow(0 0 10px rgba(255, 120, 80, 0.55)) drop-shadow(0 8px 12px rgba(15, 26, 42, 0.3));
   z-index: 60;
+  outline: 2px solid rgba(255, 140, 90, 0.85);
+  outline-offset: 2px;
 }
 
 .board-returning-token--active .ludo-token {
-  animation: capture-return-pulse 380ms ease-in-out infinite;
-}
-
-@keyframes capture-return-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.72;
-  }
+  opacity: 0.88;
 }
 
 .board-token-piece {
@@ -1805,7 +1816,8 @@
   overflow: visible;
   pointer-events: none;
   transform-origin: center bottom;
-  transition: transform 180ms ease, opacity 180ms ease, filter 180ms ease;
+  /* Avoid transitioning transform — nested % translates glitch on iOS Safari. */
+  transition: opacity 180ms ease;
 }
 
 .ludo-token__body {
@@ -1813,20 +1825,22 @@
 }
 
 .ludo-token--movable .ludo-token__body {
-  animation: token-body-flash 0.85s ease-in-out infinite;
+  filter: brightness(1.12);
 }
 
 .ludo-token--movable {
-  filter: drop-shadow(0 0 6px var(--token-glow));
+  outline: 2px solid var(--token-glow, #f6c945);
+  outline-offset: 1px;
 }
 
 .token-preview .ludo-token--movable {
-  animation: token-ready 900ms ease-in-out infinite alternate;
+  outline: 2px solid var(--token-glow, #f6c945);
 }
 
 .ludo-token--selected {
-  transform: translate(-50%, -90%) translateY(-6px) scale(1.08);
-  filter: drop-shadow(0 0 9px var(--token-glow));
+  transform: translateY(-6px) scale(1.08);
+  outline: 2px solid var(--token-glow, #f6c945);
+  outline-offset: 2px;
 }
 
 .ludo-token--disabled {
