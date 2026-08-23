@@ -303,13 +303,12 @@
 }
 
 .radial-board-container .radial-token.board-token-piece--movable {
-  pointer-events: none;
+  pointer-events: auto;
   cursor: pointer;
 }
 
 .radial-board-container .radial-token.board-token-piece--movable .ludo-token {
-  pointer-events: visiblePainted;
-  cursor: pointer;
+  pointer-events: none;
 }
 
 /* Finished tokens: small 2×2 on the hub wedge; keep upright (no rotate). */
