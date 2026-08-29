@@ -52,7 +52,7 @@ import {
 import { averageProgressScore } from './progressScore'
 import { LudoToken } from './LudoToken'
 import { RadialBoard } from './RadialBoard'
-import { animateTokenHops, animateTokenSlide, buildCaptureReturnPercentPath, buildMovePercentPath, getProgressCoord, type BoardPercent } from './tokenMotion'
+import { animateTokenHops, animateTokenSlide, buildCaptureReturnPercentPath, buildMovePercentPath, type BoardPercent } from './tokenMotion'
 import type { GameState, PlayerColor, PlayerCount, TokenState } from './types'
 import { resolvePlayerPaintHex, buildSeatPaintMap, seatPaintCssVars } from './playerPaint'
 import {
@@ -841,25 +841,6 @@ function App() {
     game.status !== 'COMPLETED' &&
     !currentPlayerFinished
 
-  const classicAvailableCells = useMemo(() => {
-    const keys = new Set<string>()
-    if (!game || radialLayout || game.pendingRoll == null || !canMove || !currentPlayer) {
-      return keys
-    }
-    const roll = game.pendingRoll
-    for (const token of currentPlayer.tokens) {
-      if (!game.legalMoves.includes(token.id)) {
-        continue
-      }
-      const toProgress = token.progress === -1 ? 0 : token.progress + roll
-      const coord = getProgressCoord(currentPlayer.color, toProgress, token.index)
-      if (coord) {
-        keys.add(`${coord[0]}:${coord[1]}`)
-      }
-    }
-    return keys
-  }, [game, radialLayout, canMove, currentPlayer])
-
   function validateSetupNames(selectedCount: SetupCount): string[] {
     const errors: string[] = []
     const seen = new Set<string>()
@@ -1641,13 +1622,9 @@ function App() {
               <div className="board-grid">
                 {BOARD_CELLS.map((cell) => {
                   const cellClassName = ['cell', `cell--${cell.type}`]
-                  const available = classicAvailableCells.has(`${cell.row}:${cell.column}`)
 
                   if (cell.color && cell.marker !== 'home-entry') {
                     cellClassName.push(`cell--${cell.color}`)
-                  }
-                  if (available) {
-                    cellClassName.push('cell--available')
                   }
 
                   return (

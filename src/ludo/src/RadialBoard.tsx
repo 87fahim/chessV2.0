@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, type RefObject } from 'react'
 import {
   buildRadialBoardLayout,
-  getRadialCellIdForProgress,
   getRadialTokenPercent,
   pointsToSvg,
   VIEW_SIZE,
@@ -248,30 +247,6 @@ export function RadialBoard({
     return [...tokenPlacements].sort((a, b) => a.top - b.top || a.left - b.left)
   }, [tokenPlacements])
 
-  const availableTileIds = useMemo(() => {
-    const ids = new Set<string>()
-    const roll = game.pendingRoll
-    if (roll == null || legalMoveIds.size === 0) {
-      return ids
-    }
-    for (const player of game.players) {
-      if (player.withdrawn) {
-        continue
-      }
-      for (const token of player.tokens) {
-        if (!legalMoveIds.has(token.id)) {
-          continue
-        }
-        const toProgress = token.progress === -1 ? 0 : token.progress + roll
-        const cellId = getRadialCellIdForProgress(layout, player.color, toProgress)
-        if (cellId) {
-          ids.add(cellId)
-        }
-      }
-    }
-    return ids
-  }, [game.pendingRoll, game.players, layout, legalMoveIds])
-
   const [pageHidden, setPageHidden] = useState(
     () => typeof document !== 'undefined' && document.visibilityState === 'hidden',
   )
@@ -404,18 +379,13 @@ export function RadialBoard({
           />
         ))}
 
-        {layout.tiles.map((tile) => {
-          const available = availableTileIds.has(tile.id)
-          return (
-          <g
-            key={tile.id}
-            className={available ? 'radial-tile radial-tile--available' : 'radial-tile'}
-          >
+        {layout.tiles.map((tile) => (
+          <g key={tile.id} className="radial-tile">
             <polygon
               points={pointsToSvg(tile.points)}
               fill={tileFill(tile, paintByColor)}
               stroke="#718096"
-              strokeWidth={available ? 2.5 : 1.5}
+              strokeWidth={1.5}
               data-tile-id={tile.id}
             />
             {tile.type === 'safe' ? (
@@ -434,8 +404,7 @@ export function RadialBoard({
               </g>
             ) : null}
           </g>
-          )
-        })}
+        ))}
 
         {layout.seats.map((seat) => {
           const player = game.players.find((entry) => entry.color === seat.color)
