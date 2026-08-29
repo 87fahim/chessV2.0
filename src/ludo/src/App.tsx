@@ -38,7 +38,7 @@ import {
   buildRadialMovePercentPath,
 } from './boardLayoutRadial'
 import { getBoardRules, isRadialPlayerCount } from './boardRules'
-import { COLOR_STACK_ORDER, stackAnchorPercents, stackTokenScale } from './boardStacking'
+import { COLOR_STACK_ORDER, stackAnchorPercents, stackDisplayForToken, stackTokenScale } from './boardStacking'
 import {
   DIE_ORIENTATIONS,
   DIE_PIP_LAYOUTS,
@@ -1672,6 +1672,11 @@ function App() {
                     const isActivePlayer = currentPlayer?.id === placement.playerId
                     const tokenCanMove =
                       canMove && isActivePlayer && game.legalMoves.includes(placement.token.id)
+                    const display = stackDisplayForToken(
+                      placement.stackCount,
+                      placement.stackIndex,
+                      tokenCanMove,
+                    )
 
                     return (
                       <button
@@ -1686,9 +1691,10 @@ function App() {
                           gridRow: placement.row + 1,
                           gridColumn: placement.column + 1,
                           // Lower board rows (and later stack peers) paint above upper tokens.
-                          zIndex: 100 + placement.row * 20 + placement.stackIndex,
-                          ['--token-scale' as string]: String(placement.scale),
-                          ['--stack-anchor' as string]: `${placement.anchorPercent}%`,
+                          // Selectable tokens rise above the rest of the stack while choosing.
+                          zIndex: 100 + placement.row * 20 + placement.stackIndex + (tokenCanMove ? 40 : 0),
+                          ['--token-scale' as string]: String(display.scale),
+                          ['--stack-anchor' as string]: `${display.anchorPercent}%`,
                         }}
                         aria-label={`Move ${placement.playerColor} piece`}
                         disabled={!tokenCanMove}

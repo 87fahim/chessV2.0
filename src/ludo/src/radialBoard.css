@@ -281,8 +281,8 @@
  */
 .radial-board-container .radial-token.board-token-piece {
   position: absolute;
-  width: calc(var(--board-token-size) * var(--token-fit, 1));
-  height: calc(var(--board-token-size) * var(--token-fit, 1));
+  width: calc(var(--board-token-size) * var(--token-fit, 1) * var(--token-scale, 1));
+  height: calc(var(--board-token-size) * var(--token-fit, 1) * var(--token-scale, 1));
   margin: 0;
   transform: translate3d(-50%, -90%, 0);
   transform-origin: center bottom;
