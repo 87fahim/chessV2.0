@@ -92,12 +92,6 @@
   pointer-events: none;
 }
 
-.radial-tile--available > polygon {
-  filter: brightness(1.12);
-  stroke: #d4a017;
-  cursor: pointer;
-}
-
 .radial-yard--turn-active .radial-yard-outer {
   stroke: #ffffff;
   stroke-width: 4;
