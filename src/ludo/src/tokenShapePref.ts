@@ -1,7 +1,7 @@
 import { type TokenShape } from './LudoToken'
 
 const STORAGE_KEY = 'ludo.tokenShape'
-const DEFAULT_SHAPE: TokenShape = 'pin'
+const DEFAULT_SHAPE: TokenShape = 'gem'
 
 export const TOKEN_SHAPES: ReadonlyArray<{ value: TokenShape; label: string }> = [
   { value: 'pin', label: 'Pin (classic)' },

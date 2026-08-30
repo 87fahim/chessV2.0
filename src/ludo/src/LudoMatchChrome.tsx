@@ -147,10 +147,12 @@ export function LudoBoardSurface({
 export function LudoSessionHeader({
   showNewSession,
   onNewSession,
+  tokenShape = 'gem',
   hideOnMobilePlaying = true,
 }: {
   showNewSession: boolean;
   onNewSession: () => void;
+  tokenShape?: TokenShape;
   hideOnMobilePlaying?: boolean;
 }) {
   return (
@@ -178,10 +180,10 @@ export function LudoSessionHeader({
           Ludo Game
         </Typography>
         <Stack direction="row" spacing={0.75} aria-label="Token preview" sx={{ alignItems: 'center' }}>
-          <LudoToken color="red" variant="classic" size={28} />
-          <LudoToken color="green" variant="classic" size={28} />
-          <LudoToken color="yellow" variant="classic" size={28} />
-          <LudoToken color="blue" variant="classic" size={28} />
+          <LudoToken color="red" shape={tokenShape} variant="classic" size={28} />
+          <LudoToken color="green" shape={tokenShape} variant="classic" size={28} />
+          <LudoToken color="yellow" shape={tokenShape} variant="classic" size={28} />
+          <LudoToken color="blue" shape={tokenShape} variant="classic" size={28} />
         </Stack>
       </Stack>
       {showNewSession ? (
