@@ -357,7 +357,7 @@ function GemShape({
 export function LudoToken({
   color,
   paintHex,
-  shape = 'pin',
+  shape = 'gem',
   variant = 'classic',
   size,
   selected = false,
