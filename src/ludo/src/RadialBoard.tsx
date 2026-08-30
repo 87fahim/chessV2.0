@@ -578,6 +578,12 @@ export function RadialBoard({
             </span>
             {turnActive ? (
               <svg className="corner-die__plate-ring" viewBox="0 0 100 100" focusable="false">
+                {/* White underlay + marching black dashes = half black / half white ring. */}
+                <polygon
+                  className="corner-die__plate-ring-path corner-die__plate-ring-path--base"
+                  points={diePlateRingPoints}
+                  pathLength={100}
+                />
                 <polygon
                   className="corner-die__plate-ring-path"
                   points={diePlateRingPoints}
