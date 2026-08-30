@@ -60,11 +60,7 @@ export function LudoPageShell({
       className={playing ? 'app-shell app-shell--playing' : 'app-shell'}
       style={seatPaintStyle}
       sx={{
-        // Fill the AppLayout content pane (already below the AppBar on phones).
-        // Do not use 100dvh here — that double-counts the AppBar and covers the title.
-        height: playing ? { xs: '100%', xl: 'auto' } : 'auto',
-        minHeight: playing ? { xs: '100%', xl: '100%' } : '100%',
-        maxHeight: playing ? { xs: '100%', xl: 'none' } : 'none',
+        minHeight: playing ? { xs: '100dvh', xl: '100%' } : '100%',
         p: playing ? { xs: 0, xl: 3 } : { xs: 2, sm: 3 },
         boxSizing: 'border-box',
         color: 'text.primary',

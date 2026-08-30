@@ -15,11 +15,9 @@ const LudoPage: React.FC = () => {
       className="ludo-root"
       sx={{
         width: '100%',
-        height: '100%',
         minHeight: '100%',
         bgcolor: 'background.default',
         color: 'text.primary',
-        overflow: 'hidden',
       }}
     >
       <ErrorBoundary>
