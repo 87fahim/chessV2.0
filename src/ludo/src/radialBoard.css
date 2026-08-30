@@ -355,7 +355,8 @@
   }
 }
 
-@media (min-width: 768px) and (max-width: 1366px) {
+/* Phone + tablet: size radial board to the AppBar-adjusted viewport. */
+@media (max-width: 1366px) {
   .app-shell--playing .board-frame:has(.radial-board-container) {
     width: min(100%, calc(100dvh - var(--play-chrome, 48px)));
     margin: 0 auto;
