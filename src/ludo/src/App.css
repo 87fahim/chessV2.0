@@ -2465,10 +2465,9 @@
   }
 }
 
-/* iPad / tablet only: kill the empty top gap (phones stay centered). */
-@media (min-width: 768px) and (max-width: 1366px) {
+/* Phone + tablet (not desktop): fit below AppBar and vertically center the board. */
+@media (max-width: 1366px) {
   .app-shell--playing {
-    /* Chess dense AppBar is already above this page. */
     --play-chrome: 48px;
     height: calc(100dvh - var(--play-chrome));
     min-height: calc(100dvh - var(--play-chrome));
@@ -2476,15 +2475,13 @@
   }
 
   .app-shell--playing .board-wrap {
-    place-items: start center;
-    align-content: start;
+    place-items: center;
+    align-content: center;
   }
 
   .app-shell--playing .board-frame {
     width: min(100%, calc((100dvh - var(--play-chrome)) / (1 + 2 * var(--vertical-die-ratio))));
-    /* Less top band than bottom so the stack sits higher. */
-    margin-top: calc(var(--vertical-die-space) * 0.65);
-    margin-bottom: var(--vertical-die-space);
+    margin: var(--vertical-die-space) auto;
   }
 }
 
