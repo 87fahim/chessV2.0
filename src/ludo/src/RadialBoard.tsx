@@ -330,9 +330,6 @@ export function RadialBoard({
         role="presentation"
       >
         <defs>
-          <filter id="radial-board-float" x="-30%" y="-30%" width="160%" height="160%">
-            <feDropShadow dx="0" dy="12" stdDeviation="14" floodColor="#122038" floodOpacity="0.28" />
-          </filter>
           {layout.seats.map((seat) => {
             const paint = paintByColor[seat.color]
             return (
@@ -352,11 +349,7 @@ export function RadialBoard({
           })}
         </defs>
 
-        <polygon
-          points={pointsToSvg(layout.outerRim)}
-          className="radial-board-rim-plate"
-          filter="url(#radial-board-float)"
-        />
+        <polygon points={pointsToSvg(layout.outerRim)} className="radial-board-rim-plate" />
         <polygon
           points={pointsToSvg(layout.outerRim)}
           className="radial-board-rim"
@@ -587,6 +580,12 @@ export function RadialBoard({
             </span>
             {turnActive ? (
               <svg className="corner-die__plate-ring" viewBox="0 0 100 100" focusable="false">
+                {/* White underlay + marching black dashes = half black / half white ring. */}
+                <polygon
+                  className="corner-die__plate-ring-path corner-die__plate-ring-path--base"
+                  points={diePlateRingPoints}
+                  pathLength={100}
+                />
                 <polygon
                   className="corner-die__plate-ring-path"
                   points={diePlateRingPoints}

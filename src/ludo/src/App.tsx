@@ -94,6 +94,17 @@ const BOARD_CORNERS: ReadonlyArray<{ id: BoardCornerId; label: string; color: Pl
   { id: 'bottom-right', label: 'bottom right', color: 'yellow' },
 ]
 
+/** Shared by the ring's white underlay and its animated dash layer. */
+const DIE_PLATE_RING_RECT = {
+  x: 3,
+  y: 3,
+  width: 94,
+  height: 94,
+  rx: 14,
+  ry: 14,
+  pathLength: 100,
+} as const
+
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms)
@@ -164,16 +175,12 @@ function CornerDie({
             <span className={shadowClassName} />
             {turnActive ? (
               <svg className="corner-die__plate-ring" viewBox="0 0 100 100" focusable="false">
+                {/* White underlay + marching black dashes = half black / half white ring. */}
                 <rect
-                  className="corner-die__plate-ring-path"
-                  x="3"
-                  y="3"
-                  width="94"
-                  height="94"
-                  rx="14"
-                  ry="14"
-                  pathLength={100}
+                  className="corner-die__plate-ring-path corner-die__plate-ring-path--base"
+                  {...DIE_PLATE_RING_RECT}
                 />
+                <rect className="corner-die__plate-ring-path" {...DIE_PLATE_RING_RECT} />
               </svg>
             ) : null}
           </span>
