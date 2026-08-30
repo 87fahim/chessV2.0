@@ -2393,10 +2393,12 @@
   }
 
   .app-shell--playing .board-frame {
-    /* Use 100% (not 100vw) so the board can't overflow the phone viewport and clip the right side. */
+    /* Fit both axes: height-based sizing must not exceed the window width. */
     --vertical-die-ratio: 0.36;
-    width: min(100%, calc(100dvh / (1 + 2 * var(--vertical-die-ratio))));
-    max-width: 100%;
+    --board-max-by-height: calc(100dvh / (1 + 2 * var(--vertical-die-ratio)));
+    --board-max-by-width: calc(100dvw - 28px);
+    width: min(100%, var(--board-max-by-height), var(--board-max-by-width));
+    max-width: min(100%, var(--board-max-by-width));
     margin: var(--vertical-die-space) auto;
     box-sizing: border-box;
   }
@@ -2485,7 +2487,12 @@
   }
 
   .app-shell--playing .board-frame {
-    width: min(100%, calc((100dvh - var(--play-chrome)) / (1 + 2 * var(--vertical-die-ratio))));
+    --board-max-by-height: calc(
+      (100dvh - var(--play-chrome)) / (1 + 2 * var(--vertical-die-ratio))
+    );
+    --board-max-by-width: calc(100dvw - 28px);
+    width: min(100%, var(--board-max-by-height), var(--board-max-by-width));
+    max-width: min(100%, var(--board-max-by-width));
     margin: var(--vertical-die-space) auto;
   }
 }
