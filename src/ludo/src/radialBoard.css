@@ -6,11 +6,12 @@
   --token-scale: 1;
   box-sizing: border-box;
   position: relative;
-  width: min(96vw, 96dvh);
+  /* Parent (.board-frame) owns the pixel size — never size from raw vw/vh here. */
+  width: 100%;
   max-width: 100%;
   aspect-ratio: 1 / 1;
   height: auto;
-  margin: 8px auto;
+  margin: 0 auto;
   /* No padding: token % coords must share the same box as the SVG (Safari-safe). */
   padding: 0;
   container-type: inline-size;
@@ -338,22 +339,35 @@
   transform-origin: center bottom;
 }
 
+/* Default: size radial board from the frame (works on desktop + touch). */
+.board-frame:has(.radial-board-container) {
+  /* vmin = smaller viewport side → always fits horizontally on portrait tablets. */
+  width: min(100%, 86vmin);
+  max-width: 100%;
+  margin-inline: auto;
+  box-sizing: border-box;
+}
+
 @media (max-width: 1535.95px) {
-  /* Skip classic corner-die height reserve — radial names are on the board. */
+  /* Radial on phone/tablet: width-first, leave room for seat labels, then center vertically. */
   .app-shell--playing .board-wrap:has(.radial-board-container) {
-    padding: 0 12px;
+    padding: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .app-shell--playing .board-frame:has(.radial-board-container) {
-    --radial-max: min(calc(100dvw - 56px), calc(100dvh - var(--play-chrome, 48px) - 24px));
-    width: min(100%, var(--radial-max));
-    max-width: min(100%, calc(100dvw - 56px));
+    --board-fit-width: calc(100dvw - 72px);
+    --board-fit-height: calc(100dvh - var(--play-chrome, 48px) - 16px);
+    width: min(100%, var(--board-fit-width), var(--board-fit-height), 86vmin);
+    max-width: var(--board-fit-width);
     margin: 0 auto;
   }
 
   .app-shell--playing .radial-board-container {
     width: 100%;
     max-width: 100%;
-    margin: 0 auto;
+    margin: 0;
   }
 }
