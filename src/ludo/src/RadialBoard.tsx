@@ -328,9 +328,6 @@ export function RadialBoard({
         role="presentation"
       >
         <defs>
-          <filter id="radial-board-float" x="-30%" y="-30%" width="160%" height="160%">
-            <feDropShadow dx="0" dy="12" stdDeviation="14" floodColor="#122038" floodOpacity="0.28" />
-          </filter>
           {layout.seats.map((seat) => {
             const paint = paintByColor[seat.color]
             return (
@@ -350,11 +347,7 @@ export function RadialBoard({
           })}
         </defs>
 
-        <polygon
-          points={pointsToSvg(layout.outerRim)}
-          className="radial-board-rim-plate"
-          filter="url(#radial-board-float)"
-        />
+        <polygon points={pointsToSvg(layout.outerRim)} className="radial-board-rim-plate" />
         <polygon
           points={pointsToSvg(layout.outerRim)}
           className="radial-board-rim"
