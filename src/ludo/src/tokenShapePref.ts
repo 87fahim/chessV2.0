@@ -6,11 +6,9 @@ const DEFAULT_SHAPE: TokenShape = 'pin'
 export const TOKEN_SHAPES: ReadonlyArray<{ value: TokenShape; label: string }> = [
   { value: 'pin', label: 'Pin (classic)' },
   { value: 'pawn', label: 'Pawn' },
-  { value: 'disc', label: 'Disc' },
   { value: 'dome', label: 'Dome' },
   { value: 'meeple', label: 'Meeple' },
   { value: 'gem', label: 'Gem' },
-  { value: 'chip', label: 'Chip' },
 ]
 
 function isTokenShape(value: unknown): value is TokenShape {

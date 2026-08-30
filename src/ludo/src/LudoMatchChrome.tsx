@@ -46,6 +46,39 @@ type SetupStep = 'count' | 'names';
 
 const COLOR_HEX = DEFAULT_PAINT_BY_SEAT;
 
+/** Keep picker icons in one 26px well so meeple cannot overflow the row. */
+const PICKER_ICON_SCALE: Record<TokenShape, number> = {
+  pin: 0.88,
+  pawn: 0.86,
+  dome: 0.92,
+  meeple: 0.7,
+  gem: 0.88,
+};
+
+function TokenShapePreview({ shape, label }: { shape: TokenShape; label: string }) {
+  return (
+    <Box
+      sx={{
+        width: 26,
+        height: 26,
+        flexShrink: 0,
+        overflow: 'hidden',
+        display: 'grid',
+        placeItems: 'end center',
+        '& .ludo-token': {
+          overflow: 'hidden',
+          width: '100%',
+          height: '100%',
+          transformOrigin: 'center bottom',
+          transform: `scale(${PICKER_ICON_SCALE[shape]})`,
+        },
+      }}
+    >
+      <LudoToken color="blue" shape={shape} variant="classic" label={label} className="ludo-token--picker" />
+    </Box>
+  );
+}
+
 /** Full-page Material UI shell; keeps app-shell classes for board media-query layout. */
 export function LudoPageShell({
   playing,
@@ -596,9 +629,7 @@ function MatchControlBody({
           {TOKEN_SHAPES.map((option) => (
             <MenuItem key={option.value} value={option.value}>
               <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
-                <Box sx={{ width: 24, height: 24, flexShrink: 0 }}>
-                  <LudoToken color="blue" shape={option.value} variant="classic" label={option.label} />
-                </Box>
+                <TokenShapePreview shape={option.value} label={option.label} />
                 <span>{option.label}</span>
               </Stack>
             </MenuItem>
