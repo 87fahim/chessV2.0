@@ -11,6 +11,14 @@
 }
 
 /* Board tile variables / grid still rely on these CSS classes under MUI Paper. */
+.ludo-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .ludo-root .app-shell {
-  min-height: 100%;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
 }

@@ -2488,13 +2488,13 @@
   }
 }
 
-/* Phones: true vertical center in the area below the AppBar + small side gap. */
+/* Phones: fill the AppLayout pane (already below AppBar), center board, small side gap. */
 @media (max-width: 767.98px) {
   .app-shell--playing {
-    --play-chrome: 48px;
-    height: calc(100dvh - var(--play-chrome));
-    min-height: calc(100dvh - var(--play-chrome));
-    max-height: calc(100dvh - var(--play-chrome));
+    /* Parent main already has AppBar padding — use 100%, not 100dvh - chrome. */
+    height: 100%;
+    min-height: 100%;
+    max-height: 100%;
   }
 
   .app-shell--playing .board-wrap {
@@ -2506,7 +2506,7 @@
   }
 
   .app-shell--playing .board-frame {
-    width: min(100%, calc((100dvh - var(--play-chrome)) / (1 + 2 * var(--vertical-die-ratio))));
+    width: min(100%, calc(100dvh / (1 + 2 * var(--vertical-die-ratio)) * 0.92));
     margin-left: auto;
     margin-right: auto;
   }

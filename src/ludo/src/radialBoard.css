@@ -374,12 +374,12 @@
   }
 
   .app-shell--playing .board-frame:has(.radial-board-container) {
-    width: min(100%, calc(100dvh - var(--play-chrome, 48px)));
+    width: min(100%, 92dvh);
     margin: 0 auto;
   }
 
   .app-shell--playing .radial-board-container {
-    width: min(100%, calc(100dvh - var(--play-chrome, 48px)));
+    width: min(100%, 92dvh);
     margin: 0 auto;
   }
 }
