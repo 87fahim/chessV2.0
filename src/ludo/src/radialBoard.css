@@ -365,3 +365,21 @@
     width: min(100%, calc(100dvh - var(--play-chrome, 48px)));
   }
 }
+
+@media (max-width: 767.98px) {
+  .app-shell--playing .board-wrap:has(.radial-board-container) {
+    padding: 8px 14px;
+    place-items: center;
+    align-content: center;
+  }
+
+  .app-shell--playing .board-frame:has(.radial-board-container) {
+    width: min(100%, calc(100dvh - var(--play-chrome, 48px)));
+    margin: 0 auto;
+  }
+
+  .app-shell--playing .radial-board-container {
+    width: min(100%, calc(100dvh - var(--play-chrome, 48px)));
+    margin: 0 auto;
+  }
+}
