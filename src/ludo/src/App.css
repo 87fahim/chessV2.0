@@ -2393,12 +2393,12 @@
   }
 
   .app-shell--playing .board-frame {
-    /* Fit both axes: height-based sizing must not exceed the window width. */
+    /* Width-first: fit the window horizontally, then allow height-based shrink. */
     --vertical-die-ratio: 0.36;
-    --board-max-by-height: calc(100dvh / (1 + 2 * var(--vertical-die-ratio)));
-    --board-max-by-width: calc(100dvw - 48px);
-    width: min(100%, var(--board-max-by-height), var(--board-max-by-width));
-    max-width: min(100%, var(--board-max-by-width));
+    --board-fit-width: calc(100dvw - 48px);
+    --board-fit-height: calc(100dvh / (1 + 2 * var(--vertical-die-ratio)));
+    width: min(100%, var(--board-fit-width), var(--board-fit-height));
+    max-width: var(--board-fit-width);
     margin: var(--vertical-die-space) auto;
     box-sizing: border-box;
   }
@@ -2489,13 +2489,13 @@
   }
 
   .app-shell--playing .board-frame {
-    --board-max-by-height: calc(
+    /* Width-first fit inside the AppBar-adjusted viewport. */
+    --board-fit-width: calc(100dvw - 48px);
+    --board-fit-height: calc(
       (100dvh - var(--play-chrome)) / (1 + 2 * var(--vertical-die-ratio, 0.36))
     );
-    /* Extra inset so seat labels / dice are not clipped on iPad. */
-    --board-max-by-width: calc(100dvw - 48px);
-    width: min(100%, var(--board-max-by-height), var(--board-max-by-width));
-    max-width: min(100%, var(--board-max-by-width));
+    width: min(100%, var(--board-fit-width), var(--board-fit-height));
+    max-width: var(--board-fit-width);
     margin-left: auto;
     margin-right: auto;
   }
