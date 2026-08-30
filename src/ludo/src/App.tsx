@@ -1515,6 +1515,7 @@ function App() {
       <LudoSessionHeader
         showNewSession={Boolean(game)}
         onNewSession={handleOpenNewGame}
+        tokenShape={tokenShape}
       />
 
       {loading ? <LudoLoadingPanel /> : null}
