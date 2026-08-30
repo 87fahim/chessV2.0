@@ -2465,16 +2465,21 @@
   }
 }
 
-/* Phone + tablet (not desktop): fit below AppBar and vertically center the board. */
-@media (max-width: 1366px) {
+/* Phone + tablet (not desktop xl): fit below AppBar and vertically center the board.
+   Matches MUI breakpoints.down('xl') used by LudoMatchLayout. */
+@media (max-width: 1535.95px) {
   .app-shell--playing {
     --play-chrome: 48px;
     height: calc(100dvh - var(--play-chrome));
     min-height: calc(100dvh - var(--play-chrome));
     max-height: calc(100dvh - var(--play-chrome));
+    display: flex;
+    flex-direction: column;
   }
 
   .app-shell--playing .board-wrap {
+    /* Shrink to the board so the match layout can center it in the leftover space. */
+    height: auto;
     place-items: center;
     align-content: center;
   }
