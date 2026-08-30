@@ -1792,8 +1792,12 @@
   transition: opacity 180ms ease;
 }
 
+.ludo-token.ludo-token--picker {
+  overflow: hidden;
+}
+
 .ludo-token__body {
-  fill: #f7fafc;
+  fill: #f4f6fa;
 }
 
 .ludo-token--movable .ludo-token__body {
