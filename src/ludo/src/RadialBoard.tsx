@@ -10,6 +10,7 @@ import {
 } from './boardLayoutRadial'
 import { LudoToken } from './LudoToken'
 import { resolvePlayerPaintHex, DEFAULT_PAINT_BY_SEAT, lightenPaintHex, darkenPaintHex } from './playerPaint'
+import { COLOR_STACK_ORDER, stackDisplayForToken } from './boardStacking'
 import type { DieValue } from './dieConfig'
 import { DIE_ORIENTATIONS, DIE_PIP_LAYOUTS, DIE_VALUES } from './dieConfig'
 import type { GameState, PlayerColor, TokenState } from './types'
@@ -206,14 +207,15 @@ export function RadialBoard({
   const diePlateRingPoints = regularPolygonSvgPoints(hubSides)
 
   const tokenPlacements = useMemo(() => {
-    const placements: Array<{
+    const raw: Array<{
       token: TokenState
       playerId: string
       color: PlayerColor
       paintHex: string
-      left: number
+      baseLeft: number
       top: number
       finished: boolean
+      stackKey: string
     }> = []
     const finishAt = layout.rules.finishProgress
 
@@ -229,48 +231,73 @@ export function RadialBoard({
         if (!percent) {
           continue
         }
-        placements.push({
+        const cellId = getRadialCellIdForProgress(layout, player.color, token.progress)
+        raw.push({
           token,
           playerId: player.id,
           color: player.color,
           paintHex: resolvePlayerPaintHex(player),
-          left: percent.left,
+          baseLeft: percent.left,
           top: percent.top,
           finished: token.progress >= finishAt,
+          // Shared track/home cells stack; yard/finish keep unique slots.
+          stackKey: cellId ?? `solo:${player.id}:${token.id}`,
         })
       }
     }
+
+    const byCell = new Map<string, typeof raw>()
+    for (const item of raw) {
+      const group = byCell.get(item.stackKey)
+      if (group) {
+        group.push(item)
+      } else {
+        byCell.set(item.stackKey, [item])
+      }
+    }
+
+    const placements: Array<{
+      token: TokenState
+      playerId: string
+      color: PlayerColor
+      paintHex: string
+      baseLeft: number
+      top: number
+      finished: boolean
+      stackIndex: number
+      stackCount: number
+    }> = []
+
+    for (const group of byCell.values()) {
+      group.sort((a, b) => {
+        const colorDelta = COLOR_STACK_ORDER.indexOf(a.color) - COLOR_STACK_ORDER.indexOf(b.color)
+        if (colorDelta !== 0) {
+          return colorDelta
+        }
+        return a.token.index - b.token.index
+      })
+      const stackCount = group.length
+      group.forEach((item, stackIndex) => {
+        placements.push({
+          token: item.token,
+          playerId: item.playerId,
+          color: item.color,
+          paintHex: item.paintHex,
+          baseLeft: item.baseLeft,
+          top: item.top,
+          finished: item.finished,
+          stackIndex,
+          stackCount,
+        })
+      })
+    }
+
+    // Paint lower tokens (higher `top`) above upper ones when pins overlap.
+    placements.sort((a, b) => a.top - b.top || a.baseLeft - b.baseLeft || a.stackIndex - b.stackIndex)
     return placements
   }, [game.players, layout, hoppingToken?.tokenId, returningToken?.tokenId])
 
-  const stackedTokenPlacements = useMemo(() => {
-    // Paint lower tokens (higher `top`) above upper ones when pins overlap.
-    return [...tokenPlacements].sort((a, b) => a.top - b.top || a.left - b.left)
-  }, [tokenPlacements])
-
-  const availableTileIds = useMemo(() => {
-    const ids = new Set<string>()
-    const roll = game.pendingRoll
-    if (roll == null || legalMoveIds.size === 0) {
-      return ids
-    }
-    for (const player of game.players) {
-      if (player.withdrawn) {
-        continue
-      }
-      for (const token of player.tokens) {
-        if (!legalMoveIds.has(token.id)) {
-          continue
-        }
-        const toProgress = token.progress === -1 ? 0 : token.progress + roll
-        const cellId = getRadialCellIdForProgress(layout, player.color, toProgress)
-        if (cellId) {
-          ids.add(cellId)
-        }
-      }
-    }
-    return ids
-  }, [game.pendingRoll, game.players, layout, legalMoveIds])
+  const tileWidthPct = (layout.measurements.tileSize / VIEW_SIZE) * 100
 
   const [pageHidden, setPageHidden] = useState(
     () => typeof document !== 'undefined' && document.visibilityState === 'hidden',
@@ -404,18 +431,13 @@ export function RadialBoard({
           />
         ))}
 
-        {layout.tiles.map((tile) => {
-          const available = availableTileIds.has(tile.id)
-          return (
-          <g
-            key={tile.id}
-            className={available ? 'radial-tile radial-tile--available' : 'radial-tile'}
-          >
+        {layout.tiles.map((tile) => (
+          <g key={tile.id} className="radial-tile">
             <polygon
               points={pointsToSvg(tile.points)}
               fill={tileFill(tile, paintByColor)}
               stroke="#718096"
-              strokeWidth={available ? 2.5 : 1.5}
+              strokeWidth={1.5}
               data-tile-id={tile.id}
             />
             {tile.type === 'safe' ? (
@@ -434,8 +456,7 @@ export function RadialBoard({
               </g>
             ) : null}
           </g>
-          )
-        })}
+        ))}
 
         {layout.seats.map((seat) => {
           const player = game.players.find((entry) => entry.color === seat.color)
@@ -598,8 +619,10 @@ export function RadialBoard({
         </button>
       </div>
 
-      {stackedTokenPlacements.map((placement) => {
+      {tokenPlacements.map((placement) => {
         const movable = legalMoveIds.has(placement.token.id)
+        const display = stackDisplayForToken(placement.stackCount, placement.stackIndex, movable)
+        const left = placement.baseLeft + ((display.anchorPercent - 50) / 100) * tileWidthPct
         const className = [
           'radial-token',
           'board-token-piece',
@@ -609,17 +632,21 @@ export function RadialBoard({
           .filter(Boolean)
           .join(' ')
         // Base keeps tokens above the SVG board; vertical position decides overlap order.
-        const zIndex = (movable ? 90 : placement.finished ? 55 : 40) + Math.round(placement.top)
+        const zIndex =
+          (movable ? 90 : placement.finished ? 55 : 40) +
+          Math.round(placement.top) +
+          placement.stackIndex
         return (
           <button
             key={placement.token.id}
             type="button"
             className={className}
             style={{
-              left: `${placement.left}%`,
+              left: `${left}%`,
               top: `${placement.top}%`,
               zIndex,
               ['--token-paint' as string]: placement.paintHex,
+              ['--token-scale' as string]: String(display.scale),
             }}
             disabled={!movable}
             onClick={() => onSelectToken(placement.token.id)}

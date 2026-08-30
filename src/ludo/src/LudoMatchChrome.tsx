@@ -871,11 +871,20 @@ export function LudoMatchLayout({
       sx={{
         maxWidth: 1240,
         mx: 'auto',
-        display: 'grid',
-        gridTemplateColumns: { xs: '1fr', xl: 'minmax(300px, 340px) minmax(0, 1fr)' },
-        gap: 2,
-        alignItems: 'start',
+        width: '100%',
+        // Touch: fill shell + flex-center the board. Desktop: sidebar grid.
+        height: { xs: '100%', xl: 'auto' },
+        minHeight: { xs: '100%', xl: 0 },
+        flex: { xs: 1, xl: 'unset' },
+        minWidth: 0,
         position: 'relative',
+        boxSizing: 'border-box',
+        display: { xs: 'flex', xl: 'grid' },
+        flexDirection: { xs: 'column' },
+        justifyContent: { xs: 'center' },
+        alignItems: { xs: 'center', xl: 'start' },
+        gridTemplateColumns: { xl: 'minmax(300px, 340px) minmax(0, 1fr)' },
+        gap: { xl: 2 },
       }}
     >
       {isMobile ? (
@@ -934,6 +943,11 @@ export function LudoMatchLayout({
             onClose={onMenuClose}
             ModalProps={{ keepMounted: true }}
             sx={{
+              // Keep drawer out of the flex flow so it cannot push the board to the top.
+              position: 'absolute',
+              width: 0,
+              height: 0,
+              overflow: 'visible',
               '& .MuiDrawer-paper': {
                 width: 'min(360px, 92vw)',
                 boxSizing: 'border-box',
@@ -961,7 +975,19 @@ export function LudoMatchLayout({
         </Paper>
       )}
 
-      <Box sx={{ minWidth: 0, maxWidth: '100%' }}>{board}</Box>
+      <Box
+        sx={{
+          minWidth: 0,
+          maxWidth: '100%',
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          flex: { xs: '0 1 auto', xl: 'unset' },
+        }}
+      >
+        {board}
+      </Box>
     </Box>
   );
 }

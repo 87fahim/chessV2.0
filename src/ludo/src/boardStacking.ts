@@ -28,3 +28,16 @@ export function stackTokenScale(count: number): number {
   const maxScale = Math.min(minAnchor, 100 - maxAnchor) / 50
   return Math.min(1, Math.max(0.36, maxScale * 0.96))
 }
+
+/** After a roll, selectable tokens expand to full size but keep their stack fan position. */
+export function stackDisplayForToken(
+  stackCount: number,
+  stackIndex: number,
+  selectable: boolean,
+): { anchorPercent: number; scale: number } {
+  const anchors = stackAnchorPercents(stackCount)
+  return {
+    anchorPercent: anchors[stackIndex] ?? 50,
+    scale: selectable ? 1 : stackTokenScale(stackCount),
+  }
+}

@@ -6,11 +6,12 @@
   --token-scale: 1;
   box-sizing: border-box;
   position: relative;
-  width: min(96vw, 96dvh);
+  /* Parent (.board-frame) owns the pixel size — never size from raw vw/vh here. */
+  width: 100%;
   max-width: 100%;
   aspect-ratio: 1 / 1;
   height: auto;
-  margin: 8px auto;
+  margin: 0 auto;
   /* No padding: token % coords must share the same box as the SVG (Safari-safe). */
   padding: 0;
   container-type: inline-size;
@@ -92,12 +93,6 @@
   pointer-events: none;
 }
 
-.radial-tile--available > polygon {
-  filter: brightness(1.12);
-  stroke: #d4a017;
-  cursor: pointer;
-}
-
 .radial-yard--turn-active .radial-yard-outer {
   stroke: #ffffff;
   stroke-width: 4;
@@ -153,14 +148,16 @@
   position: absolute;
   z-index: 4;
   min-width: 0;
-  max-width: 180px;
-  padding: 6px 10px;
+  /* Sized from the board (cqi) so labels straddling the rim stay proportional
+     and never crowd the window edge on small or tablet screens. */
+  max-width: min(180px, 21cqi);
+  padding: max(3px, 0.7cqi) max(5px, 1.2cqi);
   border-radius: 0;
   background: #ffffff;
   color: #718096;
   text-align: center;
   box-shadow: 0 3px 10px rgba(15, 26, 42, 0.14);
-  border: 2px solid #718096;
+  border: max(1px, 0.24cqi) solid #718096;
   pointer-events: none;
   transform-origin: center center;
 }
@@ -182,7 +179,7 @@
 
 .radial-seat-label__stats {
   display: block;
-  font-size: clamp(0.68rem, 2.6cqi, 0.9rem);
+  font-size: clamp(0.58rem, 2.3cqi, 0.9rem);
   font-weight: 700;
   opacity: 0.95;
   white-space: nowrap;
@@ -263,9 +260,9 @@
 
 .radial-center-die .corner-die__plate-ring {
   position: absolute;
-  inset: -4px;
-  width: calc(100% + 8px);
-  height: calc(100% + 8px);
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
   overflow: visible;
   pointer-events: none;
   z-index: 2;
@@ -274,10 +271,10 @@
 .radial-center-die .corner-die__plate-ring-path {
   fill: none;
   stroke: var(--die-turn-ring, #2d7ae8);
-  stroke-width: 3;
+  stroke-width: 5.5;
   stroke-linejoin: round;
   stroke-linecap: round;
-  stroke-dasharray: 7 5;
+  stroke-dasharray: 9 6;
   animation: die-plate-dash-move 1.1s linear infinite;
 }
 
@@ -287,8 +284,8 @@
  */
 .radial-board-container .radial-token.board-token-piece {
   position: absolute;
-  width: calc(var(--board-token-size) * var(--token-fit, 1));
-  height: calc(var(--board-token-size) * var(--token-fit, 1));
+  width: calc(var(--board-token-size) * var(--token-fit, 1) * var(--token-scale, 1));
+  height: calc(var(--board-token-size) * var(--token-fit, 1) * var(--token-scale, 1));
   margin: 0;
   transform: translate3d(-50%, -90%, 0);
   transform-origin: center bottom;
@@ -344,30 +341,35 @@
   transform-origin: center bottom;
 }
 
-@media (max-width: 1535.95px) {
-  /* Skip classic corner-die height reserve — radial names are on the board. */
-  .app-shell--playing .board-wrap:has(.radial-board-container) {
-    padding: 0;
-  }
-
-  .app-shell--playing .board-frame:has(.radial-board-container) {
-    width: min(100%, 100dvh);
-    margin: 0 auto;
-  }
-
-  .app-shell--playing .radial-board-container {
-    width: min(100%, 100dvh);
-    margin: 0 auto;
-  }
+/* Default: size radial board from the frame (works on desktop + touch). */
+.board-frame:has(.radial-board-container) {
+  /* vmin = smaller viewport side → always fits horizontally on portrait tablets. */
+  width: min(100%, 86vmin);
+  max-width: 100%;
+  margin-inline: auto;
+  box-sizing: border-box;
 }
 
-@media (min-width: 768px) and (max-width: 1366px) {
+@media (max-width: 1535.95px) {
+  /* Radial on phone/tablet: width-first, leave room for seat labels, then center vertically. */
+  .app-shell--playing .board-wrap:has(.radial-board-container) {
+    padding: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
   .app-shell--playing .board-frame:has(.radial-board-container) {
-    width: min(100%, calc(100dvh - var(--play-chrome, 48px)));
+    --board-fit-width: calc(100dvw - 72px);
+    --board-fit-height: calc(100dvh - var(--play-chrome, 48px) - 16px);
+    width: min(100%, var(--board-fit-width), var(--board-fit-height), 86vmin);
+    max-width: var(--board-fit-width);
     margin: 0 auto;
   }
 
   .app-shell--playing .radial-board-container {
-    width: min(100%, calc(100dvh - var(--play-chrome, 48px)));
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
   }
 }

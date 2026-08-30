@@ -38,7 +38,7 @@ import {
   buildRadialMovePercentPath,
 } from './boardLayoutRadial'
 import { getBoardRules, isRadialPlayerCount } from './boardRules'
-import { COLOR_STACK_ORDER, stackAnchorPercents, stackTokenScale } from './boardStacking'
+import { COLOR_STACK_ORDER, stackAnchorPercents, stackDisplayForToken, stackTokenScale } from './boardStacking'
 import {
   DIE_ORIENTATIONS,
   DIE_PIP_LAYOUTS,
@@ -52,7 +52,7 @@ import {
 import { averageProgressScore } from './progressScore'
 import { LudoToken } from './LudoToken'
 import { RadialBoard } from './RadialBoard'
-import { animateTokenHops, animateTokenSlide, buildCaptureReturnPercentPath, buildMovePercentPath, getProgressCoord, type BoardPercent } from './tokenMotion'
+import { animateTokenHops, animateTokenSlide, buildCaptureReturnPercentPath, buildMovePercentPath, type BoardPercent } from './tokenMotion'
 import type { GameState, PlayerColor, PlayerCount, TokenState } from './types'
 import { resolvePlayerPaintHex, buildSeatPaintMap, seatPaintCssVars } from './playerPaint'
 import {
@@ -841,25 +841,6 @@ function App() {
     game.status !== 'COMPLETED' &&
     !currentPlayerFinished
 
-  const classicAvailableCells = useMemo(() => {
-    const keys = new Set<string>()
-    if (!game || radialLayout || game.pendingRoll == null || !canMove || !currentPlayer) {
-      return keys
-    }
-    const roll = game.pendingRoll
-    for (const token of currentPlayer.tokens) {
-      if (!game.legalMoves.includes(token.id)) {
-        continue
-      }
-      const toProgress = token.progress === -1 ? 0 : token.progress + roll
-      const coord = getProgressCoord(currentPlayer.color, toProgress, token.index)
-      if (coord) {
-        keys.add(`${coord[0]}:${coord[1]}`)
-      }
-    }
-    return keys
-  }, [game, radialLayout, canMove, currentPlayer])
-
   function validateSetupNames(selectedCount: SetupCount): string[] {
     const errors: string[] = []
     const seen = new Set<string>()
@@ -1641,13 +1622,9 @@ function App() {
               <div className="board-grid">
                 {BOARD_CELLS.map((cell) => {
                   const cellClassName = ['cell', `cell--${cell.type}`]
-                  const available = classicAvailableCells.has(`${cell.row}:${cell.column}`)
 
                   if (cell.color && cell.marker !== 'home-entry') {
                     cellClassName.push(`cell--${cell.color}`)
-                  }
-                  if (available) {
-                    cellClassName.push('cell--available')
                   }
 
                   return (
@@ -1695,6 +1672,11 @@ function App() {
                     const isActivePlayer = currentPlayer?.id === placement.playerId
                     const tokenCanMove =
                       canMove && isActivePlayer && game.legalMoves.includes(placement.token.id)
+                    const display = stackDisplayForToken(
+                      placement.stackCount,
+                      placement.stackIndex,
+                      tokenCanMove,
+                    )
 
                     return (
                       <button
@@ -1709,9 +1691,10 @@ function App() {
                           gridRow: placement.row + 1,
                           gridColumn: placement.column + 1,
                           // Lower board rows (and later stack peers) paint above upper tokens.
-                          zIndex: 100 + placement.row * 20 + placement.stackIndex,
-                          ['--token-scale' as string]: String(placement.scale),
-                          ['--stack-anchor' as string]: `${placement.anchorPercent}%`,
+                          // Selectable tokens rise above the rest of the stack while choosing.
+                          zIndex: 100 + placement.row * 20 + placement.stackIndex + (tokenCanMove ? 40 : 0),
+                          ['--token-scale' as string]: String(display.scale),
+                          ['--stack-anchor' as string]: `${display.anchorPercent}%`,
                         }}
                         aria-label={`Move ${placement.playerColor} piece`}
                         disabled={!tokenCanMove}
