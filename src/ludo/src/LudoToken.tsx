@@ -1,7 +1,7 @@
-import { useId } from 'react'
+import { useId, type ReactNode } from 'react'
 
 export type TokenColor = 'red' | 'green' | 'blue' | 'yellow' | 'orange' | 'purple'
-export type TokenShape = 'pin' | 'pawn' | 'disc'
+export type TokenShape = 'pin' | 'pawn' | 'disc' | 'dome' | 'meeple' | 'gem' | 'chip'
 export type TokenVariant = 'classic' | 'flat' | 'glass'
 
 export interface LudoTokenProps {
@@ -240,6 +240,193 @@ function DiscShape({ palette, variant }: { palette: Palette; variant: TokenVaria
   )
 }
 
+/**
+ * Scales artwork about the foot at (50, 90) so every shape carries the same
+ * visual weight as PinShape, which sizes its 64px-wide body to 90px.
+ */
+function ArtScale({ artWidth, children }: { artWidth: number; children: ReactNode }) {
+  const scale = 90 / artWidth
+  return <g transform={`translate(50 90) scale(${scale}) translate(-50 -90)`}>{children}</g>
+}
+
+/** Ground contact for standing shapes, matching PinShape so tiles line up. */
+function GroundShadow({ softShadowId, rx = 26 }: { softShadowId?: string; rx?: number }) {
+  return (
+    <ellipse
+      className="token-shadow"
+      cx="50"
+      cy="90"
+      rx={rx}
+      ry="10"
+      fill="#1f2430"
+      opacity={0.38}
+      filter={softShadowId ? `url(#${softShadowId})` : undefined}
+    />
+  )
+}
+
+function DomeShape({
+  palette,
+  variant,
+  softShadowId,
+}: {
+  palette: Palette
+  variant: TokenVariant
+  softShadowId: string
+}) {
+  const isFlat = variant === 'flat'
+  const isGlass = variant === 'glass'
+  const artWidth = 60
+  const stroke = ((isFlat ? 2.5 : 3) * artWidth) / 90
+
+  return (
+    <ArtScale artWidth={artWidth}>
+      <GroundShadow softShadowId={isFlat ? undefined : softShadowId} rx={18} />
+      <ellipse cx="50" cy="85" rx="31" ry="9" fill={palette.dark} />
+      <path
+        d="M20 85 A30 30 0 0 1 80 85 Z"
+        fill={palette.main}
+        stroke={palette.dark}
+        strokeWidth={stroke}
+        strokeLinejoin="round"
+      />
+      <path d="M31 85 A19 19 0 0 1 69 85 Z" fill={palette.soft} opacity={isFlat ? 0.35 : 0.28} />
+      {!isFlat ? (
+        <ellipse
+          cx="41"
+          cy="70"
+          rx="9"
+          ry="6"
+          fill="#ffffff"
+          opacity={isGlass ? 0.7 : 0.4}
+          transform="rotate(-32 41 70)"
+        />
+      ) : null}
+    </ArtScale>
+  )
+}
+
+function MeepleShape({
+  palette,
+  variant,
+  softShadowId,
+}: {
+  palette: Palette
+  variant: TokenVariant
+  softShadowId: string
+}) {
+  const isFlat = variant === 'flat'
+  const artWidth = 66
+  const stroke = ((isFlat ? 2.5 : 3) * artWidth) / 90
+
+  return (
+    <ArtScale artWidth={artWidth}>
+      <GroundShadow softShadowId={isFlat ? undefined : softShadowId} rx={19} />
+      {/* One closed silhouette (head, arms, legs) so strokes never cross the body. */}
+      <g transform="translate(0 -5)">
+        <path
+          d="M38 44 C28 46 20 50 17 53 C14 56 16 61 21 61 C26 61 32 59 37 57
+             L31 88 C30 92 33 95 37 95 H44 C47 95 49 93 49 90 L50 80 L51 90
+             C51 93 53 95 56 95 H63 C67 95 70 92 69 88 L63 57
+             C68 59 74 61 79 61 C84 61 86 56 83 53 C80 50 72 46 62 44
+             C66 40 66 24 50 24 C34 24 34 40 38 44 Z"
+          fill={palette.main}
+          stroke={palette.dark}
+          strokeWidth={stroke}
+          strokeLinejoin="round"
+        />
+        {!isFlat ? (
+          <ellipse cx="43" cy="32" rx="6" ry="4" fill="#ffffff" opacity={0.4} transform="rotate(-25 43 32)" />
+        ) : null}
+      </g>
+    </ArtScale>
+  )
+}
+
+function GemShape({
+  palette,
+  variant,
+  softShadowId,
+}: {
+  palette: Palette
+  variant: TokenVariant
+  softShadowId: string
+}) {
+  const isFlat = variant === 'flat'
+  const artWidth = 60
+  const stroke = ((isFlat ? 2.5 : 3) * artWidth) / 90
+
+  return (
+    <ArtScale artWidth={artWidth}>
+      <GroundShadow softShadowId={isFlat ? undefined : softShadowId} rx={15} />
+      <polygon
+        points="50,12 80,44 50,90 20,44"
+        fill={palette.main}
+        stroke={palette.dark}
+        strokeWidth={stroke}
+        strokeLinejoin="round"
+      />
+      {/* Facets: lit table across the crown, shaded right pavilion. */}
+      <polygon points="50,12 68,38 32,38" fill={palette.soft} opacity={isFlat ? 0.4 : 0.55} />
+      <polygon points="80,44 68,38 50,90" fill={palette.dark} opacity={0.28} />
+      <polygon points="20,44 32,38 50,90" fill="#ffffff" opacity={isFlat ? 0.1 : 0.18} />
+    </ArtScale>
+  )
+}
+
+function ChipShape({
+  palette,
+  variant,
+  softShadowId,
+}: {
+  palette: Palette
+  variant: TokenVariant
+  softShadowId: string
+}) {
+  const isFlat = variant === 'flat'
+  const isGlass = variant === 'glass'
+  const artWidth = 66
+  const stroke = ((isFlat ? 2.5 : 3) * artWidth) / 90
+
+  return (
+    <ArtScale artWidth={artWidth}>
+      <GroundShadow softShadowId={isFlat ? undefined : softShadowId} rx={19} />
+      <rect
+        x="17"
+        y="25"
+        width="66"
+        height="65"
+        rx="19"
+        ry="19"
+        fill={palette.main}
+        stroke={palette.dark}
+        strokeWidth={stroke}
+      />
+      <rect
+        x="29"
+        y="37"
+        width="42"
+        height="41"
+        rx="12"
+        ry="12"
+        fill={palette.soft}
+        opacity={isFlat ? 0.45 : 0.6}
+      />
+      {!isFlat ? (
+        <ellipse
+          cx="39"
+          cy="42"
+          rx="10"
+          ry="6"
+          fill="#ffffff"
+          opacity={isGlass ? 0.7 : 0.42}
+          transform="rotate(-24 39 42)"
+        />
+      ) : null}
+    </ArtScale>
+  )
+}
+
 export function LudoToken({
   color,
   paintHex,
@@ -293,6 +480,12 @@ export function LudoToken({
         {shape === 'pin' ? <PinShape palette={palette} variant={variant} softShadowId={softShadowId} /> : null}
         {shape === 'pawn' ? <PawnShape palette={palette} variant={variant} /> : null}
         {shape === 'disc' ? <DiscShape palette={palette} variant={variant} /> : null}
+        {shape === 'dome' ? <DomeShape palette={palette} variant={variant} softShadowId={softShadowId} /> : null}
+        {shape === 'meeple' ? (
+          <MeepleShape palette={palette} variant={variant} softShadowId={softShadowId} />
+        ) : null}
+        {shape === 'gem' ? <GemShape palette={palette} variant={variant} softShadowId={softShadowId} /> : null}
+        {shape === 'chip' ? <ChipShape palette={palette} variant={variant} softShadowId={softShadowId} /> : null}
       </g>
       {selected ? (
         <circle

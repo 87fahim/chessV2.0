@@ -13,6 +13,7 @@ import {
   Divider,
   Drawer,
   IconButton,
+  MenuItem,
   Paper,
   Slider,
   Stack,
@@ -34,7 +35,8 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import FlagIcon from '@mui/icons-material/Flag';
 import type { GameState, PlayerColor } from './types';
 import { DEFAULT_PAINT_BY_SEAT, resolvePlayerPaintHex } from './playerPaint';
-import { LudoToken } from './LudoToken';
+import { LudoToken, type TokenShape } from './LudoToken';
+import { TOKEN_SHAPES } from './tokenShapePref';
 
 /** Dev/test helpers in Match Control (force finish / end). Hidden in production builds. */
 const SHOW_TEST_TOOLS = Boolean(import.meta.env.DEV);
@@ -488,12 +490,14 @@ function MatchControlBody({
   game,
   canRoll,
   soundVolume,
+  tokenShape,
   finishPlaceByPlayerId,
   error,
   autoRollByPlayerId,
   autoPlayByPlayerId,
   onRoll,
   onSoundVolumeChange,
+  onTokenShapeChange,
   onRestart,
   onNewGame,
   onToggleAutoRoll,
@@ -510,6 +514,7 @@ function MatchControlBody({
   currentPlayerName: string;
   canRoll: boolean;
   soundVolume: number;
+  tokenShape: TokenShape;
   finishPlaceByPlayerId: Map<string, number>;
   finishedCounts: Record<PlayerColor, number>;
   error: string | null;
@@ -517,6 +522,7 @@ function MatchControlBody({
   autoPlayByPlayerId: Record<string, boolean>;
   onRoll: () => void;
   onSoundVolumeChange: (value: number) => void;
+  onTokenShapeChange: (shape: TokenShape) => void;
   onRestart: () => void;
   onNewGame: () => void;
   onToggleAutoRoll: (playerId: string, enabled: boolean) => void;
@@ -573,6 +579,31 @@ function MatchControlBody({
             {Math.round(soundVolume * 100)}%
           </Typography>
         </Stack>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ px: 1.5, py: 1, bgcolor: 'action.hover' }}>
+        <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.secondary', lineHeight: 1.3, mb: 0.5 }}>
+          Token shape
+        </Typography>
+        <TextField
+          select
+          fullWidth
+          size="small"
+          value={tokenShape}
+          aria-label="Token shape"
+          onChange={(event) => onTokenShapeChange(event.target.value as TokenShape)}
+        >
+          {TOKEN_SHAPES.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+                <Box sx={{ width: 24, height: 24, flexShrink: 0 }}>
+                  <LudoToken color="blue" shape={option.value} variant="classic" label={option.label} />
+                </Box>
+                <span>{option.label}</span>
+              </Stack>
+            </MenuItem>
+          ))}
+        </TextField>
       </Paper>
 
       <Alert severity="info" icon={false} sx={{ py: 0.75, px: 1.5, '& .MuiAlert-message': { fontSize: '0.875rem' } }}>
@@ -793,6 +824,7 @@ export function LudoMatchLayout({
   currentPlayerName,
   canRoll,
   soundVolume,
+  tokenShape,
   finishPlaceByPlayerId,
   finishedCounts,
   error,
@@ -803,6 +835,7 @@ export function LudoMatchLayout({
   onMenuClose,
   onRoll,
   onSoundVolumeChange,
+  onTokenShapeChange,
   onRestart,
   onNewGame,
   onToggleAutoRoll,
@@ -818,6 +851,7 @@ export function LudoMatchLayout({
   currentPlayerName: string;
   canRoll: boolean;
   soundVolume: number;
+  tokenShape: TokenShape;
   finishPlaceByPlayerId: Map<string, number>;
   finishedCounts: Record<PlayerColor, number>;
   error: string | null;
@@ -828,6 +862,7 @@ export function LudoMatchLayout({
   onMenuClose: () => void;
   onRoll: () => void;
   onSoundVolumeChange: (value: number) => void;
+  onTokenShapeChange: (shape: TokenShape) => void;
   onRestart: () => void;
   onNewGame: () => void;
   onToggleAutoRoll: (playerId: string, enabled: boolean) => void;
@@ -848,6 +883,7 @@ export function LudoMatchLayout({
     currentPlayerName,
     canRoll,
     soundVolume,
+    tokenShape,
     finishPlaceByPlayerId,
     finishedCounts,
     error,
@@ -855,6 +891,7 @@ export function LudoMatchLayout({
     autoPlayByPlayerId,
     onRoll,
     onSoundVolumeChange,
+    onTokenShapeChange,
     onRestart,
     onNewGame,
     onToggleAutoRoll,
