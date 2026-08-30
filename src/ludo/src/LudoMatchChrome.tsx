@@ -871,11 +871,17 @@ export function LudoMatchLayout({
       sx={{
         maxWidth: 1240,
         mx: 'auto',
+        width: '100%',
+        // Touch: fill the playing shell and center the board. Desktop: top-align beside controls.
+        height: { xs: '100%', xl: 'auto' },
+        minHeight: { xs: '100%', xl: 0 },
         display: 'grid',
         gridTemplateColumns: { xs: '1fr', xl: 'minmax(300px, 340px) minmax(0, 1fr)' },
         gap: 2,
-        alignItems: 'start',
+        alignItems: { xs: 'center', xl: 'start' },
+        justifyItems: { xs: 'center', xl: 'stretch' },
         position: 'relative',
+        boxSizing: 'border-box',
       }}
     >
       {isMobile ? (
@@ -961,7 +967,18 @@ export function LudoMatchLayout({
         </Paper>
       )}
 
-      <Box sx={{ minWidth: 0, maxWidth: '100%' }}>{board}</Box>
+      <Box
+        sx={{
+          minWidth: 0,
+          maxWidth: '100%',
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        {board}
+      </Box>
     </Box>
   );
 }
