@@ -148,14 +148,16 @@
   position: absolute;
   z-index: 4;
   min-width: 0;
-  max-width: 180px;
-  padding: 6px 10px;
+  /* Sized from the board (cqi) so labels straddling the rim stay proportional
+     and never crowd the window edge on small or tablet screens. */
+  max-width: min(180px, 21cqi);
+  padding: max(3px, 0.7cqi) max(5px, 1.2cqi);
   border-radius: 0;
   background: #ffffff;
   color: #718096;
   text-align: center;
   box-shadow: 0 3px 10px rgba(15, 26, 42, 0.14);
-  border: 2px solid #718096;
+  border: max(1px, 0.24cqi) solid #718096;
   pointer-events: none;
   transform-origin: center center;
 }
@@ -177,7 +179,7 @@
 
 .radial-seat-label__stats {
   display: block;
-  font-size: clamp(0.68rem, 2.6cqi, 0.9rem);
+  font-size: clamp(0.58rem, 2.3cqi, 0.9rem);
   font-weight: 700;
   opacity: 0.95;
   white-space: nowrap;
