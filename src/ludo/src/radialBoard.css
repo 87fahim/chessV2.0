@@ -341,17 +341,18 @@
 @media (max-width: 1535.95px) {
   /* Skip classic corner-die height reserve — radial names are on the board. */
   .app-shell--playing .board-wrap:has(.radial-board-container) {
-    padding: 0 14px;
+    padding: 0 12px;
   }
 
   .app-shell--playing .board-frame:has(.radial-board-container) {
-    width: min(100%, calc(100dvw - 28px), calc(100dvh - var(--play-chrome, 48px)));
-    max-width: min(100%, calc(100dvw - 28px));
+    --radial-max: min(calc(100dvw - 56px), calc(100dvh - var(--play-chrome, 48px) - 24px));
+    width: min(100%, var(--radial-max));
+    max-width: min(100%, calc(100dvw - 56px));
     margin: 0 auto;
   }
 
   .app-shell--playing .radial-board-container {
-    width: min(100%, calc(100dvw - 28px), calc(100dvh - var(--play-chrome, 48px)));
+    width: 100%;
     max-width: 100%;
     margin: 0 auto;
   }
