@@ -65,12 +65,7 @@ export function LudoPageShell({
         boxSizing: 'border-box',
         color: 'text.primary',
         overflow: playing ? { xs: 'hidden', xl: 'visible' } : 'visible',
-        background: (theme) =>
-          [
-            `radial-gradient(circle at 10% 20%, ${alpha(theme.palette.info.light, 0.45)} 0, transparent 48%)`,
-            `radial-gradient(circle at 92% 22%, ${alpha(theme.palette.warning.light, 0.35)} 0, transparent 42%)`,
-            `linear-gradient(180deg, ${theme.palette.grey[50]} 0%, ${alpha(theme.palette.primary.light, 0.12)} 100%)`,
-          ].join(', '),
+        background: (theme) => theme.palette.grey[100],
       }}
     >
       {children}

@@ -54,10 +54,7 @@
 
 .radial-board-rim {
   fill: none;
-  stroke: #5f738c;
-  stroke-width: 7;
-  stroke-linejoin: round;
-  stroke-linecap: round;
+  stroke: none;
 }
 
 .radial-yard-slot {
