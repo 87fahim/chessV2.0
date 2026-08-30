@@ -50,7 +50,8 @@ import {
   type DieValue,
 } from './dieConfig'
 import { averageProgressScore } from './progressScore'
-import { LudoToken } from './LudoToken'
+import { LudoToken, type TokenShape } from './LudoToken'
+import { getTokenShape, setTokenShape } from './tokenShapePref'
 import { RadialBoard } from './RadialBoard'
 import { animateTokenHops, animateTokenSlide, buildCaptureReturnPercentPath, buildMovePercentPath, type BoardPercent } from './tokenMotion'
 import type { GameState, PlayerColor, PlayerCount, TokenState } from './types'
@@ -444,6 +445,7 @@ function HomeYardTokens({
   legalMoves,
   disabled,
   hiddenTokenId,
+  tokenShape,
   onSelect,
 }: {
   color: ClassicPlayerColor
@@ -452,6 +454,7 @@ function HomeYardTokens({
   legalMoves: string[]
   disabled: boolean
   hiddenTokenId: string | null
+  tokenShape: TokenShape
   onSelect: (tokenId: string) => void
 }) {
   const yard = HOME_YARDS[color]
@@ -497,7 +500,7 @@ function HomeYardTokens({
                 <LudoToken
                   color={color}
                   paintHex={paintHex}
-                  shape="pin"
+                  shape={tokenShape}
                   variant="classic"
                   movable={canMoveToken}
                 />
@@ -562,6 +565,7 @@ function App() {
   const [autoRollByPlayerId, setAutoRollByPlayerId] = useState<Record<string, boolean>>({})
   const [autoPlayByPlayerId, setAutoPlayByPlayerId] = useState<Record<string, boolean>>({})
   const [soundVolume, setSoundVolume] = useState(() => getGameSoundVolume())
+  const [tokenShape, setTokenShapeState] = useState<TokenShape>(() => getTokenShape())
   const hoppingTokenRef = useRef<HTMLDivElement | null>(null)
   const returningTokenRef = useRef<HTMLDivElement | null>(null)
   const hopAbortRef = useRef<AbortController | null>(null)
@@ -1540,6 +1544,7 @@ function App() {
           currentPlayerName={currentPlayer?.name ?? '-'}
           canRoll={canRoll}
           soundVolume={soundVolume}
+          tokenShape={tokenShape}
           finishPlaceByPlayerId={finishPlaceByPlayerId}
           finishedCounts={finishedCounts}
           error={error}
@@ -1553,6 +1558,10 @@ function App() {
             unlockGameSounds()
             setSoundVolume(next)
             setGameSoundVolume(next)
+          }}
+          onTokenShapeChange={(next) => {
+            setTokenShapeState(next)
+            setTokenShape(next)
           }}
           onRestart={() => setRestartOpen(true)}
           onNewGame={handleOpenNewGame}
@@ -1578,6 +1587,7 @@ function App() {
                   hoppingTokenRef={hoppingTokenRef}
                   returningTokenRef={returningTokenRef}
                   finishPlaceByPlayerId={finishPlaceByPlayerId}
+                  tokenShape={tokenShape}
                   onRoll={() => void handleRoll()}
                   onSelectToken={(tokenId) => void handleMove(tokenId)}
                 />
@@ -1710,7 +1720,7 @@ function App() {
                         <LudoToken
                           color={placement.playerColor}
                           paintHex={placement.paintHex}
-                          shape="pin"
+                          shape={tokenShape}
                           variant="classic"
                           movable={tokenCanMove}
                         />
@@ -1746,6 +1756,7 @@ function App() {
                       legalMoves={isActivePlayer ? game.legalMoves : []}
                       disabled={!canMove || !isActivePlayer}
                       hiddenTokenId={motionHiddenTokenId}
+                      tokenShape={tokenShape}
                       onSelect={(tokenId) => void handleMove(tokenId)}
                     />
                   )
@@ -1763,7 +1774,7 @@ function App() {
                       <LudoToken
                         color={hoppingToken.color}
                         paintHex={hoppingToken.paintHex}
-                        shape="pin"
+                        shape={tokenShape}
                         variant="classic"
                       />
                     </div>
@@ -1782,7 +1793,7 @@ function App() {
                       <LudoToken
                         color={returningToken.color}
                         paintHex={returningToken.paintHex}
-                        shape="pin"
+                        shape={tokenShape}
                         variant="classic"
                       />
                     </div>

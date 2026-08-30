@@ -8,7 +8,7 @@ import {
   type Point,
   type RadialBoardLayout,
 } from './boardLayoutRadial'
-import { LudoToken } from './LudoToken'
+import { LudoToken, type TokenShape } from './LudoToken'
 import { resolvePlayerPaintHex, DEFAULT_PAINT_BY_SEAT, lightenPaintHex, darkenPaintHex } from './playerPaint'
 import { COLOR_STACK_ORDER, stackDisplayForToken } from './boardStacking'
 import type { DieValue } from './dieConfig'
@@ -35,6 +35,7 @@ type RadialBoardProps = {
   hoppingTokenRef: RefObject<HTMLDivElement | null>
   returningTokenRef: RefObject<HTMLDivElement | null>
   finishPlaceByPlayerId: Map<string, number>
+  tokenShape: TokenShape
   onRoll: () => void
   onSelectToken: (tokenId: string) => void
 }
@@ -167,6 +168,7 @@ export function RadialBoard({
   hoppingTokenRef,
   returningTokenRef,
   finishPlaceByPlayerId,
+  tokenShape,
   onRoll,
   onSelectToken,
 }: RadialBoardProps) {
@@ -654,7 +656,7 @@ export function RadialBoard({
             <LudoToken
               color={placement.color}
               paintHex={placement.paintHex}
-              shape="pin"
+              shape={tokenShape}
               variant="classic"
               movable={movable}
             />
@@ -675,7 +677,7 @@ export function RadialBoard({
             <LudoToken
               color={hoppingToken.color}
               paintHex={hoppingToken.paintHex}
-              shape="pin"
+              shape={tokenShape}
               variant="classic"
             />
           </div>
@@ -695,7 +697,7 @@ export function RadialBoard({
             <LudoToken
               color={returningToken.color}
               paintHex={returningToken.paintHex}
-              shape="pin"
+              shape={tokenShape}
               variant="classic"
             />
           </div>
