@@ -96,10 +96,10 @@ const BOARD_CORNERS: ReadonlyArray<{ id: BoardCornerId; label: string; color: Pl
 
 /** Shared by the ring's white underlay and its animated dash layer. */
 const DIE_PLATE_RING_RECT = {
-  x: 3,
-  y: 3,
-  width: 94,
-  height: 94,
+  x: 1.3,
+  y: 1.3,
+  width: 97.4,
+  height: 97.4,
   rx: 14,
   ry: 14,
   pathLength: 100,

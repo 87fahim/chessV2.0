@@ -76,7 +76,7 @@ function regularPolygonClipPath(sides: number): string {
 }
 
 /** SVG polygon points for the dashed turn ring (viewBox 0–100). */
-function regularPolygonSvgPoints(sides: number, radius = 47, cx = 50, cy = 50): string {
+function regularPolygonSvgPoints(sides: number, radius = 48.6, cx = 50, cy = 50): string {
   const points: string[] = []
   const start = Math.PI / 2 + Math.PI / sides
   for (let i = 0; i < sides; i += 1) {
@@ -366,6 +366,8 @@ export function RadialBoard({
             !player.withdrawn &&
             player.id === currentPlayerId &&
             !place &&
+            game.pendingRoll === null &&
+            !dieRolling &&
             game.status !== 'COMPLETED'
           const paint = paintByColor[seat.color]
           const slotRadius = layout.measurements.tileSize * 0.3
@@ -527,7 +529,11 @@ export function RadialBoard({
             style={{
               left: `${left}%`,
               top: `${top}%`,
-              transform: `translate(-50%, -50%) rotate(${seat.labelRotationDeg}deg)`,
+              width: `${(seat.labelWidth / VIEW_SIZE) * 100}%`,
+              transformOrigin: seat.labelGrowsOutward ? 'center top' : 'center bottom',
+              transform: seat.labelGrowsOutward
+                ? `translate(-50%, 0) rotate(${seat.labelRotationDeg}deg)`
+                : `translate(-50%, -100%) rotate(${seat.labelRotationDeg}deg)`,
               ['--seat-paint' as string]: paintByColor[seat.color],
             }}
             title={`${name} — Captured ${capturesMade}, Lost ${timesCaptured}`}
