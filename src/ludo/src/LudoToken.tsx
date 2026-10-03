@@ -341,7 +341,7 @@ function GemShape({
     <ArtScale artWidth={artWidth}>
       <GroundShadow softShadowId={isFlat ? undefined : softShadowId} rx={15} />
       <polygon className="ludo-token__body" points={silhouette} {...bodyStroke(stroke)} />
-      <polygon points="50,12 68,38 32,38" fill="#ffffff" opacity={0.35} />
+      <polygon className="ludo-token__facet" points="50,12 68,38 32,38" fill="#ffffff" opacity={0.35} />
       <polygon points="80,44 68,38 50,90" fill={TOKEN_BORDER} opacity={0.1} />
       <polygon
         points="50,38 62,48 50,72 38,48"
