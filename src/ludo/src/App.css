@@ -455,12 +455,12 @@
   --die-profile-clearance: calc(var(--tile-size) * 0.18);
   --die-stats-gap: calc(var(--tile-size) * 0.22);
   --die-stats-height: calc(var(--tile-size) * 1.15);
-  --die-cube-size: calc(var(--die-size) * 0.7857);
+  --die-cube-size: calc(var(--die-size) * 0.68);
   --die-half: calc(var(--die-cube-size) / 2);
   --die-pip-size: calc(var(--die-cube-size) * 0.136);
-  --die-face-inset: calc(var(--die-cube-size) * 0.068);
+  --die-face-inset: 0px;
   --die-face-padding: calc(var(--die-cube-size) * 0.114);
-  --die-face-radius: calc(var(--die-cube-size) * 0.25);
+  --die-face-radius: calc(var(--die-cube-size) * 0.06);
   --die-plate-radius: calc(var(--tile-size) * 0.3);
   --die-plate-nudge: calc(var(--tile-size) * 0.18);
   --die-shadow-w: calc(var(--die-size) * 0.57);
@@ -577,10 +577,10 @@
   min-width: 0;
   height: var(--die-profile-height);
   border-radius: 0;
-  border: 2px solid #718096;
+  border: max(1px, 0.24cqi) solid #718096;
   background: #ffffff;
   color: #718096;
-  box-shadow: 0 3px 10px rgba(15, 26, 42, 0.14);
+  box-shadow: none;
   padding: 0 calc(var(--tile-size) * 0.18);
   display: grid;
   place-items: center;
@@ -641,38 +641,28 @@
   text-align: center;
 }
 
-.corner-die-profile--active {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95), 0 0 0 4px currentColor, 0 4px 12px rgba(15, 26, 42, 0.18);
-}
-
 .corner-die-profile--active.corner-die-profile--red {
   color: var(--seat-red, #ef2424);
-  border-color: var(--seat-red, #ef2424);
 }
 
 .corner-die-profile--active.corner-die-profile--green {
   color: var(--seat-green, #179949);
-  border-color: var(--seat-green, #179949);
 }
 
 .corner-die-profile--active.corner-die-profile--blue {
   color: var(--seat-blue, #2d7ae8);
-  border-color: var(--seat-blue, #2d7ae8);
 }
 
 .corner-die-profile--active.corner-die-profile--yellow {
   color: var(--seat-yellow, #e6bb00);
-  border-color: var(--seat-yellow, #e6bb00);
 }
 
 .corner-die-profile--active.corner-die-profile--orange {
   color: var(--seat-orange, #f07818);
-  border-color: var(--seat-orange, #f07818);
 }
 
 .corner-die-profile--active.corner-die-profile--purple {
   color: var(--seat-purple, #8b4fcf);
-  border-color: var(--seat-purple, #8b4fcf);
 }
 
 .corner-die-slot:has(.corner-die-profile--active.corner-die-profile--red) .corner-die-stats {
@@ -723,17 +713,17 @@
   transform: translateX(-50%);
   border-radius: var(--die-plate-radius);
   border: 1px solid #aebad0;
-  background: radial-gradient(circle at 50% 45%, #ffffff 0%, #f2f6fc 42%, #d8e2f0 72%, #c3d0e2 100%);
-  box-shadow: 0 3px 8px rgba(24, 33, 46, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.92), inset 0 0 0 1px rgba(174, 186, 208, 0.36);
+  background: #e8eef6;
+  box-shadow: none;
   pointer-events: none;
   z-index: 1;
 }
 
 .corner-die__plate-ring {
   position: absolute;
-  inset: -5px;
-  width: calc(100% + 10px);
-  height: calc(100% + 10px);
+  inset: 0;
+  width: 100%;
+  height: 100%;
   overflow: visible;
   pointer-events: none;
   z-index: 2;
@@ -742,7 +732,7 @@
 .corner-die__plate-ring-path {
   fill: none;
   stroke: #101418;
-  stroke-width: 5;
+  stroke-width: 2.6;
   /* Butt caps keep the black/white split at exactly 50/50. */
   stroke-linecap: butt;
   stroke-dasharray: 6.25 6.25;
@@ -782,7 +772,7 @@
 
 .corner-die:disabled {
   cursor: default;
-  opacity: 0.88;
+  opacity: 1;
 }
 
 .corner-die__cube {
@@ -802,7 +792,7 @@
   content: '';
   position: absolute;
   inset: calc(var(--die-cube-size) * 0.136);
-  border-radius: calc(var(--die-cube-size) * 0.227);
+  border-radius: calc(var(--die-cube-size) * 0.06);
   background: linear-gradient(160deg, #f7f9fc 0%, #e7edf6 100%);
   transform: translateZ(0);
   box-shadow: inset 0 0 0 1px rgba(196, 207, 222, 0.55);
@@ -867,8 +857,9 @@
 
 .die-face {
   position: absolute;
-  /* Pull faces in so side-edge corners don't poke past the rounded silhouette. */
+  /* Full cube faces so edges meet while the die is in the air. */
   inset: var(--die-face-inset);
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
@@ -883,27 +874,27 @@
 }
 
 .die-face--1 {
-  transform: rotateX(90deg) translateZ(var(--die-half));
+  transform: rotateX(90deg) translateZ(calc(var(--die-half) + 0.5px));
 }
 
 .die-face--6 {
-  transform: rotateX(-90deg) translateZ(var(--die-half));
+  transform: rotateX(-90deg) translateZ(calc(var(--die-half) + 0.5px));
 }
 
 .die-face--2 {
-  transform: translateZ(var(--die-half));
+  transform: translateZ(calc(var(--die-half) + 0.5px));
 }
 
 .die-face--5 {
-  transform: rotateY(180deg) translateZ(var(--die-half));
+  transform: rotateY(180deg) translateZ(calc(var(--die-half) + 0.5px));
 }
 
 .die-face--3 {
-  transform: rotateY(90deg) translateZ(var(--die-half));
+  transform: rotateY(90deg) translateZ(calc(var(--die-half) + 0.5px));
 }
 
 .die-face--4 {
-  transform: rotateY(-90deg) translateZ(var(--die-half));
+  transform: rotateY(-90deg) translateZ(calc(var(--die-half) + 0.5px));
 }
 
 .die-pip {
@@ -1500,8 +1491,6 @@
 
 .board-returning-token--active {
   z-index: 60;
-  outline: 2px solid rgba(255, 140, 90, 0.85);
-  outline-offset: 2px;
 }
 
 .board-returning-token--active .ludo-token {
@@ -1787,6 +1776,10 @@
 
 .ludo-token--movable .ludo-token__body {
   animation: token-body-flash 0.85s ease-in-out infinite;
+}
+
+.ludo-token--movable .ludo-token__facet {
+  opacity: 0;
 }
 
 .ludo-token--movable {

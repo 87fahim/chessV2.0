@@ -35,6 +35,13 @@ export interface RadialSeatLayout {
   homeTriangleInner: Point[]
   yardSlots: Point[]
   labelPosition: Point
+  /** Length of the home-triangle outer edge, in viewBox units. */
+  labelWidth: number
+  /**
+   * After rotate(labelRotationDeg), local +Y points outward from the board.
+   * Used so the stats box sits on the outer edge instead of floating past it.
+   */
+  labelGrowsOutward: boolean
   /** Degrees; aligns the name chip with the home-triangle outer edge. */
   labelRotationDeg: number
   /** Absolute degrees; tops of letters face the board center (aligned with card). */
@@ -391,15 +398,25 @@ export function buildRadialBoardLayout(seatColors: PlayerColor[]): RadialBoardLa
     finishIds[color] = `seat-${seat}-finish`
 
     const midAngle = angle + measurements.sectorAngle / 2
-    const labelRadial = OUTER_RADIUS + measurements.tileSize * 0.55
+    const outerA = homeTriangle[0]
+    const outerB = homeTriangle[1]
+    const labelWidth = Math.hypot(outerB.x - outerA.x, outerB.y - outerA.y)
+    // Midpoint of the triangle’s outer edge — the stats box sits on this chord.
+    const labelPosition = {
+      x: (outerA.x + outerB.x) / 2,
+      y: (outerA.y + outerB.y) / 2,
+    }
     // Label card runs along the triangle’s outer edge (tangent to the sector midline).
     let labelRotationDeg = ((midAngle * 180) / Math.PI + 90) % 360
     if (labelRotationDeg < 0) {
       labelRotationDeg += 360
     }
     // Keep the card readable (not upside-down) on the far side of the board.
+    // After this flip, local +Y points outward so translateY(0) grows away from the yard.
+    let labelGrowsOutward = false
     if (labelRotationDeg > 90 && labelRotationDeg < 270) {
       labelRotationDeg = (labelRotationDeg + 180) % 360
+      labelGrowsOutward = true
     }
     // Text stays aligned with the card; tops of letters face the board center.
     let labelTextRotationDeg = ((midAngle * 180) / Math.PI - 90) % 360
@@ -418,7 +435,9 @@ export function buildRadialBoardLayout(seatColors: PlayerColor[]): RadialBoardLa
       homeTriangle,
       homeTriangleInner,
       yardSlots: yardSlotsInTriangle(homeTriangleInner),
-      labelPosition: positionInSector(midAngle, labelRadial, 0),
+      labelPosition,
+      labelWidth,
+      labelGrowsOutward,
       labelRotationDeg,
       labelTextRotationDeg,
       centerWedge,

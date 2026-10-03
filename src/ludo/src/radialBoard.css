@@ -91,8 +91,25 @@
 }
 
 .radial-yard--turn-active .radial-yard-outer {
-  stroke: #ffffff;
-  stroke-width: 4;
+  animation: radial-yard-turn-flash 1.1s ease-in-out infinite;
+}
+
+@keyframes radial-yard-turn-flash {
+  0%,
+  100% {
+    filter: brightness(0.82);
+  }
+
+  50% {
+    filter: brightness(1.22);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radial-yard--turn-active .radial-yard-outer {
+    animation: none;
+    filter: brightness(0.96);
+  }
 }
 
 .radial-home-finish {
@@ -145,18 +162,17 @@
   position: absolute;
   z-index: 4;
   min-width: 0;
-  /* Sized from the board (cqi) so labels straddling the rim stay proportional
-     and never crowd the window edge on small or tablet screens. */
-  max-width: min(180px, 21cqi);
-  padding: max(3px, 0.7cqi) max(5px, 1.2cqi);
+  box-sizing: border-box;
+  /* Width is the home-triangle outer edge, set inline from layout. */
+  max-width: none;
+  padding: max(2px, 0.45cqi) max(3px, 0.6cqi);
   border-radius: 0;
   background: #ffffff;
   color: #718096;
   text-align: center;
-  box-shadow: 0 3px 10px rgba(15, 26, 42, 0.14);
+  box-shadow: none;
   border: max(1px, 0.24cqi) solid #718096;
   pointer-events: none;
-  transform-origin: center center;
 }
 
 .radial-seat-label__text {
@@ -168,18 +184,14 @@
   white-space: nowrap;
 }
 
-.radial-seat-label--active {
-  color: var(--seat-paint, #2d7ae8);
-  border-color: var(--seat-paint, #2d7ae8);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95), 0 0 0 4px var(--seat-paint, #2d7ae8), 0 4px 12px rgba(15, 26, 42, 0.18);
-}
-
 .radial-seat-label__stats {
   display: block;
-  font-size: clamp(0.58rem, 2.3cqi, 0.9rem);
+  font-size: clamp(0.52rem, 2.1cqi, 0.82rem);
   font-weight: 700;
   opacity: 0.95;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .radial-center-die {
@@ -218,24 +230,20 @@
   transform: none;
   border-radius: 0;
   border: 0;
-  filter: drop-shadow(0 3px 8px rgba(24, 33, 46, 0.22));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    inset 0 0 0 1px rgba(174, 186, 208, 0.45);
+  filter: none;
+  box-shadow: none;
 }
 
 .radial-center-die .corner-die__plate--turn-active {
   border-color: transparent;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    inset 0 0 0 1px rgba(174, 186, 208, 0.36);
+  box-shadow: none;
 }
 
 .radial-center-die .corner-die__plate-ring {
   position: absolute;
-  inset: -6px;
-  width: calc(100% + 12px);
-  height: calc(100% + 12px);
+  inset: 0;
+  width: 100%;
+  height: 100%;
   overflow: visible;
   pointer-events: none;
   z-index: 2;
@@ -244,7 +252,7 @@
 .radial-center-die .corner-die__plate-ring-path {
   fill: none;
   stroke: #101418;
-  stroke-width: 5.5;
+  stroke-width: 2.8;
   stroke-linejoin: round;
   /* Butt caps keep the black/white split at exactly 50/50. */
   stroke-linecap: butt;
