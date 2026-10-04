@@ -34,6 +34,8 @@ export interface SettingsUpdate {
   analysisEngineStrength?: 'easy' | 'medium' | 'hard';
   analysisDefaultDepth?: number;
   analysisShowBestLine?: boolean;
+  analysisBoardFen?: string;
+  analysisBoardFlipped?: boolean;
   defaultTimeControl?: string;
   boardFlipped?: boolean;
   language?: string;

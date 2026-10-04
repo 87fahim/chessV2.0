@@ -59,3 +59,9 @@ export interface AnalysisSettings {
 export type DragSource =
   | { type: 'board'; square: string; piece: PieceOnBoard }
   | { type: 'spare'; piece: PieceOnBoard };
+
+export interface EditorPromotionPending {
+  color: PieceColor;
+  to: string;
+  from?: string;
+}

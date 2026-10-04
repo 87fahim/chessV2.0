@@ -40,6 +40,8 @@ const defaultSettings: UserSettingsData = {
   analysisEngineStrength: 'medium',
   analysisDefaultDepth: 12,
   analysisShowBestLine: true,
+  analysisBoardFen: '',
+  analysisBoardFlipped: false,
   defaultTimeControl: '10+0',
   boardFlipped: false,
   language: 'en',

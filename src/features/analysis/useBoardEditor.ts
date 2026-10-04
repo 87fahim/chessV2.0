@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Chess } from 'chess.js';
 import type { PieceColor, PieceType } from '../../types/chess';
 import type { Difficulty } from '../../types/game';
@@ -7,12 +7,22 @@ import type {
   BoardPosition,
   CastlingRights,
   DragSource,
+  EditorPromotionPending,
   PieceOnBoard,
 } from './boardEditorTypes';
 import { buildFen, parseFenToPosition } from './fenBuilder';
-import { validatePosition, canAddPiece, canMovePiece, normalizeCastlingRights } from './positionValidation';
+import {
+  validatePosition,
+  canAddPiece,
+  canMovePiece,
+  normalizeCastlingRights,
+  isPawnPromotionSquare,
+} from './positionValidation';
 import { getStockfishService, parseUciMove } from './stockfishService';
 import { useGameSounds } from '../../hooks/useGameSounds';
+import { useAppDispatch, useAppSelector } from '../../hooks/useStore';
+import { saveSettings } from '../settings/settingsSlice';
+import { readAnalysisBoardLayout, writeAnalysisBoardLayout } from './analysisBoardPref';
 import {
   DEFAULT_ANALYSIS_SETTINGS,
   DEFAULT_CASTLING,
@@ -27,6 +37,12 @@ import { useMovePreview, type PreviewStep } from './useMovePreview';
 
 export function useBoardEditor() {
   const { playMoveOutcome } = useGameSounds();
+  const dispatch = useAppDispatch();
+  const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
+  const settingsLoading = useAppSelector((s) => s.settings.isLoading);
+  const storedServerFen = useAppSelector((s) => s.settings.data.analysisBoardFen);
+  const storedServerFlipped = useAppSelector((s) => s.settings.data.analysisBoardFlipped);
+  const autoPromotion = useAppSelector((s) => s.settings.data.autoPromotion === true);
   const history = usePositionHistory(DEFAULT_FEN);
   const {
     position,
@@ -54,6 +70,9 @@ export function useBoardEditor() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [highlightSquares, setHighlightSquares] = useState<{ from: string; to: string } | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [promotionPending, setPromotionPending] = useState<EditorPromotionPending | null>(null);
+  const [layoutHydrated, setLayoutHydrated] = useState(false);
+  const hydratedAuthRef = useRef<boolean | null>(null);
 
   const preview = useMovePreview(applySnapshot, setHighlightSquares);
 
@@ -92,12 +111,9 @@ export function useBoardEditor() {
   }, [preview]);
 
   const getSyncedCastling = useCallback(
-    (nextPosition: BoardPosition, nextCastling: CastlingRights) => (
-      analysisSettings.autoFixCastling
-        ? normalizeCastlingRights(nextPosition, nextCastling)
-        : nextCastling
-    ),
-    [analysisSettings.autoFixCastling],
+    (nextPosition: BoardPosition, nextCastling: CastlingRights) =>
+      normalizeCastlingRights(nextPosition, nextCastling),
+    [],
   );
 
   // --- Board mutations ---
@@ -163,6 +179,25 @@ export function useBoardEditor() {
     [position, pushUndo, setPosition, setCastling, setEnPassant, clearAnalysis, getSyncedCastling, castling, analysisSettings.resetEnPassantOnEdit],
   );
 
+  const placePromotedPiece = useCallback(
+    (from: string | undefined, to: string, color: PieceColor, type: PieceType) => {
+      const nextPosition = { ...position };
+      if (from) {
+        delete nextPosition[from];
+      }
+      nextPosition[to] = { color, type };
+
+      pushUndo();
+      setPosition(nextPosition);
+      setCastling(getSyncedCastling(nextPosition, castling));
+      if (analysisSettings.resetEnPassantOnEdit) {
+        setEnPassant('-');
+      }
+      clearAnalysis();
+    },
+    [position, pushUndo, setPosition, setCastling, getSyncedCastling, castling, analysisSettings.resetEnPassantOnEdit, setEnPassant, clearAnalysis],
+  );
+
   const handleDrop = useCallback(
     (source: DragSource, targetSquare: string | null) => {
       if (!targetSquare) {
@@ -172,14 +207,53 @@ export function useBoardEditor() {
         return;
       }
 
+      const movingPiece = source.type === 'board' ? position[source.square] : source.piece;
+      if (movingPiece?.type === 'p' && isPawnPromotionSquare(movingPiece.color, targetSquare)) {
+        const check = source.type === 'board'
+          ? canMovePiece(position, source.square, targetSquare)
+          : canAddPiece(position, targetSquare, movingPiece);
+        if (!check.allowed) return;
+
+        if (autoPromotion) {
+          placePromotedPiece(
+            source.type === 'board' ? source.square : undefined,
+            targetSquare,
+            movingPiece.color,
+            'q',
+          );
+          return;
+        }
+
+        setPromotionPending({
+          color: movingPiece.color,
+          to: targetSquare,
+          from: source.type === 'board' ? source.square : undefined,
+        });
+        return;
+      }
+
       if (source.type === 'board') {
         movePiece(source.square, targetSquare);
       } else {
         addPiece(targetSquare, source.piece);
       }
     },
-    [movePiece, addPiece, removePiece],
+    [position, autoPromotion, placePromotedPiece, movePiece, addPiece, removePiece],
   );
+
+  const confirmPromotion = useCallback(
+    (piece: string) => {
+      if (!promotionPending) return;
+      const type = (['q', 'r', 'b', 'n'].includes(piece) ? piece : 'q') as PieceType;
+      placePromotedPiece(promotionPending.from, promotionPending.to, promotionPending.color, type);
+      setPromotionPending(null);
+    },
+    [promotionPending, placePromotedPiece],
+  );
+
+  const cancelPromotion = useCallback(() => {
+    setPromotionPending(null);
+  }, []);
 
   // --- Undo / Redo ---
 
@@ -234,6 +308,57 @@ export function useBoardEditor() {
   const flipBoard = useCallback(() => {
     setIsFlipped((f) => !f);
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated && settingsLoading) {
+      return;
+    }
+    if (hydratedAuthRef.current === isAuthenticated) {
+      return;
+    }
+    hydratedAuthRef.current = isAuthenticated;
+
+    const stored = isAuthenticated && storedServerFen
+      ? { fen: storedServerFen, flipped: storedServerFlipped === true }
+      : readAnalysisBoardLayout();
+
+    if (stored?.fen) {
+      try {
+        new Chess(stored.fen);
+        applySnapshot(parseFenToPosition(stored.fen));
+      } catch {
+        // Keep the default starting position.
+      }
+    }
+    if (typeof stored?.flipped === 'boolean') {
+      setIsFlipped(stored.flipped);
+    }
+    setLayoutHydrated(true);
+  }, [isAuthenticated, settingsLoading, storedServerFen, storedServerFlipped, applySnapshot]);
+
+  useEffect(() => {
+    if (!layoutHydrated) {
+      return;
+    }
+    if (preview.status === 'playing' || preview.status === 'paused') {
+      return;
+    }
+
+    writeAnalysisBoardLayout({ fen, flipped: isFlipped });
+
+    if (!isAuthenticated) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void dispatch(saveSettings({
+        analysisBoardFen: fen,
+        analysisBoardFlipped: isFlipped,
+      }));
+    }, 700);
+
+    return () => window.clearTimeout(timer);
+  }, [fen, isFlipped, layoutHydrated, isAuthenticated, preview.status, dispatch]);
 
   // --- Metadata updates ---
 
@@ -503,6 +628,9 @@ export function useBoardEditor() {
     movePiece,
     addPiece,
     removePiece,
+    promotionPending,
+    confirmPromotion,
+    cancelPromotion,
 
     resetToStart,
     clearBoard,

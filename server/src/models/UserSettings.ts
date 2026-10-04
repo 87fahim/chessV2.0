@@ -34,6 +34,8 @@ export interface IUserSettings extends Document {
   analysisEngineStrength: string;
   analysisDefaultDepth: number;
   analysisShowBestLine: boolean;
+  analysisBoardFen: string;
+  analysisBoardFlipped: boolean;
   defaultTimeControl: string;
   boardFlipped: boolean;
   language: string;
@@ -196,6 +198,15 @@ const userSettingsSchema = new Schema<IUserSettings>(
     analysisShowBestLine: {
       type: Boolean,
       default: true,
+    },
+    analysisBoardFen: {
+      type: String,
+      default: '',
+      maxlength: 200,
+    },
+    analysisBoardFlipped: {
+      type: Boolean,
+      default: false,
     },
     defaultTimeControl: {
       type: String,
