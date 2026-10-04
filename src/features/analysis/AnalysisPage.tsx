@@ -246,17 +246,24 @@ const AnalysisPage: React.FC = () => {
             Next Best Move
           </Typography>
           <Box sx={{ display: 'flex', gap: 0.75, mb: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={editor.findBestMove}
-              disabled={editor.isAnalyzing || !editor.canAnalyze}
-              fullWidth
-              startIcon={editor.isAnalyzing ? <CircularProgress size={18} /> : <PlayArrowIcon />}
-              sx={{ minHeight: 30, fontSize: '0.74rem', px: 1.1 }}
+            <Tooltip
+              title={!editor.canAnalyze && errors[0] ? errors[0].message : ''}
+              disableHoverListener={editor.canAnalyze || errors.length === 0}
             >
-              {editor.isAnalyzing ? 'Analyzing...' : 'Find Next Move'}
-            </Button>
+              <span style={{ flex: 1, minWidth: 0, display: 'flex' }}>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={editor.findBestMove}
+                  disabled={editor.isAnalyzing || !editor.canAnalyze}
+                  fullWidth
+                  startIcon={editor.isAnalyzing ? <CircularProgress size={18} /> : <PlayArrowIcon />}
+                  sx={{ minHeight: 30, fontSize: '0.74rem', px: 1.1 }}
+                >
+                  {editor.isAnalyzing ? 'Analyzing...' : 'Find Next Move'}
+                </Button>
+              </span>
+            </Tooltip>
             {editor.isAnalyzing && (
               <Button
                 variant="outlined"
@@ -272,7 +279,7 @@ const AnalysisPage: React.FC = () => {
 
           {!editor.canAnalyze && errors.length > 0 && (
             <Typography variant="caption" color="error" sx={{ display: 'block', mb: 1, fontSize: '0.72rem' }}>
-              Fix position errors before analyzing
+              {errors[0].message}
             </Typography>
           )}
 

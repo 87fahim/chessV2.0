@@ -24,6 +24,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/useStore';
 import { saveSettings } from '../settings/settingsSlice';
 import { readAnalysisBoardLayout, writeAnalysisBoardLayout } from './analysisBoardPref';
 import { sideAtBottom, tryLegalCastle } from './analysisCastle';
+import { playablePositionError } from './analysisPlayable';
 import {
   DEFAULT_ANALYSIS_SETTINGS,
   DEFAULT_CASTLING,
@@ -93,11 +94,14 @@ export function useBoardEditor() {
 
   const validationErrors = useMemo(() => {
     const errors = validatePosition(position, castling, enPassant);
-    if (fenValidationError) {
+    const playableError = playablePositionError(fen);
+    if (playableError) {
+      errors.unshift({ message: playableError, severity: 'error' });
+    } else if (fenValidationError) {
       errors.unshift({ message: fenValidationError, severity: 'error' });
     }
     return errors;
-  }, [position, castling, enPassant, fenValidationError]);
+  }, [position, castling, enPassant, fen, fenValidationError]);
 
   const canAnalyze = useMemo(
     () => !validationErrors.some((error) => error.severity === 'error'),
