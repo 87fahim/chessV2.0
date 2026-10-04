@@ -434,6 +434,18 @@ const AnalysisPage: React.FC = () => {
                 py: 0.55,
                 fontSize: '0.74rem',
                 minHeight: 30,
+                fontWeight: 600,
+                color: 'text.secondary',
+                borderColor: 'divider',
+                '&.Mui-selected': {
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                  borderColor: 'primary.main',
+                  boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.18)',
+                  '&:hover': {
+                    bgcolor: 'primary.dark',
+                  },
+                },
               },
             }}
           >

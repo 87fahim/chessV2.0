@@ -23,6 +23,7 @@ import { useGameSounds } from '../../hooks/useGameSounds';
 import { useAppDispatch, useAppSelector } from '../../hooks/useStore';
 import { saveSettings } from '../settings/settingsSlice';
 import { readAnalysisBoardLayout, writeAnalysisBoardLayout } from './analysisBoardPref';
+import { sideAtBottom, tryLegalCastle } from './analysisCastle';
 import {
   DEFAULT_ANALYSIS_SETTINGS,
   DEFAULT_CASTLING,
@@ -123,21 +124,53 @@ export function useBoardEditor() {
       const check = canMovePiece(position, from, to);
       if (!check.allowed) return check.reason;
 
-      const nextPosition = { ...position };
-      const piece = nextPosition[from];
-      delete nextPosition[from];
-      nextPosition[to] = piece;
+      const castle = tryLegalCastle(
+        position,
+        from,
+        to,
+        castling,
+        enPassant,
+        halfMoveClock,
+        fullMoveNumber,
+      );
 
       pushUndo();
-      setPosition(nextPosition);
-      setCastling(getSyncedCastling(nextPosition, castling));
-      if (analysisSettings.resetEnPassantOnEdit) {
-        setEnPassant('-');
+      if (castle) {
+        setPosition(castle.position);
+        setCastling(getSyncedCastling(castle.position, castle.castling));
+        if (analysisSettings.resetEnPassantOnEdit) {
+          setEnPassant('-');
+        } else {
+          setEnPassant(castle.enPassant);
+        }
+      } else {
+        const nextPosition = { ...position };
+        const piece = nextPosition[from];
+        delete nextPosition[from];
+        nextPosition[to] = piece;
+        setPosition(nextPosition);
+        setCastling(getSyncedCastling(nextPosition, castling));
+        if (analysisSettings.resetEnPassantOnEdit) {
+          setEnPassant('-');
+        }
       }
       clearAnalysis();
       return undefined;
     },
-    [position, pushUndo, setPosition, setCastling, setEnPassant, clearAnalysis, getSyncedCastling, castling, analysisSettings.resetEnPassantOnEdit],
+    [
+      position,
+      castling,
+      enPassant,
+      halfMoveClock,
+      fullMoveNumber,
+      pushUndo,
+      setPosition,
+      setCastling,
+      setEnPassant,
+      clearAnalysis,
+      getSyncedCastling,
+      analysisSettings.resetEnPassantOnEdit,
+    ],
   );
 
   const addPiece = useCallback(
@@ -275,13 +308,13 @@ export function useBoardEditor() {
     pushUndo();
     const parsed = parseFenToPosition(DEFAULT_FEN);
     setPosition(parsed.position);
-    setSideToMove('w');
+    setSideToMove(sideAtBottom(isFlipped));
     setCastling({ ...DEFAULT_CASTLING });
     setEnPassant('-');
     setHalfMoveClock(0);
     setFullMoveNumber(1);
     clearAnalysis();
-  }, [pushUndo, setPosition, setSideToMove, setCastling, setEnPassant, setHalfMoveClock, setFullMoveNumber, clearAnalysis]);
+  }, [pushUndo, setPosition, setSideToMove, setCastling, setEnPassant, setHalfMoveClock, setFullMoveNumber, clearAnalysis, isFlipped]);
 
   const clearBoard = useCallback(() => {
     pushUndo();
@@ -306,8 +339,11 @@ export function useBoardEditor() {
   }, [position, pushUndo, setPosition, setCastling, setEnPassant, clearAnalysis]);
 
   const flipBoard = useCallback(() => {
-    setIsFlipped((f) => !f);
-  }, []);
+    const nextFlipped = !isFlipped;
+    setIsFlipped(nextFlipped);
+    setSideToMove(sideAtBottom(nextFlipped));
+    clearAnalysis();
+  }, [isFlipped, setSideToMove, clearAnalysis]);
 
   useEffect(() => {
     if (isAuthenticated && settingsLoading) {
@@ -330,13 +366,16 @@ export function useBoardEditor() {
         // Keep the default starting position.
       }
     }
+    const flipped = typeof stored?.flipped === 'boolean' ? stored.flipped : false;
     if (typeof stored?.flipped === 'boolean') {
       // Syncing the saved board from settings / localStorage after auth is known.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsFlipped(stored.flipped);
+      setIsFlipped(flipped);
     }
+    // Default selected side is the color sitting at the bottom of the board.
+    setSideToMove(sideAtBottom(flipped));
     setLayoutHydrated(true);
-  }, [isAuthenticated, settingsLoading, storedServerFen, storedServerFlipped, applySnapshot]);
+  }, [isAuthenticated, settingsLoading, storedServerFen, storedServerFlipped, applySnapshot, setSideToMove]);
 
   useEffect(() => {
     if (!layoutHydrated) {
@@ -551,7 +590,7 @@ export function useBoardEditor() {
 
       const parsed = parseFenToPosition(game.fen());
       pushUndo();
-      applySnapshot(parsed);
+      applySnapshot({ ...parsed, sideToMove });
     } catch {
       // Fallback: manually move the piece
       const { from, to, promotion } = parseUciMove(analysisResult.bestMove);
@@ -565,10 +604,9 @@ export function useBoardEditor() {
         next[to] = promotion ? { color: piece.color, type: promotion as PieceType } : piece;
         return next;
       });
-      setSideToMove((prev) => (prev === 'w' ? 'b' : 'w'));
     }
     clearAnalysis();
-  }, [analysisResult, fen, pushUndo, applySnapshot, setPosition, setSideToMove, clearAnalysis, playMoveOutcome, preview]);
+  }, [analysisResult, fen, sideToMove, pushUndo, applySnapshot, setPosition, clearAnalysis, playMoveOutcome, preview]);
 
   const showSuggestedMoves = useCallback(() => {
     if (!analysisResult?.bestMove || preview.status === 'playing') return;
