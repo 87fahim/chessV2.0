@@ -74,6 +74,22 @@ export function normalizeCastlingRights(
   return normalized;
 }
 
+export function pawnRank(square: string): number {
+  return parseInt(square[1], 10);
+}
+
+/** White pawn to rank 8, or black pawn to rank 1. */
+export function isPawnPromotionSquare(color: PieceColor, square: string): boolean {
+  const rank = pawnRank(square);
+  return (color === 'w' && rank === 8) || (color === 'b' && rank === 1);
+}
+
+/** Pawn on its own back rank — never legal, not a promotion. */
+export function isIllegalPawnRank(color: PieceColor, square: string): boolean {
+  const rank = pawnRank(square);
+  return (color === 'w' && rank === 1) || (color === 'b' && rank === 8);
+}
+
 export function isValidEnPassantSquare(value: string): boolean {
   return value === '-' || /^[a-h][36]$/i.test(value);
 }
@@ -136,16 +152,13 @@ export function validatePosition(
   if (whiteCounts.total > 16) errors.push({ message: 'White cannot have more than 16 pieces', severity: 'error' });
   if (blackCounts.total > 16) errors.push({ message: 'Black cannot have more than 16 pieces', severity: 'error' });
 
-  // Pawns on rank 1 or 8
+  // Unpromoted pawns cannot sit on the back ranks.
   for (const [square, piece] of Object.entries(position)) {
-    if (piece.type === 'p') {
-      const rank = parseInt(square[1], 10);
-      if (rank === 1 || rank === 8) {
-        errors.push({
-          message: `${piece.color === 'w' ? 'White' : 'Black'} pawn on ${square} is invalid (rank ${rank})`,
-          severity: 'error',
-        });
-      }
+    if (piece.type === 'p' && (pawnRank(square) === 1 || pawnRank(square) === 8)) {
+      errors.push({
+        message: `${piece.color === 'w' ? 'White' : 'Black'} pawn on ${square} must be promoted`,
+        severity: 'error',
+      });
     }
   }
 
@@ -198,12 +211,8 @@ export function canAddPiece(
     return { allowed: false, reason: `${colorName} already has 16 pieces` };
   }
 
-  // Pawn rank restriction
-  if (piece.type === 'p') {
-    const rank = parseInt(square[1], 10);
-    if (rank === 1 || rank === 8) {
-      return { allowed: false, reason: 'Pawns cannot be placed on rank 1 or 8' };
-    }
+  if (piece.type === 'p' && isIllegalPawnRank(piece.color, square)) {
+    return { allowed: false, reason: 'Pawns cannot sit on their own back rank' };
   }
 
   // King adjacency check
@@ -232,12 +241,8 @@ export function canMovePiece(
   // Same-color target → no-op
   if (target && target.color === piece.color) return { allowed: false };
 
-  // Pawn rank restriction
-  if (piece.type === 'p') {
-    const rank = parseInt(to[1], 10);
-    if (rank === 1 || rank === 8) {
-      return { allowed: false, reason: 'Pawns cannot be placed on rank 1 or 8' };
-    }
+  if (piece.type === 'p' && isIllegalPawnRank(piece.color, to)) {
+    return { allowed: false, reason: 'Pawns cannot sit on their own back rank' };
   }
 
   // King adjacency after move

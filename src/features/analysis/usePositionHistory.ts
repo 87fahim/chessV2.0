@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import type { PieceColor } from '../../types/chess';
 import type { BoardPosition, CastlingRights, PositionSnapshot } from './boardEditorTypes';
 import { parseFenToPosition } from './fenBuilder';
-import { DEFAULT_CASTLING, takeSnapshot } from './boardEditorDefaults';
+import { takeSnapshot } from './boardEditorDefaults';
 
 /**
  * Owns the editable position (pieces + FEN metadata) and its undo/redo history.
@@ -11,11 +11,11 @@ import { DEFAULT_CASTLING, takeSnapshot } from './boardEditorDefaults';
 export function usePositionHistory(initialFen: string) {
   const startParsed = parseFenToPosition(initialFen);
   const [position, setPosition] = useState<BoardPosition>({ ...startParsed.position });
-  const [sideToMove, setSideToMove] = useState<PieceColor>('w');
-  const [castling, setCastling] = useState<CastlingRights>({ ...DEFAULT_CASTLING });
-  const [enPassant, setEnPassant] = useState('-');
-  const [halfMoveClock, setHalfMoveClock] = useState(0);
-  const [fullMoveNumber, setFullMoveNumber] = useState(1);
+  const [sideToMove, setSideToMove] = useState<PieceColor>(startParsed.sideToMove);
+  const [castling, setCastling] = useState<CastlingRights>({ ...startParsed.castling });
+  const [enPassant, setEnPassant] = useState(startParsed.enPassant);
+  const [halfMoveClock, setHalfMoveClock] = useState(startParsed.halfMoveClock);
+  const [fullMoveNumber, setFullMoveNumber] = useState(startParsed.fullMoveNumber);
 
   const [undoStack, setUndoStack] = useState<PositionSnapshot[]>([]);
   const [redoStack, setRedoStack] = useState<PositionSnapshot[]>([]);
