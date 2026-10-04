@@ -32,6 +32,7 @@ import PauseIcon from '@mui/icons-material/Pause';
 import CheckIcon from '@mui/icons-material/Check';
 import CancelIcon from '@mui/icons-material/Cancel';
 import EditableBoard from '../../components/chess/EditableBoard';
+import PromotionDialog from '../../components/chess/PromotionDialog';
 import BoardLayout from '../../components/chess/BoardLayout';
 import ZoomControls from '../../components/chess/ZoomControls';
 import {
@@ -156,13 +157,22 @@ const AnalysisPage: React.FC = () => {
       boardColRef={zoom.boardColRef}
       boardWidth={zoom.boardWidth}
       board={<>
-        <EditableBoard
-          position={editor.position}
-          isFlipped={editor.isFlipped}
-          highlightSquares={editor.highlightSquares}
-          onDrop={editor.handleDrop}
-          onBoardHeightChange={setBoardHeight}
-        />
+        <Box sx={{ position: 'relative' }}>
+          <EditableBoard
+            position={editor.position}
+            isFlipped={editor.isFlipped}
+            highlightSquares={editor.highlightSquares}
+            onDrop={editor.handleDrop}
+            onBoardHeightChange={setBoardHeight}
+          />
+          {editor.promotionPending ? (
+            <PromotionDialog
+              color={editor.promotionPending.color}
+              onSelect={editor.confirmPromotion}
+              onCancel={editor.cancelPromotion}
+            />
+          ) : null}
+        </Box>
         <Paper elevation={2} sx={controlBarPaperSx}>
           <Typography variant="subtitle2" color="text.secondary" sx={controlBarTitleSx}>
             Controls

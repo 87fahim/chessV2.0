@@ -36,6 +36,8 @@ const updateSettingsSchema = z.object({
   analysisEngineStrength: z.enum(['easy', 'medium', 'hard']).optional(),
   analysisDefaultDepth: z.number().min(1).max(30).optional(),
   analysisShowBestLine: z.boolean().optional(),
+  analysisBoardFen: z.string().max(200).optional(),
+  analysisBoardFlipped: z.boolean().optional(),
   defaultTimeControl: z.string().optional(),
   boardFlipped: z.boolean().optional(),
   language: z.string().max(10).optional(),
