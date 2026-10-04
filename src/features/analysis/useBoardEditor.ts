@@ -331,6 +331,8 @@ export function useBoardEditor() {
       }
     }
     if (typeof stored?.flipped === 'boolean') {
+      // Syncing the saved board from settings / localStorage after auth is known.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsFlipped(stored.flipped);
     }
     setLayoutHydrated(true);
