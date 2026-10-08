@@ -36,6 +36,7 @@ export interface SettingsUpdate {
   analysisShowBestLine?: boolean;
   analysisBoardFen?: string;
   analysisBoardFlipped?: boolean;
+  sidebarExpanded?: boolean;
   defaultTimeControl?: string;
   boardFlipped?: boolean;
   language?: string;

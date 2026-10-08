@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Box } from '@mui/material';
+import { DRAWER_WIDTH, useAppChrome } from '../common/AppChromeContext';
 
-/** px of permanent drawer – shown on screens ≥ 1536px */
-const PERMANENT_DRAWER_WIDTH = 260;
 /** MUI lg breakpoint */
 const LG_BREAKPOINT = 1200;
-/** Permanent-drawer breakpoint */
-const PERM_DRAWER_BREAKPOINT = 1536;
 
 interface BoardLayoutProps {
   /** The board component (+ controls row, already includes ZoomControls) */
@@ -41,6 +38,7 @@ const BoardLayout: React.FC<BoardLayoutProps> = ({
   boardColRef,
 }) => {
   const [winW, setWinW] = useState(window.innerWidth);
+  const { sidebarOpen } = useAppChrome();
 
   useEffect(() => {
     const onResize = () => setWinW(window.innerWidth);
@@ -49,8 +47,7 @@ const BoardLayout: React.FC<BoardLayoutProps> = ({
   }, []);
 
   const isLargeScreen = winW >= LG_BREAKPOINT;
-  const hasPermanentDrawer = winW >= PERM_DRAWER_BREAKPOINT;
-  const contentW = winW - (hasPermanentDrawer ? PERMANENT_DRAWER_WIDTH : 0);
+  const contentW = winW - (sidebarOpen ? DRAWER_WIDTH : 0);
 
   // Drop to column layout if zoomed board + panel no longer fit side-by-side
   const forceColumn =
