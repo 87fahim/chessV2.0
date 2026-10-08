@@ -36,6 +36,7 @@ export interface IUserSettings extends Document {
   analysisShowBestLine: boolean;
   analysisBoardFen: string;
   analysisBoardFlipped: boolean;
+  sidebarExpanded?: boolean;
   defaultTimeControl: string;
   boardFlipped: boolean;
   language: string;
@@ -207,6 +208,9 @@ const userSettingsSchema = new Schema<IUserSettings>(
     analysisBoardFlipped: {
       type: Boolean,
       default: false,
+    },
+    sidebarExpanded: {
+      type: Boolean,
     },
     defaultTimeControl: {
       type: String,

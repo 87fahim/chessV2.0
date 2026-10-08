@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Box,
   Drawer,
@@ -18,6 +18,7 @@ import {
   Chip,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import SchoolIcon from '@mui/icons-material/School';
 import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
@@ -33,8 +34,10 @@ import LoginIcon from '@mui/icons-material/Login';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../hooks/useStore';
 import { logout } from '../../features/auth/authSlice';
+import { saveSettings } from '../../features/settings/settingsSlice';
+import { AppChromeProvider, DRAWER_WIDTH } from './AppChromeContext';
+import { readSessionSidebarExpanded, writeSessionSidebarExpanded } from './sidebarPref';
 
-const DRAWER_WIDTH = 260;
 const PERMANENT_DRAWER_MIN_WIDTH = 1536;
 const MOBILE_APP_BAR_HEIGHT = 48;
 
@@ -60,23 +63,46 @@ interface AppLayoutProps {
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const theme = useTheme();
-  const useTemporaryDrawer = useMediaQuery(`(max-width:${PERMANENT_DRAWER_MIN_WIDTH - 0.05}px)`);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const wideDefault = !useMediaQuery(`(max-width:${PERMANENT_DRAWER_MIN_WIDTH - 0.05}px)`, { noSsr: true });
+  const [override, setOverride] = useState<boolean | null>(() => readSessionSidebarExpanded());
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
   const { user, isAuthenticated, isGuest } = useAppSelector((s) => s.auth);
+  const settingsLoading = useAppSelector((s) => s.settings.isLoading);
+  const storedSidebarExpanded = useAppSelector((s) => s.settings.data.sidebarExpanded);
 
+  const persistForAccount = isAuthenticated && !isGuest;
+  const sidebarOpen = override ?? wideDefault;
   const visibleNav = NAV_ITEMS.filter((item) => !item.authOnly || isAuthenticated);
-  const contentTopOffset = useTemporaryDrawer ? MOBILE_APP_BAR_HEIGHT : 0;
+  const contentTopOffset = sidebarOpen ? 0 : MOBILE_APP_BAR_HEIGHT;
 
   useEffect(() => {
     document.title = APP_TITLE;
   }, []);
 
+  useEffect(() => {
+    if (!persistForAccount || settingsLoading) {
+      return;
+    }
+    if (typeof storedSidebarExpanded === 'boolean') {
+      // Restore the account-saved sidebar after settings finish loading.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOverride(storedSidebarExpanded);
+    }
+  }, [persistForAccount, settingsLoading, storedSidebarExpanded]);
+
+  const toggleSidebar = useCallback(() => {
+    const next = !sidebarOpen;
+    setOverride(next);
+    writeSessionSidebarExpanded(next);
+    if (persistForAccount) {
+      void dispatch(saveSettings({ sidebarExpanded: next }));
+    }
+  }, [sidebarOpen, persistForAccount, dispatch]);
+
   const handleNav = (path: string) => {
     navigate(path);
-    if (useTemporaryDrawer) setMobileOpen(false);
   };
 
   const handleLogout = () => {
@@ -85,14 +111,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Toolbar>
+      <Toolbar sx={{ pr: 1, gap: 0.5 }}>
         <Typography
           variant="h6"
-          sx={{ fontWeight: 700, fontSize: { xs: '1.1rem', lg: '1.55rem' } }}
+          sx={{ fontWeight: 700, fontSize: { xs: '1.1rem', lg: '1.55rem' }, flex: 1, minWidth: 0 }}
           noWrap
         >
           {APP_TITLE}
         </Typography>
+        <IconButton aria-label="Collapse navigation menu" onClick={toggleSidebar} size="small">
+          <ChevronLeftIcon />
+        </IconButton>
       </Toolbar>
       <List sx={{ flex: 1, pt: 0 }}>
         {visibleNav.map((item) => (
@@ -121,7 +150,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         ))}
       </List>
 
-      {/* User section at bottom */}
       <Divider />
       <Box sx={{ p: 1.5 }}>
         {isAuthenticated && user ? (
@@ -173,6 +201,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   );
 
   return (
+    <AppChromeProvider value={{ sidebarOpen }}>
     <Box
       sx={{
         display: 'flex',
@@ -183,8 +212,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         overflow: 'hidden',
       }}
     >
-      {/* App Bar - mobile only */}
-      {useTemporaryDrawer && (
+      {!sidebarOpen && (
         <AppBar
           position="fixed"
           sx={{
@@ -194,10 +222,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         >
           <Toolbar variant="dense">
             <IconButton
-              aria-label="Toggle navigation menu"
+              aria-label="Expand navigation menu"
               edge="start"
               color="inherit"
-              onClick={() => setMobileOpen(!mobileOpen)}
+              onClick={toggleSidebar}
               sx={{ mr: 1 }}
             >
               <MenuIcon />
@@ -209,24 +237,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </AppBar>
       )}
 
-      {/* Sidebar */}
-      {useTemporaryDrawer ? (
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={() => setMobileOpen(false)}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            '& .MuiDrawer-paper': {
-              width: DRAWER_WIDTH,
-              maxWidth: '86vw',
-              boxSizing: 'border-box',
-            },
-          }}
-        >
-          {drawer}
-        </Drawer>
-      ) : (
+      {sidebarOpen && (
         <Drawer
           variant="permanent"
           sx={{
@@ -244,7 +255,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </Drawer>
       )}
 
-      {/* Main content */}
       <Box
         component="main"
         sx={{
@@ -260,6 +270,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', overflowX: 'hidden' }}>{children}</Box>
       </Box>
     </Box>
+    </AppChromeProvider>
   );
 };
 export default AppLayout;

@@ -38,6 +38,7 @@ const updateSettingsSchema = z.object({
   analysisShowBestLine: z.boolean().optional(),
   analysisBoardFen: z.string().max(200).optional(),
   analysisBoardFlipped: z.boolean().optional(),
+  sidebarExpanded: z.boolean().optional(),
   defaultTimeControl: z.string().optional(),
   boardFlipped: z.boolean().optional(),
   language: z.string().max(10).optional(),
